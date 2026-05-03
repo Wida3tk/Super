@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "home": "Home",
+    "language": "عربي"
+  },
+  "home": {
+    "title": "Academic Supervision Sessions",
+    "subtitle": "Book a session with a specialized supervisor in under 2 minutes",
+    "searchPlaceholder": "Search for a supervisor...",
+    "noSupervisors": "No supervisors available at the moment",
+    "sessions": "sessions",
+    "rating": "Rating",
+    "viewProfile": "View Profile & Book"
+  },
+  "supervisor": {
+    "availableSlots": "Available Slots",
+    "selectDate": "Select Date",
+    "noSlots": "No available slots on this day",
+    "bookSession": "Book This Slot",
+    "totalSessions": "Total Sessions",
+    "avgRating": "Avg Rating"
+  },
+  "booking": {
+    "title": "Confirm Booking",
+    "studentName": "Full Name",
+    "studentEmail": "Email Address",
+    "studentPhone": "Phone Number",
+    "selectedTime": "Selected Time",
+    "duration": "Duration: 30 minutes",
+    "confirm": "Confirm Booking",
+    "submitting": "Booking...",
+    "namePlaceholder": "Enter your full name",
+    "emailPlaceholder": "example@email.com",
+    "phonePlaceholder": "+1 XXX XXX XXXX"
+  },
+  "bookingSuccess": {
+    "title": "Booking Confirmed! 🎉",
+    "subtitle": "Session details have been sent to your email",
+    "sessionDetails": "Session Details",
+    "supervisor": "Supervisor",
+    "date": "Date",
+    "time": "Time",
+    "duration": "Duration",
+    "durationValue": "30 minutes",
+    "meetLink": "Google Meet Link",
+    "joinMeeting": "Join Meeting",
+    "manageBooking": "Manage Booking",
+    "protocol": "Before the Session",
+    "protocolItems": [
+      "Ensure a stable internet connection 5 minutes before",
+      "Have a pen and paper ready for notes",
+      "Be in a quiet environment free of interruptions",
+      "Open the Google Meet link 2 minutes before the session"
+    ],
+    "bookAnother": "Book Another Session"
+  },
+  "manageBooking": {
+    "title": "Manage Your Booking",
+    "status": "Status",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "cancelBooking": "Cancel Booking",
+    "cancelConfirm": "Are you sure you want to cancel? This cannot be undone.",
+    "cancelConfirmBtn": "Yes, Cancel Booking",
+    "keepBooking": "No, Keep Booking",
+    "cancelling": "Cancelling...",
+    "cancelSuccess": "Booking cancelled successfully",
+    "bookAgain": "Book a New Session",
+    "notFound": "Booking not found"
+  },
+  "errors": {
+    "ALREADY_HAS_BOOKING": "You already have a confirmed booking. Please cancel it first.",
+    "SLOT_TAKEN": "Sorry, this slot was just taken. Please choose another.",
+    "INVALID_EMAIL": "Invalid email address",
+    "INVALID_PHONE": "Invalid phone number",
+    "MISSING_NAME": "Name is required",
+    "UNKNOWN_ERROR": "An unexpected error occurred. Please try again.",
+    "SESSION_ALREADY_PASSED": "Cannot cancel a past session"
+  },
+  "supervisorDashboard": {
+    "title": "Supervisor Dashboard",
+    "addAvailability": "Add Available Times",
+    "upcomingSessions": "Upcoming Sessions",
+    "date": "Date",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "addSlots": "Add Slots",
+    "slotsAdded": "{count} slot(s) added",
+    "student": "Student",
+    "noUpcoming": "No upcoming sessions",
+    "totalSessions": "Total Sessions",
+    "avgRating": "Avg Rating"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "totalBookings": "Total Bookings",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "occupancyRate": "Occupancy Rate",
+    "exportCSV": "Export CSV",
+    "supervisors": "Supervisors",
+    "reviews": "Reviews",
+    "disable": "Disable",
+    "enable": "Enable",
+    "sessions": "Sessions"
+  }
+}

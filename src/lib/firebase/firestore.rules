@@ -1,0 +1,59 @@
+// src/lib/firebase/firestore.rules
+// انسخ هذا إلى Firebase Console → Firestore → Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ======== SUPERVISORS ========
+    match /supervisors/{supervisorId} {
+      // الجميع يقرأ المشرفين النشطين
+      allow read: if resource.data.isActive == true;
+      // المشرف يقرأ بروفايله كاملاً
+      allow read: if request.auth != null && request.auth.token.email == resource.data.email;
+      // الكتابة فقط للمدير
+      allow write: if isAdmin();
+    }
+
+    // ======== AVAILABILITY ========
+    match /availability/{slotId} {
+      // الجميع يقرأ
+      allow read: if true;
+      // المشرف يضيف مواعيده فقط
+      allow create: if request.auth != null
+        && request.auth.token.email != null
+        && isSupervisorOwner(request.resource.data.supervisorId);
+      // لا يحذف أحد مباشرة — يتم عبر Server Action
+      allow update: if false;
+      allow delete: if request.auth != null && isSupervisorOwner(resource.data.supervisorId);
+    }
+
+    // ======== BOOKINGS ========
+    match /bookings/{bookingId} {
+      // القراءة: المشرف المعني أو بالتوكن (عبر API)
+      allow read: if request.auth != null;
+      // الإنشاء: عبر Server Action فقط (Admin SDK)
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ======== REVIEWS ========
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true; // الطلاب يكتبون بدون حساب
+      allow update, delete: if isAdmin();
+    }
+
+    // ======== HELPERS ========
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == '${ADMIN_EMAIL}';
+    }
+
+    function isSupervisorOwner(supervisorId) {
+      return exists(/databases/$(database)/documents/supervisors/$(supervisorId))
+        && get(/databases/$(database)/documents/supervisors/$(supervisorId)).data.email == request.auth.token.email;
+    }
+  }
+}

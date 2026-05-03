@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "language": "English"
+  },
+  "home": {
+    "title": "جلسات الإشراف الأكاديمي",
+    "subtitle": "احجز جلسة مع أحد المشرفين المتخصصين في دقيقتين أو أقل",
+    "searchPlaceholder": "ابحث عن مشرف...",
+    "noSupervisors": "لا يوجد مشرفون متاحون حالياً",
+    "sessions": "جلسة",
+    "rating": "التقييم",
+    "viewProfile": "عرض البروفايل والحجز"
+  },
+  "supervisor": {
+    "availableSlots": "الأوقات المتاحة",
+    "selectDate": "اختر التاريخ",
+    "noSlots": "لا توجد أوقات متاحة في هذا اليوم",
+    "bookSession": "احجز هذا الموعد",
+    "totalSessions": "إجمالي الجلسات",
+    "avgRating": "متوسط التقييم"
+  },
+  "booking": {
+    "title": "تأكيد الحجز",
+    "studentName": "الاسم الكامل",
+    "studentEmail": "البريد الإلكتروني",
+    "studentPhone": "رقم الجوال",
+    "selectedTime": "الموعد المختار",
+    "duration": "المدة: 30 دقيقة",
+    "confirm": "تأكيد الحجز",
+    "submitting": "جارٍ الحجز...",
+    "namePlaceholder": "أدخل اسمك الكامل",
+    "emailPlaceholder": "example@email.com",
+    "phonePlaceholder": "+966 5X XXX XXXX"
+  },
+  "bookingSuccess": {
+    "title": "تم تأكيد حجزك! 🎉",
+    "subtitle": "ستصل تفاصيل الجلسة إلى بريدك الإلكتروني",
+    "sessionDetails": "تفاصيل الجلسة",
+    "supervisor": "المشرف",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "duration": "المدة",
+    "durationValue": "30 دقيقة",
+    "meetLink": "رابط Google Meet",
+    "joinMeeting": "انضم للجلسة",
+    "manageBooking": "إدارة الحجز",
+    "protocol": "تعليمات قبل الجلسة",
+    "protocolItems": [
+      "تأكد من استقرار اتصال الإنترنت قبل 5 دقائق",
+      "احضر ورقة وقلم لتدوين الملاحظات",
+      "كن في مكان هادئ خالٍ من الإزعاج",
+      "افتح رابط Google Meet قبل دقيقتين من الموعد"
+    ],
+    "bookAnother": "حجز جلسة أخرى"
+  },
+  "manageBooking": {
+    "title": "إدارة حجزك",
+    "status": "الحالة",
+    "confirmed": "مؤكد",
+    "cancelled": "ملغى",
+    "completed": "مكتمل",
+    "cancelBooking": "إلغاء الحجز",
+    "cancelConfirm": "هل أنت متأكد من إلغاء الحجز؟ لا يمكن التراجع عن هذا الإجراء.",
+    "cancelConfirmBtn": "نعم، إلغاء الحجز",
+    "keepBooking": "لا، الاحتفاظ بالحجز",
+    "cancelling": "جارٍ الإلغاء...",
+    "cancelSuccess": "تم إلغاء الحجز بنجاح",
+    "bookAgain": "حجز جلسة جديدة",
+    "notFound": "لم يُعثر على هذا الحجز"
+  },
+  "errors": {
+    "ALREADY_HAS_BOOKING": "لديك حجز مؤكد بالفعل. يرجى إلغاءه أولاً.",
+    "SLOT_TAKEN": "عذراً، هذا الموعد تم حجزه للتو. يرجى اختيار موعد آخر.",
+    "INVALID_EMAIL": "البريد الإلكتروني غير صحيح",
+    "INVALID_PHONE": "رقم الهاتف غير صحيح",
+    "MISSING_NAME": "الاسم مطلوب",
+    "UNKNOWN_ERROR": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    "SESSION_ALREADY_PASSED": "لا يمكن إلغاء جلسة انتهت"
+  },
+  "supervisorDashboard": {
+    "title": "لوحة تحكم المشرف",
+    "addAvailability": "إضافة أوقات متاحة",
+    "upcomingSessions": "الجلسات القادمة",
+    "date": "التاريخ",
+    "startTime": "وقت البدء",
+    "endTime": "وقت الانتهاء",
+    "addSlots": "إضافة المواعيد",
+    "slotsAdded": "تم إضافة {count} موعد",
+    "student": "الطالب",
+    "noUpcoming": "لا توجد جلسات قادمة",
+    "totalSessions": "إجمالي الجلسات",
+    "avgRating": "متوسط التقييم"
+  },
+  "admin": {
+    "title": "لوحة الإدارة",
+    "totalBookings": "إجمالي الحجوزات",
+    "confirmed": "مؤكدة",
+    "cancelled": "ملغاة",
+    "occupancyRate": "معدل الإشغال",
+    "exportCSV": "تصدير CSV",
+    "supervisors": "المشرفون",
+    "reviews": "التقييمات",
+    "disable": "إيقاف",
+    "enable": "تفعيل",
+    "sessions": "الجلسات"
+  }
+}
