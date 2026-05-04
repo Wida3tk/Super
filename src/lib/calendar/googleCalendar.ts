@@ -51,7 +51,7 @@ export async function createCalendarEvent(
         dateTime: params.endDateTime,
         timeZone: params.timeZone || 'Asia/Riyadh',
       },
-      attendeeEmails: params.attendeeEmails,(email => ({ email })),
+      attendees: params.attendeeEmails.map(email => ({ email })),
       conferenceData: {
         createRequest: {
           requestId: `booking-${Date.now()}`,
