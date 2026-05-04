@@ -98,7 +98,7 @@ export async function createBooking(
           : `Academic supervision session\nStudent: ${payload.studentName}\nSupervisor: ${supervisor.name}`,
         startDateTime: startISO,
         endDateTime: endISO,
-        attendees: [payload.studentEmail, supervisor.email],
+        attendeeEmails: [payload.studentEmail, supervisor.email],
       });
 
       meetLink = calendarEvent.meetLink;
