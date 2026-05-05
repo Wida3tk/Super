@@ -6,55 +6,49 @@ interface Props {
   params: { locale: string };
 }
 
-async function getStats() {
+export default async function AdminPage({ params }: Props) {
+  const { locale } = await params;
+
+  let data: any = null;
+
   try {
     const { adminDb, adminAuth } = await import('@/lib/firebase/admin');
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('__session')?.value;
 
-    if (!sessionCookie) return null;
-
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) return null;
-
-    const [bookingsSnap, supervisorsSnap] = await Promise.all([
-      adminDb.collection('bookings').get(),
-      adminDb.collection('supervisors').get(),
-    ]);
-
-    const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    const confirmed = bookings.filter((b: any) => b.status === 'confirmed').length;
-    const cancelled = bookings.filter((b: any) => b.status === 'cancelled').length;
-
-    return { bookings, supervisors, confirmed, cancelled };
+    if (sessionCookie) {
+      const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+      if (decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+        const [bookingsSnap, supervisorsSnap] = await Promise.all([
+          adminDb.collection('bookings').get(),
+          adminDb.collection('supervisors').get(),
+        ]);
+        data = {
+          bookings: bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+          supervisors: supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        };
+      }
+    }
   } catch {
-    return null;
+    data = null;
   }
-}
-
-export default async function AdminPage({ params }: Props) {
-  const { locale } = await params;
-  const data = await getStats();
 
   if (!data) {
     redirect(`/${locale}/login`);
   }
 
-  const { bookings, supervisors, confirmed, cancelled } = data;
+  const { bookings, supervisors } = data;
+  const confirmed = bookings.filter((b: any) => b.status === 'confirmed').length;
+  const cancelled = bookings.filter((b: any) => b.status === 'cancelled').length;
 
   return (
     <div className="min-h-screen bg-slate-900">
       <nav className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
         <h1 className="text-white font-bold text-xl">لوحة الإدارة</h1>
-        <Link href={`/${locale}`} className="text-slate-400 hover:text-white text-sm">
-          الرئيسية
-        </Link>
+        <Link href={`/${locale}`} className="text-slate-400 hover:text-white text-sm">الرئيسية</Link>
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'إجمالي الحجوزات', value: bookings.length, color: 'sky' },
@@ -69,14 +63,10 @@ export default async function AdminPage({ params }: Props) {
           ))}
         </div>
 
-        {/* Bookings Table */}
         <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden mb-8">
           <div className="p-4 border-b border-slate-700 flex justify-between items-center">
             <h2 className="text-white font-bold">الحجوزات</h2>
-            
-              href="/api/admin/export"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-            >
+            <a href="/api/admin/export" className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg transition-colors">
               📥 تصدير CSV
             </a>
           </div>
@@ -99,10 +89,7 @@ export default async function AdminPage({ params }: Props) {
                     <td className="px-4 py-3 text-center text-slate-300">{b.date}</td>
                     <td className="px-4 py-3 text-center text-slate-300">{b.time}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        b.status === 'confirmed' ? 'text-emerald-400 bg-emerald-400/10'
-                        : 'text-red-400 bg-red-400/10'
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${b.status === 'confirmed' ? 'text-emerald-400 bg-emerald-400/10' : 'text-red-400 bg-red-400/10'}`}>
                         {b.status === 'confirmed' ? 'مؤكد' : 'ملغى'}
                       </span>
                     </td>
@@ -113,7 +100,6 @@ export default async function AdminPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Supervisors */}
         <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-slate-700">
             <h2 className="text-white font-bold">المشرفون</h2>
@@ -132,9 +118,7 @@ export default async function AdminPage({ params }: Props) {
                   <td className="px-4 py-3 text-white">{s.name}</td>
                   <td className="px-4 py-3 text-slate-400">{s.email}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      s.isActive ? 'text-emerald-400 bg-emerald-400/10' : 'text-red-400 bg-red-400/10'
-                    }`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${s.isActive ? 'text-emerald-400 bg-emerald-400/10' : 'text-red-400 bg-red-400/10'}`}>
                       {s.isActive ? 'نشط' : 'موقوف'}
                     </span>
                   </td>
