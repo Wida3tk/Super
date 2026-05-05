@@ -6,8 +6,9 @@ import { routing } from '@/i18n/routing';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Supervision Booking Platform',
-  description: 'Book academic supervision sessions',
+  title: 'سلوكيرا — منصة الإشراف الأكاديمي',
+  description: 'احجز جلستك مع مشرفك الأكاديمي في دقيقتين',
+  viewport: 'width=device-width, initial-scale=1',
 };
 
 interface RootLayoutProps {
@@ -28,6 +29,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
   return (
     <html lang={locale} dir={isRTL ? 'rtl' : 'ltr'}>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -35,7 +37,7 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
           rel="stylesheet"
         />
       </head>
-      <body className={`min-h-screen bg-slate-50 ${isRTL ? 'font-arabic' : 'font-latin'}`}>
+      <body style={{minHeight:'100vh',margin:0,padding:0}}>
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>
