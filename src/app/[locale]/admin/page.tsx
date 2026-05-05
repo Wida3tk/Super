@@ -6,6 +6,13 @@ interface Props {
   params: { locale: string };
 }
 
+const colorMap: Record<string, string> = {
+  sky: 'text-sky-400',
+  emerald: 'text-emerald-400',
+  red: 'text-red-400',
+  amber: 'text-amber-400',
+};
+
 export default async function AdminPage({ params }: Props) {
   const { locale } = await params;
 
@@ -29,7 +36,8 @@ export default async function AdminPage({ params }: Props) {
         };
       }
     }
-  } catch {
+  } catch (error) {
+    console.error('Admin page error:', error);
     data = null;
   }
 
@@ -57,7 +65,7 @@ export default async function AdminPage({ params }: Props) {
             { label: 'المشرفون', value: supervisors.length, color: 'amber' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 text-center">
-              <div className={`text-3xl font-bold text-${color}-400`}>{value}</div>
+              <div className={`text-3xl font-bold ${colorMap[color]}`}>{value}</div>
               <div className="text-slate-400 text-sm mt-1">{label}</div>
             </div>
           ))}
