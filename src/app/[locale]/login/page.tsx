@@ -28,15 +28,15 @@ export default function LoginPage({ params }: { params: { locale: string } }) {
         body: JSON.stringify({ token }),
       });
 
+      const sessionData = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        setError('فشل إنشاء الجلسة، حاول مرة أخرى');
+        setError(`خطأ: ${sessionData.error || 'غير معروف'} - ${sessionData.detail || ''}`);
         setLoading(false);
         return;
       }
 
-      const sessionData = await res.json().catch(() => ({}));
       const isAdmin = sessionData.isAdmin || false;
-
       window.location.href = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
     } catch (err: any) {
       const code = err?.code || '';
