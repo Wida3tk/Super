@@ -1,4 +1,3 @@
-import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
 interface HomePageProps {
@@ -12,11 +11,10 @@ export default async function HomePage({ params }: HomePageProps) {
 
   try {
     const { adminDb } = await import('@/lib/firebase/admin');
-    const snap = await adminDb
-      .collection('supervisors')
-      .where('isActive', '==', true)
-      .get();
-    supervisors = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snap = await adminDb.collection('supervisors').get();
+    supervisors = snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter((s: any) => s.isActive === true);
   } catch (error) {
     console.error('Firestore error:', error);
     supervisors = [];
