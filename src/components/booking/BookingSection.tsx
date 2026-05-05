@@ -56,6 +56,11 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
       { studentName, studentEmail, studentPhone, supervisorId: supervisor.id, availabilitySlotId: selectedSlot.id, date: selectedSlot.date, time: selectedSlot.time },
       locale as 'ar' | 'en'
     );
+    if (!result.success && result.error === 'NO_SEATS_AVAILABLE') {
+      setError('عذراً، المقاعد امتلأت للتو. يرجى التواصل مع المشرف مباشرة.');
+      setSubmitting(false);
+      return;
+    }
     if (result.success) {
       router.push(`/${locale}/booking-success?token=${result.managementToken}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`);
     } else {

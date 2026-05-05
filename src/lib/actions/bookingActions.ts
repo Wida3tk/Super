@@ -34,6 +34,12 @@ export async function createBooking(
     if (!supervisorSnap.exists) return { success: false, error: 'SUPERVISOR_NOT_FOUND' };
     const supervisor = supervisorSnap.data()!;
 
+    // التحقق من وجود مقاعد متاحة
+    const availableSeats = supervisor.availableSeats ?? 0;
+    if (availableSeats <= 0) {
+      return { success: false, error: 'NO_SEATS_AVAILABLE' };
+    }
+
     // إنشاء سجل الحجز
     const bookingRef = adminDb.collection('bookings').doc();
     const bookingData: Omit<Booking, 'id'> = {
@@ -52,9 +58,10 @@ export async function createBooking(
 
     await bookingRef.set(bookingData);
 
-    // تحديث إحصائيات المشرف
+    // تحديث إحصائيات المشرف وتخفيض المقاعد
     await adminDb.collection('supervisors').doc(payload.supervisorId).update({
-      totalSessions: FieldValue.increment(1)
+      totalSessions: FieldValue.increment(1),
+      availableSeats: FieldValue.increment(-1),
     });
 
     // إرسال بريد التأكيد
