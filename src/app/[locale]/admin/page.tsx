@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import AddSupervisorButton from '@/components/admin/AddSupervisorButton';
+import LogoutButton from '@/components/LogoutButton';
 import SupervisorTabs from '@/components/admin/SupervisorTabs';
 
 interface Props { params: { locale: string }; }
@@ -104,7 +105,10 @@ export default async function AdminPage({ params }: Props) {
             <div className="nav-div"/>
             <span className="nav-title">لوحة الإدارة</span>
           </div>
-          <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+            <LogoutButton locale={locale} />
+          </div>
         </nav>
 
         <div className="hero">

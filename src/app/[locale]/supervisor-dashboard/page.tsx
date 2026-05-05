@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import AvailabilityManager from '@/components/supervisor/AvailabilityManager';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import LogoutButton from '@/components/LogoutButton';
 
 interface Props {
   params: { locale: string };
@@ -162,7 +163,10 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             <div className="nav-divider" />
             <span className="nav-title">لوحة المشرف</span>
           </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
           <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+          <LogoutButton locale={locale} />
+        </div>
         </nav>
 
         {/* HERO */}

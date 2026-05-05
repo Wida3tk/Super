@@ -120,3 +120,29 @@ export async function getActiveSupervisors() {
 
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
+
+/**
+ * حذف موعد متاح
+ */
+export async function deleteAvailability(slotId: string): Promise<{ success: boolean }> {
+  try {
+    await adminDb.collection('availability').doc(slotId).delete();
+    return { success: true };
+  } catch {
+    return { success: false };
+  }
+}
+
+/**
+ * جلب جميع المواعيد المتاحة لمشرف (للإدارة)
+ */
+export async function getSupervisorAllSlots(supervisorId: string) {
+  const today = new Date().toISOString().split('T')[0];
+  const snap = await adminDb
+    .collection('availability')
+    .where('supervisorId', '==', supervisorId)
+    .where('date', '>=', today)
+    .orderBy('date', 'asc')
+    .get();
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
