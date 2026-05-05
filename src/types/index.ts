@@ -36,6 +36,8 @@ export interface Booking {
   status: BookingStatus;
   managementToken: string;
   referenceNumber?: string;
+  availabilitySlotId?: string;
+  reminderSent?: boolean;
   createdAt: string;
 }
 
