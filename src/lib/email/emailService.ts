@@ -33,8 +33,11 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   });
   if (!res.ok) {
     const error = await res.json();
+    console.error('Resend API error:', JSON.stringify(error));
     throw new Error(`Email failed: ${JSON.stringify(error)}`);
   }
+  const result = await res.json();
+  console.log('[EMAIL SENT]', { to, subject, id: result.id });
 }
 
 // ─── Template base ───────────────────────────────────────────────
