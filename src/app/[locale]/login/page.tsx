@@ -22,13 +22,20 @@ export default function LoginPage({ params }: { params: { locale: string } }) {
       const token = await userCredential.user.getIdToken();
 
       // حفظ التوكن في cookie
-      await fetch('/api/auth/session', {
+      const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
 
-      router.push('/ar/supervisor-dashboard');
+      const sessionData = await res.json().catch(() => ({}));
+      const isAdmin = sessionData.isAdmin || false;
+
+      if (isAdmin) {
+        router.push('/ar/admin');
+      } else {
+        router.push('/ar/supervisor-dashboard');
+      }
     } catch (err: any) {
       setError('البريد أو كلمة المرور غير صحيحة');
       setLoading(false);
