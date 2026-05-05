@@ -70,7 +70,10 @@ export default function LoginPage() {
       // Step 4: Redirect
       setStep('تم! جارٍ التوجيه...');
       const isAdmin = sessionData.isAdmin || false;
-      window.location.replace(isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard');
+      const dest = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
+      // انتظر ثانية عشان الـ cookie ينحفظ
+      await new Promise(r => setTimeout(r, 800));
+      window.location.href = dest;
 
     } catch (err: any) {
       setError(`خطأ غير متوقع: ${err.message || err}`);
