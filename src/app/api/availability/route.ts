@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const { adminDb } = await import('@/lib/firebase/admin');
     const snap = await adminDb.collection('availability').get();
 
     const slots = snap.docs
@@ -24,6 +24,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ slots });
   } catch (error) {
     console.error('Availability error:', error);
-    return NextResponse.json({ slots: [] });
+    return NextResponse.json({ slots: [], error: String(error) });
   }
 }
