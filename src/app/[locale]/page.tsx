@@ -8,17 +8,35 @@ export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
 
   let supervisors: any[] = [];
+  let cms: any = {};
 
   try {
     const { adminDb } = await import('@/lib/firebase/admin');
-    const snap = await adminDb.collection('supervisors').get();
-    supervisors = snap.docs
+    const [supervisorsSnap, cmsSnap] = await Promise.all([
+      adminDb.collection('supervisors').get(),
+      adminDb.collection('settings').doc('cms').get(),
+    ]);
+    supervisors = supervisorsSnap.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter((s: any) => s.isActive === true);
+    cms = cmsSnap.exists ? cmsSnap.data() : {};
   } catch (error) {
     console.error('Firestore error:', error);
     supervisors = [];
   }
+
+  // Default CMS values
+  const siteName = cms.siteName || 'سلوكيرا';
+  const siteNameEn = cms.siteNameEn || 'Sulukera';
+  const heroTitle = cms.heroTitle || 'احجز جلستك مع مشرفك الأكاديمي في دقيقتين';
+  const heroSubtitle = cms.heroSubtitle || '{heroSubtitle}';
+  const heroTagline = cms.heroTagline || 'منصة الإشراف الأكاديمي';
+  const stat1 = { v: cms.stat1Value || '+3',   l: cms.stat1Label || 'مشرف متخصص' };
+  const stat2 = { v: cms.stat2Value || '١٠٠٪', l: cms.stat2Label || 'جلسات أونلاين' };
+  const stat3 = { v: cms.stat3Value || '٢ دق', l: cms.stat3Label || 'وقت الحجز' };
+  const primaryColor = cms.primaryColor || '#0D40FC';
+  const deepColor = cms.deepColor || '#001442';
+  const neonColor = cms.neonColor || '#55D7FF';
 
   return (
     <>
@@ -264,8 +282,8 @@ export default async function HomePage({ params }: HomePageProps) {
           <div className="nav-brand">
             <div className="brand-mark">س</div>
             <div className="brand-text">
-              <span className="brand-ar">سلوكيرا</span>
-              <span className="brand-en">Sulukera</span>
+              <span className="brand-ar">{siteName}</span>
+              <span className="brand-en">{siteNameEn}</span>
             </div>
           </div>
           <div className="nav-right">
@@ -283,9 +301,9 @@ export default async function HomePage({ params }: HomePageProps) {
         {/* HERO */}
         <section className="hero">
           <div className="hero-badge">🎓 منصة الإشراف الأكاديمي</div>
-          <h1>احجز جلستك مع <span>مشرفك الأكاديمي</span> في دقيقتين</h1>
+          <h1>{heroTitle.split(" ").slice(0,3).join(" ")} <span>{heroTitle.split(" ").slice(3,5).join(" ")}</span> {heroTitle.split(" ").slice(5).join(" ")}</h1>
           <p className="hero-desc">
-            سلوكيرا منصة متخصصة في تطبيق علم تحليل السلوك التطبيقي (ABA)، نربطك بأفضل المشرفين الأكاديميين المعتمدين لدعم مسيرتك المهنية.
+            {heroSubtitle}
           </p>
           <p className="hero-desc2">
             احجز موعدك بسهولة، تواصل مع مشرفك، وابدأ رحلتك نحو التميز الأكاديمي.
@@ -293,15 +311,15 @@ export default async function HomePage({ params }: HomePageProps) {
           <div className="hero-stats">
             <div className="hero-stat">
               <div className="hero-stat-num">{supervisors.length}+</div>
-              <div className="hero-stat-lbl">مشرف متخصص</div>
+              <div className="hero-stat-lbl">{stat1.l}</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-num">١٠٠٪</div>
-              <div className="hero-stat-lbl">جلسات أونلاين</div>
+              <div className="hero-stat-lbl">{stat2.l}</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-num">٢ دق</div>
-              <div className="hero-stat-lbl">وقت الحجز</div>
+              <div className="hero-stat-lbl">{stat3.l}</div>
             </div>
           </div>
         </section>
@@ -408,7 +426,7 @@ export default async function HomePage({ params }: HomePageProps) {
 
         {/* FOOTER */}
         <footer className="footer">
-          <div className="footer-brand">سلوكيرا <span>Sulukera</span></div>
+          <div className="footer-brand">{siteName} <span>{siteNameEn}</span></div>
           <div className="footer-copy">© {new Date().getFullYear()} جميع الحقوق محفوظة</div>
         </footer>
 

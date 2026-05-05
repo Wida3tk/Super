@@ -106,7 +106,12 @@ export default async function AdminPage({ params }: Props) {
             <span className="nav-title">لوحة الإدارة</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <a href={`/${locale}/admin/cms`} style={{display:'flex',alignItems:'center',gap:6,background:'rgba(85,215,255,0.1)',color:'#55D7FF',textDecoration:'none',fontSize:13,fontWeight:600,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(85,215,255,0.25)',transition:'all .18s'}}>
+              🎨 لوحة التحكم CMS
+            </a>
             <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+          </div>
             <LogoutButton locale={locale} />
           </div>
         </nav>
