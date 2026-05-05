@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase/admin';
-import { sendBookingConfirmationEmail, sendCancellationEmail } from '@/lib/email/emailService';
+import { sendBookingConfirmationEmail, sendCancellationEmail, sendSupervisorBookingNotification } from '@/lib/email/emailService';
 import { CreateBookingPayload, Booking, BookingStatus } from '@/types';
 import { randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -55,6 +55,7 @@ export async function createBooking(
       status: 'confirmed',
       referenceNumber,
       managementToken,
+      availabilitySlotId: payload.availabilitySlotId,
       createdAt: new Date().toISOString(),
     };
 
@@ -80,6 +81,28 @@ export async function createBooking(
       });
     } catch (emailErr) {
       console.error('Email error (non-fatal):', emailErr);
+    }
+
+    // إشعار المشرف
+    try {
+      const supervisorSnap2 = await adminDb.collection('supervisors').doc(payload.supervisorId).get();
+      const supervisorEmail = supervisorSnap2.data()?.email;
+      if (supervisorEmail) {
+        await sendSupervisorBookingNotification({
+          studentName: payload.studentName,
+          studentEmail: payload.studentEmail,
+          supervisorName: supervisor.name,
+          supervisorEmail,
+          date: payload.date,
+          time: payload.time,
+          meetLink: '',
+          managementToken,
+          referenceNumber,
+          locale: 'ar',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Supervisor notification error (non-fatal):', notifErr);
     }
 
     return { success: true, bookingId: bookingRef.id, managementToken, referenceNumber };
@@ -115,7 +138,23 @@ export async function cancelBookingByToken(
       return { success: false, error: 'SESSION_ALREADY_PASSED' };
     }
 
-    await bookingDoc.ref.update({ status: 'cancelled' as BookingStatus });
+    // تحديث الحجز + إرجاع الموعد + رجوع المقعد دفعة وحدة
+    const batch = adminDb.batch();
+
+    // إلغاء الحجز
+    batch.update(bookingDoc.ref, { status: 'cancelled' as BookingStatus });
+
+    // إرجاع المقعد للمشرف
+    const supervisorRef = adminDb.collection('supervisors').doc(booking.supervisorId);
+    batch.update(supervisorRef, { availableSeats: FieldValue.increment(1) });
+
+    // إرجاع الموعد لـ availability (isBooked = false)
+    if (booking.availabilitySlotId) {
+      const slotRef = adminDb.collection('availability').doc(booking.availabilitySlotId);
+      batch.update(slotRef, { isBooked: false, bookingId: null });
+    }
+
+    await batch.commit();
 
     try {
       await sendCancellationEmail(
