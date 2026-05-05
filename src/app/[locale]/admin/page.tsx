@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import AddSupervisorButton from '@/components/admin/AddSupervisorButton';
-import EditSupervisorPanel from '@/components/admin/EditSupervisorPanel';
+import SupervisorTabs from '@/components/admin/SupervisorTabs';
 
 interface Props { params: { locale: string }; }
 
@@ -191,71 +191,7 @@ export default async function AdminPage({ params }: Props) {
               <AddSupervisorButton />
             </div>
 
-            {/* TABS */}
-            <div className="sup-tabs">
-              <div className="sup-tab active" id="tab-edit" onClick={() => {
-                document.getElementById('panel-edit')!.style.display = 'block';
-                document.getElementById('panel-table')!.style.display = 'none';
-                document.getElementById('tab-edit')!.classList.add('active');
-                document.getElementById('tab-table')!.classList.remove('active');
-              }}>✏️ تعديل البيانات</div>
-              <div className="sup-tab" id="tab-table" onClick={() => {
-                document.getElementById('panel-table')!.style.display = 'block';
-                document.getElementById('panel-edit')!.style.display = 'none';
-                document.getElementById('tab-table')!.classList.add('active');
-                document.getElementById('tab-edit')!.classList.remove('active');
-              }}>📋 عرض الجدول</div>
-            </div>
-
-            {/* EDIT PANEL */}
-            <div id="panel-edit">
-              <EditSupervisorPanel supervisors={supervisors} />
-            </div>
-
-            {/* TABLE PANEL */}
-            <div id="panel-table" style={{display:'none'}} className="tbl-wrap">
-              {supervisors.length === 0 ? (
-                <div style={{padding:'48px 24px',textAlign:'center'}}>
-                  <div style={{fontSize:36,marginBottom:10,opacity:.3}}>👤</div>
-                  <div style={{color:'var(--gray-500)',fontSize:14}}>لا يوجد مشرفون</div>
-                </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>المشرف</th><th>البريد</th><th className="c">الجلسات</th><th className="c">الحالة</th><th className="c">الصفحة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {supervisors.map((s: any) => (
-                      <tr key={s.id}>
-                        <td>
-                          <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#0D40FC,#55D7FF)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:13,overflow:'hidden',flexShrink:0}}>
-                              {s.photo ? <img src={s.photo} style={{width:'100%',height:'100%',objectFit:'cover'}} alt="" /> : (s.name||'م')[0]}
-                            </div>
-                            <span style={{color:'var(--deep)',fontWeight:600}}>{s.name||'—'}</span>
-                          </div>
-                        </td>
-                        <td style={{color:'var(--gray-500)',fontSize:12}}>{s.email||'—'}</td>
-                        <td className="c" style={{color:'var(--primary)',fontWeight:700}}>{s.totalSessions??'—'}</td>
-                        <td className="c">
-                          <span className={`badge ${s.isActive?'b-ok':'badge b-cancel'}`}>
-                            {s.isActive?'● نشط':'○ موقوف'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <a href={`/ar/supervisor/${s.id}`} target="_blank" rel="noopener noreferrer"
-                            style={{fontSize:12,color:'var(--primary)',textDecoration:'none',background:'rgba(13,64,252,0.07)',padding:'4px 10px',borderRadius:8,border:'1px solid rgba(13,64,252,0.15)'}}>
-                            🔗 فتح
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            <SupervisorTabs supervisors={supervisors} />
           </div>
 
         </div>
