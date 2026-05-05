@@ -21,13 +21,13 @@ export default async function SupervisorPage({ params }: SupervisorPageProps) {
     supervisor = { id: supervisorSnap.id, ...supervisorSnap.data() };
     if (!supervisor.isActive) notFound();
 
-    const slotsSnap = await adminDb
-      .collection('availability')
-      .where('supervisorId', '==', id)
-      .where('isBooked', '==', false)
-      .get();
+    const slotsSnap = await adminDb.collection('availability').get();
 
-    const dates = slotsSnap.docs.map(d => d.data().date as string);
+    const dates = slotsSnap.docs
+      .map(d => d.data())
+      .filter(d => d.supervisorId === id && d.isBooked === false)
+      .map(d => d.date as string);
+
     availableDates = [...new Set(dates)].sort();
 
   } catch (error) {
