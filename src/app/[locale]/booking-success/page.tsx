@@ -2,12 +2,12 @@ import Link from 'next/link';
 
 interface Props {
   params: { locale: string };
-  searchParams: { token?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; };
+  searchParams: { token?: string; ref?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; };
 }
 
 export default async function BookingSuccessPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { token, date, time, supervisor, meetLink } = await searchParams;
+  const { token, ref, date, time, supervisor, meetLink } = await searchParams;
   const manageUrl = `/${locale}/manage-booking/${token}`;
 
   const formatDate = (d?: string) => {
@@ -92,6 +92,12 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
             </div>
           </div>
 
+          {/* REFERENCE NUMBER */}
+          <div style={{margin:'0 0 0 0',background:'linear-gradient(135deg,rgba(13,64,252,0.05),rgba(85,215,255,0.05))',borderBottom:'1px solid #EEF2F7',padding:'16px 28px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontSize:12,color:'#8898AA',fontWeight:600}}>رقم الحجز المرجعي</span>
+            <span style={{fontSize:18,fontWeight:900,color:'#0D40FC',letterSpacing:'0.08em',fontFamily:'monospace'}}>{ref || '—'}</span>
+          </div>
+
           <div className="details-body">
             {[
               { icon: '👨‍🏫', label: 'المشرف', value: supervisor || '—' },
@@ -133,6 +139,9 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
           <div className="actions">
             <Link href={manageUrl} className="btn-manage">
               ⚙️ إدارة الحجز أو الإلغاء
+            </Link>
+            <Link href={`/${locale}/booking-lookup`} className="btn-manage" style={{background:'rgba(13,64,252,0.07)',color:'#0D40FC',boxShadow:'none',border:'1.5px solid rgba(13,64,252,0.15)'}}>
+              🔍 تتبع الحجز بالرقم المرجعي
             </Link>
             <Link href={`/${locale}`} className="btn-home">
               🏠 العودة للرئيسية

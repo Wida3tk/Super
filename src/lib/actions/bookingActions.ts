@@ -9,13 +9,14 @@ import { FieldValue } from 'firebase-admin/firestore';
 export async function createBooking(
   payload: CreateBookingPayload,
   locale: 'ar' | 'en' = 'ar'
-): Promise<{ success: boolean; bookingId?: string; managementToken?: string; error?: string }> {
+): Promise<{ success: boolean; bookingId?: string; managementToken?: string; referenceNumber?: string; error?: string }> {
 
   if (!payload.studentName?.trim()) return { success: false, error: 'MISSING_NAME' };
   if (!payload.studentEmail?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return { success: false, error: 'INVALID_EMAIL' };
   if (!payload.studentPhone?.match(/^\+?[\d\s\-]{8,15}$/)) return { success: false, error: 'INVALID_PHONE' };
 
   const managementToken = randomBytes(32).toString('hex');
+  const referenceNumber = 'SUL-' + Math.random().toString(36).substring(2,6).toUpperCase() + '-' + Date.now().toString(36).slice(-4).toUpperCase();
 
   try {
     // التحقق من عدم وجود حجز مؤكد لنفس البريد
@@ -52,6 +53,7 @@ export async function createBooking(
       meetLink: '',
       googleEventId: '',
       status: 'confirmed',
+      referenceNumber,
       managementToken,
       createdAt: new Date().toISOString(),
     };
@@ -80,7 +82,7 @@ export async function createBooking(
       console.error('Email error (non-fatal):', emailErr);
     }
 
-    return { success: true, bookingId: bookingRef.id, managementToken };
+    return { success: true, bookingId: bookingRef.id, managementToken, referenceNumber };
 
   } catch (error: any) {
     console.error('Booking creation error:', error);

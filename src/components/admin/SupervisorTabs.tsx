@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import EditSupervisorPanel from './EditSupervisorPanel';
+import ManageSupervisorAuth from './ManageSupervisorAuth';
 
 interface Supervisor {
   id: string; name: string; email: string;
@@ -11,6 +12,7 @@ interface Supervisor {
 
 export default function SupervisorTabs({ supervisors }: { supervisors: Supervisor[] }) {
   const [tab, setTab] = useState<'edit' | 'table'>('edit');
+  const [authSupervisor, setAuthSupervisor] = useState<any>(null);
 
   return (
     <>
@@ -87,6 +89,12 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
             </table>
           )}
         </div>
+      )}
+      {authSupervisor && (
+        <ManageSupervisorAuth
+          supervisor={authSupervisor}
+          onClose={() => { setAuthSupervisor(null); window.location.reload(); }}
+        />
       )}
     </>
   );

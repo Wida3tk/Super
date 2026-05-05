@@ -35,6 +35,7 @@ export interface Booking {
   googleEventId: string;
   status: BookingStatus;
   managementToken: string;
+  referenceNumber?: string;
   createdAt: string;
 }
 

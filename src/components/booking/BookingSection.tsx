@@ -62,7 +62,7 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
       return;
     }
     if (result.success) {
-      router.push(`/${locale}/booking-success?token=${result.managementToken}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`);
+      router.push(`/${locale}/booking-success?token=${result.managementToken}&ref=${result.referenceNumber}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`);
     } else {
       setError(result.error || 'حدث خطأ، حاول مرة أخرى');
       setSubmitting(false);

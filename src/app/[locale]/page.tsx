@@ -269,6 +269,11 @@ export default async function HomePage({ params }: HomePageProps) {
             </div>
           </div>
           <div className="nav-right">
+            <Link href={`/${locale}/booking-lookup`} style={{display:'flex',alignItems:'center',gap:6,color:'rgba(255,255,255,0.7)',textDecoration:'none',fontSize:13,fontWeight:500,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.12)',transition:'all .18s'}}
+              onMouseOver={e=>(e.currentTarget.style.background='rgba(255,255,255,0.08)')}
+              onMouseOut={e=>(e.currentTarget.style.background='transparent')}>
+              🔍 تتبع الحجز
+            </Link>
             <Link href={`/${locale === 'ar' ? 'en' : 'ar'}`} className="nav-lang">
               {locale === 'ar' ? 'English' : 'عربي'}
             </Link>
