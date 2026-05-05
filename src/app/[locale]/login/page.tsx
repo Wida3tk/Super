@@ -31,7 +31,8 @@ export default function LoginPage({ params }: { params: { locale: string } }) {
       const sessionData = await res.json().catch(() => ({}));
       const isAdmin = sessionData.isAdmin || false;
 
-      router.push(isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard');
+      const dest = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
+      window.location.href = dest;
     } catch {
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
       setLoading(false);
