@@ -7,13 +7,8 @@ function getAdminApp(): App {
     return getApps()[0];
   }
 
-  const raw = process.env.FIREBASE_PRIVATE_KEY || '';
-  
-  // تنظيف الـ key من أي علامات اقتباس أو مسافات زيادة
-  const cleaned = raw.trim().replace(/^["']|["']$/g, '');
-  
-  // تحويل \n النصية لأسطر حقيقية
-  const privateKey = cleaned.replace(/\\n/g, '\n');
+  const base64Key = process.env.FIREBASE_PRIVATE_KEY_BASE64 || '';
+  const privateKey = Buffer.from(base64Key, 'base64').toString('utf8');
 
   return initializeApp({
     credential: cert({
