@@ -41,172 +41,374 @@ export default async function AdminPage({ params }: Props) {
   const { bookings, supervisors } = data;
   const confirmed = bookings.filter((b: any) => b.status === 'confirmed').length;
   const cancelled = bookings.filter((b: any) => b.status === 'cancelled').length;
-
-  const stats = [
-    { label: 'إجمالي الحجوزات', value: bookings.length, icon: '📋', bg: '#0d1f3c', accent: '#3b82f6', borderColor: '#1d4ed8' },
-    { label: 'مؤكدة', value: confirmed, icon: '✅', bg: '#0d2818', accent: '#22c55e', borderColor: '#15803d' },
-    { label: 'ملغاة', value: cancelled, icon: '❌', bg: '#2a0d0d', accent: '#ef4444', borderColor: '#b91c1c' },
-    { label: 'المشرفون', value: supervisors.length, icon: '👨‍🏫', bg: '#1a0d2e', accent: '#a855f7', borderColor: '#7c3aed' },
-  ];
+  const pending = bookings.filter((b: any) => b.status !== 'confirmed' && b.status !== 'cancelled').length;
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'IBM Plex Sans Arabic', sans-serif; }
-        body { background: #060c1a; direction: rtl; }
 
-        .admin-root { min-height: 100vh; background: #060c1a; }
-
-        .topnav {
-          position: sticky; top: 0; z-index: 99;
-          background: rgba(6,12,26,0.92);
-          backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(59,130,246,0.15);
-          padding: 0 32px;
-          height: 60px;
-          display: flex; align-items: center; justify-content: space-between;
+        *, *::before, *::after {
+          box-sizing: border-box; margin: 0; padding: 0;
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
         }
-        .topnav-brand { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 17px; text-decoration: none; }
-        .topnav-brand-accent { color: #60a5fa; }
-        .topnav-back {
-          color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;
+
+        /* Sulukera brand colors */
+        :root {
+          --white:       #F3FCFF;
+          --neon-blue:   #55D7FF;
+          --primary:     #0D40FC;
+          --deep-blue:   #001442;
+          --black:       #020716;
+          --gray-100:    #F8FAFC;
+          --gray-200:    #EEF2F7;
+          --gray-300:    #D1D9E6;
+          --gray-500:    #8898AA;
+          --gray-700:    #4A5568;
+          --success:     #10B981;
+          --danger:      #EF4444;
+          --warning:     #F59E0B;
+        }
+
+        body { background: var(--gray-100); direction: rtl; color: var(--deep-blue); }
+
+        /* ── NAVBAR ── */
+        .nav {
+          background: var(--deep-blue);
+          padding: 0 40px;
+          height: 64px;
+          display: flex; align-items: center; justify-content: space-between;
+          position: sticky; top: 0; z-index: 100;
+          box-shadow: 0 2px 16px rgba(1,20,66,0.18);
+        }
+        .nav-brand {
+          display: flex; align-items: center; gap: 14px;
+          text-decoration: none;
+        }
+        .nav-logo-text {
+          font-size: 26px; font-weight: 800;
+          color: var(--primary);
+          letter-spacing: -1px;
+          line-height: 1;
+        }
+        .nav-logo-sub {
+          font-size: 11px; font-weight: 500;
+          color: var(--neon-blue);
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          opacity: 0.85;
+        }
+        .nav-divider {
+          width: 1px; height: 28px;
+          background: rgba(255,255,255,0.12);
+        }
+        .nav-title {
+          font-size: 14px; font-weight: 600;
+          color: rgba(255,255,255,0.7);
+          letter-spacing: 0.03em;
+        }
+        .nav-back {
           display: flex; align-items: center; gap: 6px;
-          padding: 6px 14px; border-radius: 8px;
-          border: 1px solid rgba(148,163,184,0.15);
-          transition: all 0.2s;
+          color: var(--neon-blue); text-decoration: none;
+          font-size: 13px; font-weight: 500;
+          padding: 7px 16px; border-radius: 8px;
+          border: 1px solid rgba(85,215,255,0.25);
+          transition: all 0.18s;
         }
-        .topnav-back:hover { color: #e2e8f0; border-color: rgba(96,165,250,0.3); background: rgba(96,165,250,0.07); }
-
-        .main { max-width: 1240px; margin: 0 auto; padding: 36px 24px 64px; }
-
-        .greeting { margin-bottom: 36px; }
-        .greeting h1 { font-size: 26px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
-        .greeting p { color: #475569; font-size: 14px; }
-
-        .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 36px; }
-        @media(max-width:900px){ .stats { grid-template-columns: repeat(2,1fr); } }
-        @media(max-width:480px){ .stats { grid-template-columns: 1fr 1fr; } }
-
-        .stat {
-          border-radius: 18px; padding: 22px 20px;
-          border: 1px solid; position: relative; overflow: hidden;
-          transition: transform 0.18s, box-shadow 0.18s;
+        .nav-back:hover {
+          background: rgba(85,215,255,0.1);
+          border-color: rgba(85,215,255,0.5);
+          color: #fff;
         }
-        .stat:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
-        .stat-icon { font-size: 20px; margin-bottom: 14px; }
-        .stat-num { font-size: 44px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
-        .stat-lbl { font-size: 12px; color: #94a3b8; font-weight: 500; letter-spacing: 0.02em; }
 
-        .card {
-          background: #0b1220; border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 20px; overflow: hidden; margin-bottom: 24px;
-        }
-        .card-head {
-          padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);
+        /* ── HERO STRIP ── */
+        .hero-strip {
+          background: linear-gradient(135deg, var(--primary) 0%, var(--deep-blue) 100%);
+          padding: 32px 40px;
           display: flex; align-items: center; justify-content: space-between;
         }
-        .card-title { font-size: 15px; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 10px; }
-        .pill { background: rgba(96,165,250,0.12); color: #60a5fa; font-size: 11px; padding: 2px 10px; border-radius: 20px; border: 1px solid rgba(96,165,250,0.2); font-weight: 600; }
+        .hero-greet h1 {
+          font-size: 22px; font-weight: 700; color: #fff;
+          margin-bottom: 4px;
+        }
+        .hero-greet p {
+          font-size: 13px; color: rgba(255,255,255,0.6);
+        }
+        .hero-date {
+          font-size: 12px; color: rgba(255,255,255,0.45);
+          background: rgba(255,255,255,0.08);
+          padding: 6px 14px; border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* ── MAIN ── */
+        .main { max-width: 1280px; margin: 0 auto; padding: 32px 40px 64px; }
+        @media(max-width:768px){ .main { padding: 24px 16px 48px; } }
+
+        /* ── STATS ── */
+        .stats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        @media(max-width:900px){ .stats { grid-template-columns: repeat(2,1fr); } }
+
+        .stat-card {
+          background: #fff;
+          border-radius: 16px;
+          padding: 24px 20px;
+          border: 1px solid var(--gray-200);
+          box-shadow: 0 1px 4px rgba(1,20,66,0.06);
+          display: flex; align-items: flex-start; gap: 16px;
+          transition: box-shadow 0.18s, transform 0.18s;
+        }
+        .stat-card:hover {
+          box-shadow: 0 6px 20px rgba(13,64,252,0.1);
+          transform: translateY(-2px);
+        }
+        .stat-icon-wrap {
+          width: 48px; height: 48px; border-radius: 12px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; flex-shrink: 0;
+        }
+        .stat-info { flex: 1; }
+        .stat-value {
+          font-size: 36px; font-weight: 800; line-height: 1;
+          margin-bottom: 4px;
+        }
+        .stat-label {
+          font-size: 12px; font-weight: 500;
+          color: var(--gray-500);
+          letter-spacing: 0.02em;
+        }
+        .stat-total   .stat-icon-wrap { background: rgba(13,64,252,0.08); }
+        .stat-total   .stat-value     { color: var(--primary); }
+        .stat-ok      .stat-icon-wrap { background: rgba(16,185,129,0.08); }
+        .stat-ok      .stat-value     { color: var(--success); }
+        .stat-cancel  .stat-icon-wrap { background: rgba(239,68,68,0.08); }
+        .stat-cancel  .stat-value     { color: var(--danger); }
+        .stat-sup     .stat-icon-wrap { background: rgba(85,215,255,0.1); }
+        .stat-sup     .stat-value     { color: var(--deep-blue); }
+
+        /* ── SECTION CARD ── */
+        .section-card {
+          background: #fff;
+          border-radius: 20px;
+          border: 1px solid var(--gray-200);
+          box-shadow: 0 1px 4px rgba(1,20,66,0.05);
+          overflow: hidden;
+          margin-bottom: 24px;
+        }
+        .section-head {
+          padding: 18px 24px;
+          border-bottom: 1px solid var(--gray-200);
+          display: flex; align-items: center; justify-content: space-between;
+          background: #fff;
+        }
+        .section-head-left { display: flex; align-items: center; gap: 12px; }
+        .section-icon {
+          width: 36px; height: 36px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 17px;
+          background: rgba(13,64,252,0.07);
+        }
+        .section-title {
+          font-size: 15px; font-weight: 700;
+          color: var(--deep-blue);
+        }
+        .count-chip {
+          background: rgba(13,64,252,0.07);
+          color: var(--primary);
+          font-size: 11px; font-weight: 700;
+          padding: 2px 10px; border-radius: 20px;
+          border: 1px solid rgba(13,64,252,0.15);
+        }
 
         .csv-btn {
           display: inline-flex; align-items: center; gap: 6px;
-          background: linear-gradient(135deg,#059669,#065f46);
-          color: #fff; text-decoration: none; font-size: 13px; font-weight: 600;
+          background: var(--primary);
+          color: #fff; text-decoration: none;
+          font-size: 13px; font-weight: 600;
           padding: 8px 18px; border-radius: 10px;
-          box-shadow: 0 2px 10px rgba(5,150,105,0.25);
-          transition: all 0.2s;
+          box-shadow: 0 2px 8px rgba(13,64,252,0.25);
+          transition: all 0.18s;
         }
-        .csv-btn:hover { box-shadow: 0 4px 16px rgba(5,150,105,0.4); transform: translateY(-1px); }
+        .csv-btn:hover {
+          background: #0935d4;
+          box-shadow: 0 4px 14px rgba(13,64,252,0.35);
+          transform: translateY(-1px);
+        }
 
+        /* ── TABLE ── */
         .tbl-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-        thead { background: rgba(255,255,255,0.02); }
-        th { padding: 11px 20px; color: #475569; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; text-align: right; }
-        th.center { text-align: center; }
-        td { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.04); color: #94a3b8; }
-        td.name { color: #e2e8f0; font-weight: 500; }
-        td.center { text-align: center; }
+        thead { background: var(--gray-100); }
+        th {
+          padding: 11px 20px;
+          color: var(--gray-500); font-weight: 600;
+          font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+          white-space: nowrap; text-align: right;
+          border-bottom: 1px solid var(--gray-200);
+        }
+        th.c { text-align: center; }
+        td {
+          padding: 14px 20px;
+          border-bottom: 1px solid var(--gray-200);
+          color: var(--gray-700);
+          vertical-align: middle;
+        }
+        td.c { text-align: center; }
+        td.name { color: var(--deep-blue); font-weight: 600; }
+        td.email { color: var(--gray-500); font-size: 12px; }
+        tbody tr:last-child td { border-bottom: none; }
         tbody tr { transition: background 0.12s; }
-        tbody tr:hover { background: rgba(96,165,250,0.03); }
+        tbody tr:hover { background: rgba(13,64,252,0.025); }
 
-        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-        .b-confirmed { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
-        .b-cancelled { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
-        .b-pending { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
-        .b-active { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
-        .b-off { background: rgba(100,116,139,0.12); color: #64748b; border: 1px solid rgba(100,116,139,0.2); }
+        /* ── BADGES ── */
+        .badge {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 4px 12px; border-radius: 20px;
+          font-size: 11px; font-weight: 700;
+          letter-spacing: 0.02em;
+          white-space: nowrap;
+        }
+        .b-ok     { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+        .b-cancel { background: rgba(239,68,68,0.08); color: #dc2626; border: 1px solid rgba(239,68,68,0.15); }
+        .b-pend   { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+        .b-active { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+        .b-off    { background: rgba(100,116,139,0.08); color: #64748b; border: 1px solid rgba(100,116,139,0.15); }
 
+        /* ── AVATAR ── */
         .avatar {
-          width: 34px; height: 34px; border-radius: 50%;
-          background: linear-gradient(135deg,#3b82f6,#6366f1);
+          width: 36px; height: 36px; border-radius: 50%;
+          background: linear-gradient(135deg, var(--primary), var(--neon-blue));
           display: inline-flex; align-items: center; justify-content: center;
           color: #fff; font-weight: 700; font-size: 13px;
-          margin-left: 10px; flex-shrink: 0;
+          flex-shrink: 0;
+          box-shadow: 0 2px 6px rgba(13,64,252,0.2);
         }
-        .name-row { display: flex; align-items: center; }
+        .name-row { display: flex; align-items: center; gap: 10px; }
 
+        /* ── EMPTY ── */
         .empty { padding: 48px 24px; text-align: center; }
-        .empty-ico { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
-        .empty-txt { color: #334155; font-size: 14px; }
+        .empty-ico { font-size: 36px; margin-bottom: 10px; opacity: 0.3; }
+        .empty-txt { color: var(--gray-500); font-size: 14px; }
+
+        /* ── FOOTER ── */
+        .footer {
+          text-align: center; padding: 24px;
+          color: var(--gray-500); font-size: 12px;
+          border-top: 1px solid var(--gray-200);
+          background: #fff;
+          margin-top: 40px;
+        }
+        .footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
       `}</style>
 
-      <div className="admin-root" dir="rtl">
-        <nav className="topnav">
-          <span className="topnav-brand">
-            <span className="topnav-brand-accent">◆</span> لوحة الإدارة
-          </span>
-          <Link href={`/${locale}`} className="topnav-back">← الرئيسية</Link>
+      <div dir="rtl">
+
+        {/* NAV */}
+        <nav className="nav">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div className="nav-brand">
+              <div>
+                <div className="nav-logo-text">سلوكيرا</div>
+                <div className="nav-logo-sub">Sulukera</div>
+              </div>
+            </div>
+            <div className="nav-divider" />
+            <span className="nav-title">لوحة الإدارة</span>
+          </div>
+          <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
         </nav>
 
+        {/* HERO */}
+        <div className="hero-strip">
+          <div className="hero-greet">
+            <h1>مرحباً 👋 — لوحة التحكم الرئيسية</h1>
+            <p>إدارة الحجوزات والمشرفين في منصة الإشراف الأكاديمي</p>
+          </div>
+          <div className="hero-date">
+            {new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+
         <div className="main">
-          <div className="greeting">
-            <h1>مرحباً بك 👋</h1>
-            <p>نظرة عامة على منصة الإشراف الأكاديمي</p>
-          </div>
 
+          {/* STATS */}
           <div className="stats">
-            {stats.map(s => (
-              <div key={s.label} className="stat" style={{ background: s.bg, borderColor: s.borderColor + '55' }}>
-                <div className="stat-icon">{s.icon}</div>
-                <div className="stat-num" style={{ color: s.accent }}>{s.value}</div>
-                <div className="stat-lbl">{s.label}</div>
+            <div className="stat-card stat-total">
+              <div className="stat-icon-wrap">📋</div>
+              <div className="stat-info">
+                <div className="stat-value">{bookings.length}</div>
+                <div className="stat-label">إجمالي الحجوزات</div>
               </div>
-            ))}
+            </div>
+            <div className="stat-card stat-ok">
+              <div className="stat-icon-wrap">✅</div>
+              <div className="stat-info">
+                <div className="stat-value">{confirmed}</div>
+                <div className="stat-label">حجوزات مؤكدة</div>
+              </div>
+            </div>
+            <div className="stat-card stat-cancel">
+              <div className="stat-icon-wrap">❌</div>
+              <div className="stat-info">
+                <div className="stat-value">{cancelled}</div>
+                <div className="stat-label">حجوزات ملغاة</div>
+              </div>
+            </div>
+            <div className="stat-card stat-sup">
+              <div className="stat-icon-wrap">👨‍🏫</div>
+              <div className="stat-info">
+                <div className="stat-value">{supervisors.length}</div>
+                <div className="stat-label">المشرفون النشطون</div>
+              </div>
+            </div>
           </div>
 
-          {/* Bookings */}
-          <div className="card">
-            <div className="card-head">
-              <div className="card-title">
-                الحجوزات <span className="pill">{bookings.length}</span>
+          {/* BOOKINGS TABLE */}
+          <div className="section-card">
+            <div className="section-head">
+              <div className="section-head-left">
+                <div className="section-icon">📅</div>
+                <span className="section-title">الحجوزات</span>
+                <span className="count-chip">{bookings.length}</span>
               </div>
               <a href="/api/admin/export" className="csv-btn">📥 تصدير CSV</a>
             </div>
             <div className="tbl-wrap">
               {bookings.length === 0 ? (
-                <div className="empty"><div className="empty-ico">📭</div><div className="empty-txt">لا توجد حجوزات بعد</div></div>
+                <div className="empty">
+                  <div className="empty-ico">📭</div>
+                  <div className="empty-txt">لا توجد حجوزات بعد</div>
+                </div>
               ) : (
                 <table>
                   <thead>
                     <tr>
                       <th>الطالب</th>
-                      <th>البريد</th>
-                      <th className="center">التاريخ</th>
-                      <th className="center">الوقت</th>
-                      <th className="center">الحالة</th>
+                      <th>البريد الإلكتروني</th>
+                      <th className="c">التاريخ</th>
+                      <th className="c">الوقت</th>
+                      <th className="c">الحالة</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bookings.map((b: any) => (
                       <tr key={b.id}>
                         <td className="name">{b.studentName || '—'}</td>
-                        <td style={{ fontSize: 12 }}>{b.studentEmail || '—'}</td>
-                        <td className="center">{b.date || '—'}</td>
-                        <td className="center">{b.time || '—'}</td>
-                        <td className="center">
-                          <span className={`badge ${b.status === 'confirmed' ? 'b-confirmed' : b.status === 'cancelled' ? 'b-cancelled' : 'b-pending'}`}>
-                            {b.status === 'confirmed' ? '✓ مؤكد' : b.status === 'cancelled' ? '✕ ملغى' : '⏳ معلق'}
+                        <td className="email">{b.studentEmail || '—'}</td>
+                        <td className="c">{b.date || '—'}</td>
+                        <td className="c">{b.time || '—'}</td>
+                        <td className="c">
+                          <span className={`badge ${
+                            b.status === 'confirmed' ? 'b-ok' :
+                            b.status === 'cancelled' ? 'b-cancel' : 'b-pend'
+                          }`}>
+                            {b.status === 'confirmed' ? '✓ مؤكد' :
+                             b.status === 'cancelled' ? '✕ ملغى' : '⏳ معلق'}
                           </span>
                         </td>
                       </tr>
@@ -217,23 +419,29 @@ export default async function AdminPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Supervisors */}
-          <div className="card">
-            <div className="card-head">
-              <div className="card-title">
-                المشرفون <span className="pill">{supervisors.length}</span>
+          {/* SUPERVISORS TABLE */}
+          <div className="section-card">
+            <div className="section-head">
+              <div className="section-head-left">
+                <div className="section-icon">👨‍🏫</div>
+                <span className="section-title">المشرفون</span>
+                <span className="count-chip">{supervisors.length}</span>
               </div>
             </div>
             <div className="tbl-wrap">
               {supervisors.length === 0 ? (
-                <div className="empty"><div className="empty-ico">👤</div><div className="empty-txt">لا يوجد مشرفون</div></div>
+                <div className="empty">
+                  <div className="empty-ico">👤</div>
+                  <div className="empty-txt">لا يوجد مشرفون</div>
+                </div>
               ) : (
                 <table>
                   <thead>
                     <tr>
                       <th>المشرف</th>
-                      <th>البريد</th>
-                      <th className="center">الحالة</th>
+                      <th>البريد الإلكتروني</th>
+                      <th className="c">الجلسات</th>
+                      <th className="c">الحالة</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -242,11 +450,14 @@ export default async function AdminPage({ params }: Props) {
                         <td>
                           <div className="name-row">
                             <span className="avatar">{(s.name || 'م')[0]}</span>
-                            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{s.name || '—'}</span>
+                            <span className="name">{s.name || '—'}</span>
                           </div>
                         </td>
-                        <td style={{ fontSize: 12 }}>{s.email || '—'}</td>
-                        <td className="center">
+                        <td className="email">{s.email || '—'}</td>
+                        <td className="c" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                          {s.totalSessions ?? '—'}
+                        </td>
+                        <td className="c">
                           <span className={`badge ${s.isActive ? 'b-active' : 'b-off'}`}>
                             {s.isActive ? '● نشط' : '○ موقوف'}
                           </span>
@@ -258,7 +469,14 @@ export default async function AdminPage({ params }: Props) {
               )}
             </div>
           </div>
+
         </div>
+
+        {/* FOOTER */}
+        <div className="footer">
+          منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a> © {new Date().getFullYear()}
+        </div>
+
       </div>
     </>
   );
