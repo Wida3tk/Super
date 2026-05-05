@@ -22,13 +22,15 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
   const [studentPhone, setStudentPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState<1|2>(1);
+
+  const dates = availableDates.length > 0 ? availableDates : ['2026-05-10'];
 
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
     setSelectedSlot(null);
     setSlots([]);
     setLoadingSlots(true);
-
     try {
       const res = await fetch(`/api/availability?supervisorId=${supervisor.id}&date=${date}`);
       const data = await res.json();
@@ -40,144 +42,347 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
     }
   };
 
+  const handleSlotSelect = (slot: any) => {
+    setSelectedSlot(slot);
+    setStep(2);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSlot) return;
     setSubmitting(true);
     setError('');
-
     const result = await createBooking(
-      {
-        studentName,
-        studentEmail,
-        studentPhone,
-        supervisorId: supervisor.id,
-        availabilitySlotId: selectedSlot.id,
-        date: selectedSlot.date,
-        time: selectedSlot.time,
-      },
+      { studentName, studentEmail, studentPhone, supervisorId: supervisor.id, availabilitySlotId: selectedSlot.id, date: selectedSlot.date, time: selectedSlot.time },
       locale as 'ar' | 'en'
     );
-
     if (result.success) {
-      router.push(
-        `/${locale}/booking-success?token=${result.managementToken}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`
-      );
+      router.push(`/${locale}/booking-success?token=${result.managementToken}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`);
     } else {
-      setError(result.error || 'حدث خطأ، حاولي مرة أخرى');
+      setError(result.error || 'حدث خطأ، حاول مرة أخرى');
       setSubmitting(false);
     }
   };
 
-  // التواريخ الثابتة للاختبار
-  const dates = availableDates.length > 0 ? availableDates : ['2026-05-10'];
+  const formatDate = (d: string) => {
+    try {
+      return new Date(d).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    } catch { return d; }
+  };
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      {/* Slot Picker */}
-      <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6">
-        <h2 className="text-white font-bold text-lg mb-4">الأوقات المتاحة</h2>
+    <>
+      <style>{`
+        .bk-root { direction: rtl; }
 
-        <div className="mb-4">
-          <label className="block text-slate-400 text-sm mb-2">اختر التاريخ</label>
-          <select
-            value={selectedDate}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-          >
-            <option value="">— اختر —</option>
-            {dates.map((date) => (
-              <option key={date} value={date}>{date}</option>
-            ))}
-          </select>
-        </div>
+        /* STEPS */
+        .bk-steps {
+          display: flex; align-items: center; gap: 0;
+          margin-bottom: 28px;
+          background: #F8FAFC; border-radius: 14px; padding: 4px;
+          border: 1px solid #EEF2F7;
+        }
+        .bk-step {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 10px 16px; border-radius: 10px;
+          font-size: 13px; font-weight: 600; color: #94A3B8;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .bk-step.active {
+          background: #fff; color: #001442;
+          box-shadow: 0 2px 8px rgba(1,20,66,0.1);
+        }
+        .bk-step.done { color: #10B981; }
+        .bk-step-num {
+          width: 22px; height: 22px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800;
+          background: #EEF2F7; color: #94A3B8;
+        }
+        .bk-step.active .bk-step-num { background: #0D40FC; color: #fff; }
+        .bk-step.done .bk-step-num { background: #10B981; color: #fff; }
+        .bk-step-divider { width: 1px; height: 24px; background: #EEF2F7; }
 
-        {loadingSlots && <div className="text-slate-400 text-center py-4">⏳ جارٍ التحميل...</div>}
+        /* DATE SELECT */
+        .bk-label {
+          font-size: 12px; font-weight: 700; color: #64748B;
+          text-transform: uppercase; letter-spacing: 0.06em;
+          margin-bottom: 8px; display: block;
+        }
+        .bk-select {
+          width: 100%; padding: 12px 16px;
+          border: 1.5px solid #D1D9E6; border-radius: 12px;
+          font-size: 14px; font-weight: 500; color: #001442;
+          background: #fff; cursor: pointer;
+          outline: none; transition: border-color 0.18s;
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: left 14px center;
+        }
+        .bk-select:focus { border-color: #0D40FC; box-shadow: 0 0 0 3px rgba(13,64,252,0.08); }
 
-        {!loadingSlots && selectedDate && slots.length === 0 && (
-          <p className="text-slate-500 text-sm">لا توجد أوقات متاحة في هذا اليوم</p>
-        )}
+        /* TIME SLOTS */
+        .slots-grid {
+          display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
+          margin-top: 16px;
+        }
+        @media(max-width:500px){ .slots-grid { grid-template-columns: repeat(3,1fr); } }
+        .slot-btn {
+          padding: 10px 6px; border-radius: 10px;
+          font-size: 13px; font-weight: 600;
+          border: 1.5px solid #D1D9E6; background: #fff;
+          color: #001442; cursor: pointer;
+          transition: all 0.16s; text-align: center;
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
+        }
+        .slot-btn:hover { border-color: #0D40FC; color: #0D40FC; background: rgba(13,64,252,0.04); }
+        .slot-btn.selected {
+          border-color: #0D40FC; background: #0D40FC; color: #fff;
+          box-shadow: 0 3px 10px rgba(13,64,252,0.25);
+        }
 
-        <div className="grid grid-cols-3 gap-2">
-          {slots.map((slot) => (
-            <button
-              key={slot.id}
-              onClick={() => setSelectedSlot(slot)}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                selectedSlot?.id === slot.id
-                  ? 'bg-sky-500 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              {slot.time}
-            </button>
-          ))}
-        </div>
-      </div>
+        .slots-loading {
+          text-align: center; padding: 24px;
+          color: #94A3B8; font-size: 14px;
+        }
+        .slots-empty {
+          text-align: center; padding: 24px;
+          background: #F8FAFC; border-radius: 12px;
+          border: 1px dashed #D1D9E6;
+          color: #94A3B8; font-size: 13px;
+          margin-top: 12px;
+        }
 
-      {/* Booking Form */}
-      <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6">
-        <h2 className="text-white font-bold text-lg mb-4">تأكيد الحجز</h2>
+        /* SELECTED SLOT BANNER */
+        .selected-banner {
+          background: linear-gradient(135deg, rgba(13,64,252,0.06), rgba(85,215,255,0.06));
+          border: 1.5px solid rgba(13,64,252,0.15);
+          border-radius: 14px; padding: 14px 18px;
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 24px;
+        }
+        .selected-banner-info { display: flex; align-items: center; gap: 10px; }
+        .selected-banner-icon {
+          width: 38px; height: 38px; border-radius: 10px;
+          background: rgba(13,64,252,0.1);
+          display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .selected-banner-date { font-size: 14px; font-weight: 700; color: #001442; }
+        .selected-banner-time { font-size: 12px; color: #0D40FC; font-weight: 600; margin-top: 1px; }
+        .selected-banner-duration {
+          font-size: 11px; font-weight: 700; color: #10B981;
+          background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+          padding: 3px 10px; border-radius: 20px;
+        }
+        .change-btn {
+          background: none; border: 1px solid #D1D9E6; color: #64748B;
+          font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px;
+          cursor: pointer; font-family: 'IBM Plex Sans Arabic', sans-serif;
+          transition: all 0.15s;
+        }
+        .change-btn:hover { border-color: #0D40FC; color: #0D40FC; }
 
-        {selectedSlot && (
-          <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-3 mb-4">
-            <p className="text-sky-400 text-sm font-medium">
-              الموعد: {selectedSlot.date} — {selectedSlot.time}
-            </p>
-            <p className="text-slate-400 text-xs mt-0.5">المدة: 30 دقيقة</p>
+        /* FORM */
+        .bk-field { margin-bottom: 16px; }
+        .bk-input {
+          width: 100%; padding: 12px 16px;
+          border: 1.5px solid #D1D9E6; border-radius: 12px;
+          font-size: 14px; color: #001442;
+          background: #fff; outline: none;
+          transition: all 0.18s;
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
+        }
+        .bk-input::placeholder { color: #CBD5E1; }
+        .bk-input:focus { border-color: #0D40FC; box-shadow: 0 0 0 3px rgba(13,64,252,0.08); }
+
+        .bk-error {
+          display: flex; align-items: center; gap: 8px;
+          background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2);
+          border-radius: 12px; padding: 12px 16px;
+          color: #DC2626; font-size: 13px; font-weight: 500;
+          margin-bottom: 16px;
+        }
+
+        .bk-submit {
+          width: 100%; padding: 14px;
+          background: #0D40FC; color: #fff;
+          border: none; border-radius: 14px;
+          font-size: 15px; font-weight: 800;
+          cursor: pointer; transition: all 0.2s;
+          font-family: 'IBM Plex Sans Arabic', sans-serif;
+          box-shadow: 0 4px 14px rgba(13,64,252,0.3);
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .bk-submit:hover:not(:disabled) {
+          background: #0929b4;
+          box-shadow: 0 6px 20px rgba(13,64,252,0.4);
+          transform: translateY(-1px);
+        }
+        .bk-submit:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; transform: none; }
+
+        .bk-note {
+          text-align: center; font-size: 11px; color: #94A3B8;
+          margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+
+        /* NO DATES */
+        .no-dates {
+          text-align: center; padding: 40px 24px;
+          background: #F8FAFC; border-radius: 16px;
+          border: 1px dashed #D1D9E6;
+        }
+        .no-dates-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+        .no-dates-text { color: #94A3B8; font-size: 14px; line-height: 1.6; }
+      `}</style>
+
+      <div className="bk-root">
+
+        {/* No dates at all */}
+        {dates.length === 0 ? (
+          <div className="no-dates">
+            <div className="no-dates-icon">📅</div>
+            <div className="no-dates-text">لا توجد مواعيد متاحة حالياً<br/>يرجى التواصل مع المشرف مباشرة</div>
           </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-slate-400 text-sm mb-1">الاسم الكامل</label>
-            <input
-              type="text"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              placeholder="أدخل اسمك الكامل"
-              required
-              className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-            />
-          </div>
-          <div>
-            <label className="block text-slate-400 text-sm mb-1">البريد الإلكتروني</label>
-            <input
-              type="email"
-              value={studentEmail}
-              onChange={(e) => setStudentEmail(e.target.value)}
-              placeholder="example@email.com"
-              required
-              className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-            />
-          </div>
-          <div>
-            <label className="block text-slate-400 text-sm mb-1">رقم الجوال</label>
-            <input
-              type="tel"
-              value={studentPhone}
-              onChange={(e) => setStudentPhone(e.target.value)}
-              placeholder="+966 5X XXX XXXX"
-              required
-              className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-              <p className="text-red-400 text-sm">{error}</p>
+        ) : (
+          <>
+            {/* STEPS */}
+            <div className="bk-steps">
+              <div className={`bk-step ${step === 1 ? 'active' : 'done'}`} onClick={() => setStep(1)}>
+                <div className="bk-step-num">{step > 1 ? '✓' : '١'}</div>
+                اختر الموعد
+              </div>
+              <div className="bk-step-divider" />
+              <div className={`bk-step ${step === 2 ? 'active' : ''}`}>
+                <div className="bk-step-num">٢</div>
+                بيانات الحجز
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={!selectedSlot || submitting}
-            className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
-          >
-            {submitting ? 'جارٍ الحجز...' : 'تأكيد الحجز'}
-          </button>
-        </form>
+            {/* STEP 1: DATE & TIME */}
+            {step === 1 && (
+              <div>
+                <label className="bk-label">📅 اختر التاريخ</label>
+                <select
+                  className="bk-select"
+                  value={selectedDate}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                >
+                  <option value="">— اختر تاريخاً —</option>
+                  {dates.map(d => (
+                    <option key={d} value={d}>{formatDate(d)}</option>
+                  ))}
+                </select>
+
+                {loadingSlots && (
+                  <div className="slots-loading">⏳ جارٍ تحميل الأوقات المتاحة...</div>
+                )}
+
+                {!loadingSlots && selectedDate && slots.length === 0 && (
+                  <div className="slots-empty">
+                    🕐 لا توجد أوقات متاحة في هذا اليوم، اختر تاريخاً آخر
+                  </div>
+                )}
+
+                {!loadingSlots && slots.length > 0 && (
+                  <>
+                    <label className="bk-label" style={{ marginTop: 20 }}>🕐 اختر الوقت</label>
+                    <div className="slots-grid">
+                      {slots.map(slot => (
+                        <button
+                          key={slot.id}
+                          className={`slot-btn ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
+                          onClick={() => handleSlotSelect(slot)}
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* STEP 2: FORM */}
+            {step === 2 && (
+              <div>
+                {/* Selected slot banner */}
+                {selectedSlot && (
+                  <div className="selected-banner">
+                    <div className="selected-banner-info">
+                      <div className="selected-banner-icon">🗓</div>
+                      <div>
+                        <div className="selected-banner-date">{formatDate(selectedSlot.date)}</div>
+                        <div className="selected-banner-time">الساعة {selectedSlot.time}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="selected-banner-duration">٣٠ دقيقة</span>
+                      <button className="change-btn" onClick={() => setStep(1)}>تغيير</button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                  <div className="bk-field">
+                    <label className="bk-label">👤 الاسم الكامل</label>
+                    <input
+                      className="bk-input"
+                      type="text"
+                      value={studentName}
+                      onChange={e => setStudentName(e.target.value)}
+                      placeholder="أدخل اسمك الكامل"
+                      required
+                    />
+                  </div>
+                  <div className="bk-field">
+                    <label className="bk-label">✉️ البريد الإلكتروني</label>
+                    <input
+                      className="bk-input"
+                      type="email"
+                      value={studentEmail}
+                      onChange={e => setStudentEmail(e.target.value)}
+                      placeholder="example@email.com"
+                      required
+                    />
+                  </div>
+                  <div className="bk-field">
+                    <label className="bk-label">📱 رقم الجوال</label>
+                    <input
+                      className="bk-input"
+                      type="tel"
+                      value={studentPhone}
+                      onChange={e => setStudentPhone(e.target.value)}
+                      placeholder="+966 5X XXX XXXX"
+                      required
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bk-error">⚠️ {error}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="bk-submit"
+                  >
+                    {submitting ? (
+                      <>⏳ جارٍ تأكيد الحجز...</>
+                    ) : (
+                      <>✅ تأكيد الحجز</>
+                    )}
+                  </button>
+                  <div className="bk-note">
+                    🔒 بياناتك محمية وآمنة تماماً
+                  </div>
+                </form>
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </>
   );
 }
