@@ -1,4 +1,3 @@
-// src/app/api/availability/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 
@@ -11,14 +10,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing params' }, { status: 400 });
   }
 
-  const snap = await adminDb
-    .collection('availability')
-    .where('supervisorId', '==', supervisorId)
-    .where('date', '==', date)
-    .where('isBooked', '==', false)
-    .orderBy('time', 'asc')
-    .get();
+  try {
+    const snap = await adminDb.collection('availability').get();
 
-  const slots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  return NextResponse.json({ slots });
+    const slots = snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter((s: any) => 
+        s.supervisorId === supervisorId && 
+        s.date === date && 
+        s.isBooked === false
+      );
+
+    return NextResponse.json({ slots });
+  } catch (error) {
+    console.error('Availability error:', error);
+    return NextResponse.json({ slots: [] });
+  }
 }
