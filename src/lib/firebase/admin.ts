@@ -21,6 +21,6 @@ function getAdminApp(): App {
 
 const adminApp = getAdminApp();
 
-export const adminDb = getFirestore(adminApp);
+export const adminDb = getFirestore(adminApp, 'default');
 export const adminAuth = getAuth(adminApp);
 export { adminApp };
