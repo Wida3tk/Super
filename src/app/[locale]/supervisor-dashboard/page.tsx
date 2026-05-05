@@ -16,13 +16,15 @@ async function getAuthenticatedSupervisor() {
 
   try {
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const supervisorSnap = await adminDb
-      .collection('supervisors')
-      .where('email', '==', decoded.email)
-      .limit(1)
-      .get();
+    // البحث بالإيميل (case-insensitive)
+    const email = decoded.email?.toLowerCase() || '';
+    const allSnap = await adminDb.collection('supervisors').get();
+    const match = allSnap.docs.find(d => 
+      (d.data().email || '').toLowerCase() === email
+    );
 
-    if (supervisorSnap.empty) return null;
+    if (!match) return null;
+    const supervisorSnap = { empty: false, docs: [match] };
     return { id: supervisorSnap.docs[0].id, ...supervisorSnap.docs[0].data() } as any;
   } catch {
     return null;
