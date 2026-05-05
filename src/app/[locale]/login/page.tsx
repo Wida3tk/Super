@@ -28,13 +28,23 @@ export default function LoginPage({ params }: { params: { locale: string } }) {
         body: JSON.stringify({ token }),
       });
 
+      if (!res.ok) {
+        setError('فشل إنشاء الجلسة، حاول مرة أخرى');
+        setLoading(false);
+        return;
+      }
+
       const sessionData = await res.json().catch(() => ({}));
       const isAdmin = sessionData.isAdmin || false;
 
-      const dest = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
-      window.location.href = dest;
-    } catch {
-      setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      window.location.href = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      } else {
+        setError('حدث خطأ، حاول مرة أخرى');
+      }
       setLoading(false);
     }
   };
