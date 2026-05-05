@@ -1,8 +1,6 @@
-// src/components/supervisor/AvailabilityManager.tsx
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { addAvailability } from '@/lib/actions/supervisorActions';
 
 interface Props {
@@ -11,13 +9,12 @@ interface Props {
 }
 
 export default function AvailabilityManager({ supervisorId, locale }: Props) {
-  const t = useTranslations('supervisorDashboard');
-
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('12:00');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -25,77 +22,148 @@ export default function AvailabilityManager({ supervisorId, locale }: Props) {
     e.preventDefault();
     setLoading(true);
     setMessage('');
+    setIsError(false);
 
     const result = await addAvailability(supervisorId, date, startTime, endTime);
 
     if (result.success) {
-      setMessage(t('slotsAdded').replace('{count}', String(result.slotsCreated)));
+      setMessage(`✅ تمت إضافة ${result.slotsCreated} موعد بنجاح`);
       setDate('');
     } else {
-      setMessage(`Error: ${result.error}`);
+      setIsError(true);
+      const errMap: Record<string, string> = {
+        DATE_IN_PAST: 'التاريخ المحدد في الماضي',
+        INVALID_TIME_RANGE: 'نطاق الوقت غير صحيح',
+      };
+      setMessage(`❌ ${errMap[result.error ?? ''] ?? result.error}`);
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-      <h2 className="text-white font-bold mb-4">{t('addAvailability')}</h2>
+    <>
+      <style>{`
+        .av-card {
+          background: #fff;
+          border: 1px solid #EEF2F7;
+          border-radius: 20px;
+          padding: 24px;
+          box-shadow: 0 1px 4px rgba(1,20,66,0.05);
+        }
+        .av-title {
+          font-size: 15px; font-weight: 700;
+          color: #001442;
+          margin-bottom: 20px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .av-label {
+          display: block;
+          font-size: 12px; font-weight: 600;
+          color: #8898AA;
+          margin-bottom: 6px;
+          letter-spacing: 0.03em;
+        }
+        .av-input {
+          width: 100%;
+          background: #F8FAFC;
+          border: 1px solid #D1D9E6;
+          color: #001442;
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 14px;
+          transition: border-color 0.15s;
+          font-family: inherit;
+        }
+        .av-input:focus {
+          outline: none;
+          border-color: #0D40FC;
+          background: #fff;
+        }
+        .av-field { margin-bottom: 16px; }
+        .av-grid {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+          margin-bottom: 16px;
+        }
+        .av-msg {
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-size: 13px; font-weight: 500;
+          margin-bottom: 16px;
+        }
+        .av-msg.ok { background: rgba(16,185,129,0.08); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+        .av-msg.err { background: rgba(239,68,68,0.08); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+        .av-btn {
+          width: 100%;
+          background: #0D40FC;
+          color: #fff;
+          border: none;
+          border-radius: 12px;
+          padding: 12px;
+          font-size: 14px; font-weight: 700;
+          cursor: pointer;
+          transition: all 0.18s;
+          font-family: inherit;
+          box-shadow: 0 2px 8px rgba(13,64,252,0.25);
+        }
+        .av-btn:hover:not(:disabled) {
+          background: #0929b4;
+          box-shadow: 0 5px 16px rgba(13,64,252,0.35);
+          transform: translateY(-1px);
+        }
+        .av-btn:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; }
+        .av-hint { text-align: center; font-size: 11px; color: #94A3B8; margin-top: 8px; }
+      `}</style>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-slate-400 text-sm mb-1">{t('date')}</label>
-          <input
-            type="date"
-            value={date}
-            min={today}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-          />
-        </div>
+      <div className="av-card">
+        <div className="av-title">📅 إضافة أوقات متاحة</div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-slate-400 text-sm mb-1">{t('startTime')}</label>
+        <form onSubmit={handleSubmit}>
+          <div className="av-field">
+            <label className="av-label">التاريخ</label>
             <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              className="av-input"
+              type="date"
+              value={date}
+              min={today}
+              onChange={e => setDate(e.target.value)}
               required
-              className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
             />
           </div>
-          <div>
-            <label className="block text-slate-400 text-sm mb-1">{t('endTime')}</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              required
-              className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-sky-500"
-            />
-          </div>
-        </div>
 
-        {message && (
-          <div className={`rounded-xl p-3 text-sm ${
-            message.startsWith('Error')
-              ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-              : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-          }`}>
-            {message}
+          <div className="av-grid">
+            <div>
+              <label className="av-label">🕐 وقت البداية</label>
+              <input
+                className="av-input"
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="av-label">🕕 وقت النهاية</label>
+              <input
+                className="av-input"
+                type="time"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                required
+              />
+            </div>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors"
-        >
-          {loading ? '⏳' : `+ ${t('addSlots')}`}
-        </button>
-      </form>
-    </div>
+          {message && (
+            <div className={`av-msg ${isError ? 'err' : 'ok'}`}>{message}</div>
+          )}
+
+          <button type="submit" disabled={loading} className="av-btn">
+            {loading ? '⏳ جارٍ الإضافة...' : '+ إضافة مواعيد'}
+          </button>
+          <div className="av-hint">كل موعد مدته 30 دقيقة</div>
+        </form>
+      </div>
+    </>
   );
 }

@@ -5,14 +5,26 @@ export async function GET(request: NextRequest) {
   const supervisorId = searchParams.get('supervisorId');
   const date = searchParams.get('date');
 
-  // بيانات تجريبية مؤقتة
-  const mockSlots = [
-    { id: '1', supervisorId: '5nyuVW6fS1eOx3m5ryOO', date: '2026-05-10', time: '09:00', isBooked: false },
-    { id: '2', supervisorId: '5nyuVW6fS1eOx3m5ryOO', date: '2026-05-10', time: '09:30', isBooked: false },
-    { id: '3', supervisorId: '5nyuVW6fS1eOx3m5ryOO', date: '2026-05-10', time: '10:00', isBooked: false },
-  ];
+  if (!supervisorId || !date) {
+    return NextResponse.json({ slots: [] });
+  }
 
-  const slots = mockSlots.filter(s => s.supervisorId === supervisorId && s.date === date);
+  try {
+    const { adminDb } = await import('@/lib/firebase/admin');
 
-  return NextResponse.json({ slots });
+    const snap = await adminDb
+      .collection('availability')
+      .where('supervisorId', '==', supervisorId)
+      .where('date', '==', date)
+      .where('isBooked', '==', false)
+      .orderBy('time', 'asc')
+      .get();
+
+    const slots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    return NextResponse.json({ slots });
+  } catch (error) {
+    console.error('Availability API error:', error);
+    return NextResponse.json({ slots: [], error: 'Failed to fetch slots' }, { status: 500 });
+  }
 }
