@@ -17,6 +17,18 @@ interface Props {
   supervisors: Supervisor[];
 }
 
+// تحويل رابط Google Drive لرابط مباشر
+function convertDriveUrl(url: string): string {
+  if (!url) return url;
+  // صيغة: https://drive.google.com/file/d/FILE_ID/view
+  const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+  // صيغة: https://drive.google.com/open?id=FILE_ID
+  const match2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (match2) return `https://drive.google.com/uc?export=view&id=${match2[1]}`;
+  return url;
+}
+
 export default function EditSupervisorPanel({ supervisors }: Props) {
   const [selected, setSelected] = useState<Supervisor | null>(null);
   const [form, setForm] = useState({ name: '', bio: '', specialization: '', photo: '', isActive: true });
@@ -266,7 +278,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
             <div key={s.id} className="ep-card" onClick={() => openEdit(s)}>
               <div className="ep-avatar">
                 {s.photo
-                  ? <img src={s.photo} alt={s.name} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ? <img src={convertDriveUrl(s.photo)} alt={s.name} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   : (s.name || 'م')[0]
                 }
               </div>

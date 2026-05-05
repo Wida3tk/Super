@@ -53,7 +53,7 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
               <thead>
                 <tr>
                   <th>المشرف</th><th>البريد</th>
-                  <th className="c">الجلسات</th><th className="c">الحالة</th><th className="c">الصفحة</th>
+                  <th className="c">الجلسات</th><th className="c">الحالة</th><th className="c">الحساب</th><th className="c">الصفحة</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,8 +78,13 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
                       </span>
                     </td>
                     <td className="c">
+                      <button onClick={()=>setAuthSupervisor(s)} style={{background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',color:'#d97706',fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit'}}>
+                        🔑 الحساب
+                      </button>
+                    </td>
+                    <td className="c">
                       <a href={`/ar/supervisor/${s.id}`} target="_blank" rel="noopener noreferrer"
-                        style={{fontSize:12,color:'#0D40FC',textDecoration:'none',background:'rgba(13,64,252,0.07)',padding:'4px 10px',borderRadius:8,border:'1px solid rgba(13,64,252,0.15)'}}>
+                        style={{fontSize:12,color:'#0D40FC',textDecoration:'none',background:'rgba(13,64,252,0.07)',padding:'5px 12px',borderRadius:8,border:'1px solid rgba(13,64,252,0.15)'}}>
                         🔗 فتح
                       </a>
                     </td>

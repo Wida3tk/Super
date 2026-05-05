@@ -8,7 +8,11 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'سلوكيرا — منصة الإشراف الأكاديمي',
   description: 'احجز جلستك مع مشرفك الأكاديمي في دقيقتين',
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 interface RootLayoutProps {

@@ -36,6 +36,16 @@ export default async function SupervisorPage({ params }: Props) {
     if (!supervisor) notFound();
   }
 
+  // تحويل رابط Google Drive
+  const photoUrl = (url: string) => {
+    if (!url) return url;
+    const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+    const m2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+    if (m2) return `https://drive.google.com/uc?export=view&id=${m2[1]}`;
+    return url;
+  };
+
   const rating = supervisor?.ratingAverage || 0;
   const initials = (supervisor?.name || 'م')[0];
   const seats = supervisor?.availableSeats ?? 0;
@@ -147,7 +157,7 @@ export default async function SupervisorPage({ params }: Props) {
             <div className="profile-banner">
               <div className="profile-avatar">
                 {supervisor?.photo
-                  ? <img src={supervisor.photo} alt={supervisor.name} />
+                  ? <img src={photoUrl(supervisor.photo)} alt={supervisor.name} />
                   : initials
                 }
               </div>
