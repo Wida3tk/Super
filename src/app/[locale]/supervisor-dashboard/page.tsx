@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
 import SeatsManager from '@/components/supervisor/SeatsManager';
+import SupervisionHours from '@/components/supervisor/SupervisionHours';
 
 interface Props { params: { locale: string }; }
 
@@ -92,6 +93,11 @@ export default async function SupervisorDashboardPage({ params }: Props) {
 
         .footer{text-align:center;padding:20px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:32px;}
         .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
+
+        .section-divider{height:1px;background:var(--gray-200);margin:28px 0;}
+        .section-title-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+        .section-title-bar h2{font-size:15px;font-weight:700;color:var(--deep);}
+        .section-title-bar span{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:3px 10px;border-radius:99px;border:1px solid var(--gray-200);}
       `}</style>
 
       <div dir="rtl">
@@ -121,6 +127,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         </div>
 
         <div className="main">
+
           {/* STATS */}
           <div className="stats">
             <div className="stat-card">
@@ -146,7 +153,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             </div>
           </div>
 
-          {/* ROW 1: Availability Manager (full width) */}
+          {/* ROW 1: Availability Manager */}
           <div style={{marginBottom:20}}>
             <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
           </div>
@@ -154,7 +161,6 @@ export default async function SupervisorDashboardPage({ params }: Props) {
           {/* ROW 2: Seats + Upcoming Sessions */}
           <div className="dash-grid">
             <SeatsManager supervisorId={supervisor.id} currentSeats={supervisor.availableSeats ?? 0} />
-
             <div className="card">
               <div className="card-head">
                 <div className="card-icon">🗓️</div>
@@ -183,6 +189,15 @@ export default async function SupervisorDashboardPage({ params }: Props) {
               </div>
             </div>
           </div>
+
+          {/* ===== قسم ساعات الإشراف ===== */}
+          <div className="section-divider" />
+          <div className="section-title-bar">
+            <h2>⏱️ ساعات الإشراف الأكاديمي</h2>
+            <span>خاص بالمشرف</span>
+          </div>
+          <SupervisionHours supervisorId={supervisor.id} />
+
         </div>
 
         <div className="footer">
