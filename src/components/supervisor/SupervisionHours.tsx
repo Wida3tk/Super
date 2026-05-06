@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSupervisorSupervision } from "@/lib/hooks/useSupervision";
-import type { Trainee, SessionType, AbsenceReason, WarningReason } from "@/lib/types";
+import type { Trainee, SessionType, AbsenceReason, WarningReason } from "@/lib/types/index";
 
 // ===========================
 // الألوان والثوابت
