@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/lib/hooks/useAuth"; // hook الموجود عندك
 import {
   getTraineesBySupervisor,
   getAllTrainees,
   getSessionsBySupervisorMonth,
   getSessionsByTrainee,
   getSnapshotsBySupervisorMonth,
-  getMonthlySnapshot,
   addSession,
   updateWorkHours,
   lockMonth,
@@ -31,10 +29,9 @@ import type {
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
 
 // ===========================
-// Hook للمشرف
+// Hook للمشرف — يستقبل supervisorId مباشرة
 // ===========================
-export function useSupervisorSupervision() {
-  const { user } = useAuth();
+export function useSupervisorSupervision(supervisorId: string) {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [snapshots, setSnapshots] = useState<MonthlySnapshot[]>([]);
@@ -42,25 +39,23 @@ export function useSupervisorSupervision() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // جلب المتدربين
   const fetchTrainees = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!supervisorId) return;
     try {
-      const data = await getTraineesBySupervisor(user.uid);
+      const data = await getTraineesBySupervisor(supervisorId);
       setTrainees(data);
     } catch (e) {
       setError("حدث خطأ في جلب المتدربين");
     }
-  }, [user?.uid]);
+  }, [supervisorId]);
 
-  // جلب الجلسات والـ snapshots للشهر المحدد
   const fetchMonthData = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!supervisorId) return;
     setLoading(true);
     try {
       const [sessionsData, snapshotsData] = await Promise.all([
-        getSessionsBySupervisorMonth(user.uid, selectedMonth),
-        getSnapshotsBySupervisorMonth(user.uid, selectedMonth),
+        getSessionsBySupervisorMonth(supervisorId, selectedMonth),
+        getSnapshotsBySupervisorMonth(supervisorId, selectedMonth),
       ]);
       setSessions(sessionsData);
       setSnapshots(snapshotsData);
@@ -69,17 +64,11 @@ export function useSupervisorSupervision() {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid, selectedMonth]);
+  }, [supervisorId, selectedMonth]);
 
-  useEffect(() => {
-    fetchTrainees();
-  }, [fetchTrainees]);
+  useEffect(() => { fetchTrainees(); }, [fetchTrainees]);
+  useEffect(() => { fetchMonthData(); }, [fetchMonthData]);
 
-  useEffect(() => {
-    fetchMonthData();
-  }, [fetchMonthData]);
-
-  // تسجيل جلسة جديدة
   const submitSession = useCallback(
     async (data: {
       traineeIds: string[];
@@ -90,42 +79,31 @@ export function useSupervisorSupervision() {
       warningReason?: WarningReason;
       notes?: string;
     }) => {
-      if (!user?.uid) throw new Error("غير مصرح");
-      await addSession({
-        ...data,
-        supervisorId: user.uid,
-        createdBy: user.uid,
-      });
-      await fetchMonthData(); // تحديث البيانات بعد الإضافة
-    },
-    [user?.uid, fetchMonthData]
-  );
-
-  // تحديث ساعات عمل المتدرب الشهرية
-  const submitWorkHours = useCallback(
-    async (traineeId: string, workHours: number) => {
-      if (!user?.uid) throw new Error("غير مصرح");
-      await updateWorkHours(user.uid, traineeId, selectedMonth, workHours);
+      if (!supervisorId) throw new Error("غير مصرح");
+      await addSession({ ...data, supervisorId, createdBy: supervisorId });
       await fetchMonthData();
     },
-    [user?.uid, selectedMonth, fetchMonthData]
+    [supervisorId, fetchMonthData]
   );
 
-  // جلب snapshot متدرب معين للشهر الحالي
-  const getTraineeSnapshot = useCallback(
-    (traineeId: string) => {
-      return snapshots.find((s) => s.traineeId === traineeId) || null;
+  const submitWorkHours = useCallback(
+    async (traineeId: string, workHours: number) => {
+      if (!supervisorId) throw new Error("غير مصرح");
+      await updateWorkHours(supervisorId, traineeId, selectedMonth, workHours);
+      await fetchMonthData();
     },
+    [supervisorId, selectedMonth, fetchMonthData]
+  );
+
+  const getTraineeSnapshot = useCallback(
+    (traineeId: string) => snapshots.find((s) => s.traineeId === traineeId) || null,
     [snapshots]
   );
 
-  // إجمالي ساعات المشرف للشهر
   const monthTotals = useCallback(() => {
-    // الجماعية تُحسب مرة واحدة على المشرف
     const sessionSet = new Set<string>();
     let individual = 0;
     let group = 0;
-
     sessions.forEach((s) => {
       if (s.type === "individual") individual += s.duration || 0;
       if (s.type === "group" && !sessionSet.has(s.id)) {
@@ -133,28 +111,18 @@ export function useSupervisorSupervision() {
         sessionSet.add(s.id);
       }
     });
-
     return { individual, group, total: individual + group };
   }, [sessions]);
 
   return {
-    trainees,
-    sessions,
-    snapshots,
-    selectedMonth,
-    setSelectedMonth,
-    loading,
-    error,
-    submitSession,
-    submitWorkHours,
-    getTraineeSnapshot,
-    monthTotals,
-    refresh: fetchMonthData,
+    trainees, sessions, snapshots, selectedMonth, setSelectedMonth,
+    loading, error, submitSession, submitWorkHours, getTraineeSnapshot,
+    monthTotals, refresh: fetchMonthData,
   };
 }
 
 // ===========================
-// Hook لجلسات متدرب معين (للمشرف والأدمن)
+// Hook لجلسات متدرب معين
 // ===========================
 export function useTraineeSessions(traineeId: string, supervisorId?: string) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -172,10 +140,9 @@ export function useTraineeSessions(traineeId: string, supervisorId?: string) {
 }
 
 // ===========================
-// Hook للأدمن
+// Hook للأدمن — يستقبل adminId مباشرة
 // ===========================
-export function useAdminSupervision() {
-  const { user } = useAuth();
+export function useAdminSupervision(adminId?: string) {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,40 +159,24 @@ export function useAdminSupervision() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // إضافة متدرب جديد
   const createTrainee = useCallback(
-    async (data: {
-      name: string;
-      email: string;
-      phone: string;
-      license: License;
-    }) => {
+    async (data: { name: string; email: string; phone: string; license: License }) => {
       await addTrainee(data);
       await fetchAll();
     },
     [fetchAll]
   );
 
-  // إسناد متدرب لمشرف
   const assignTraineeToSupervisor = useCallback(
-    async (data: {
-      traineeId: string;
-      supervisorId: string;
-      startDate: string;
-      notes?: string;
-    }) => {
-      if (!user?.uid) throw new Error("غير مصرح");
-      await assignTrainee({ ...data, adminId: user.uid });
+    async (data: { traineeId: string; supervisorId: string; startDate: string; notes?: string }) => {
+      await assignTrainee({ ...data, adminId: adminId || "admin" });
       await fetchAll();
     },
-    [user?.uid, fetchAll]
+    [adminId, fetchAll]
   );
 
-  // تحديث مرحلة البوردنق
   const advanceOnboarding = useCallback(
     async (traineeId: string, stage: OnboardingStage) => {
       await updateOnboardingStage(traineeId, stage);
@@ -234,7 +185,6 @@ export function useAdminSupervision() {
     [fetchAll]
   );
 
-  // تحديث حالة المتدرب
   const changeTraineeStatus = useCallback(
     async (traineeId: string, status: TraineeStatus) => {
       await updateTraineeStatus(traineeId, status);
@@ -243,37 +193,30 @@ export function useAdminSupervision() {
     [fetchAll]
   );
 
-  // قفل شهر
   const lockMonthForTrainee = useCallback(
     async (supervisorId: string, traineeId: string, month: string) => {
-      if (!user?.uid) throw new Error("غير مصرح");
-      await lockMonth(supervisorId, traineeId, month, user.uid);
+      await lockMonth(supervisorId, traineeId, month, adminId || "admin");
     },
-    [user?.uid]
+    [adminId]
   );
 
-  // فتح شهر
   const unlockMonthForTrainee = useCallback(
     async (supervisorId: string, traineeId: string, month: string) => {
-      if (!user?.uid) throw new Error("غير مصرح");
-      await unlockMonth(supervisorId, traineeId, month, user.uid);
+      await unlockMonth(supervisorId, traineeId, month, adminId || "admin");
     },
-    [user?.uid]
+    [adminId]
   );
 
-  // فلترة المتدربين
   const getTraineesByStatus = useCallback(
     (status: TraineeStatus) => trainees.filter((t) => t.status === status),
     [trainees]
   );
 
   const getTraineesBySupervisorId = useCallback(
-    (supervisorId: string) =>
-      trainees.filter((t) => t.currentSupervisorId === supervisorId),
+    (supervisorId: string) => trainees.filter((t) => t.currentSupervisorId === supervisorId),
     [trainees]
   );
 
-  // إحصائيات سريعة
   const stats = {
     total: trainees.length,
     active: trainees.filter((t) => t.status === "active").length,
@@ -284,18 +227,9 @@ export function useAdminSupervision() {
   };
 
   return {
-    trainees,
-    loading,
-    error,
-    stats,
-    createTrainee,
-    assignTraineeToSupervisor,
-    advanceOnboarding,
-    changeTraineeStatus,
-    lockMonthForTrainee,
-    unlockMonthForTrainee,
-    getTraineesByStatus,
-    getTraineesBySupervisorId,
-    refresh: fetchAll,
+    trainees, loading, error, stats,
+    createTrainee, assignTraineeToSupervisor, advanceOnboarding,
+    changeTraineeStatus, lockMonthForTrainee, unlockMonthForTrainee,
+    getTraineesByStatus, getTraineesBySupervisorId, refresh: fetchAll,
   };
 }
