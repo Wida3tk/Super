@@ -24,7 +24,7 @@ import type {
   License,
   OnboardingStage,
   TraineeStatus,
-} from "@/lib/types/index";
+} from "@/types";
 
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
 
