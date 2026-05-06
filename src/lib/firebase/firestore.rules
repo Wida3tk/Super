@@ -1,95 +1,22 @@
-// src/lib/firebase/firestore.rules
-// انسخ هذا إلى Firebase Console → Firestore → Rules
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ======== SUPERVISORS ========
-    match /supervisors/{supervisorId} {
-      // الجميع يقرأ المشرفين النشطين
-      allow read: if resource.data.isActive == true;
-      // المشرف يقرأ بروفايله كاملاً
-      allow read: if request.auth != null && request.auth.token.email == resource.data.email;
-      // الكتابة فقط للمدير
-      allow write: if isAdmin();
-    }
-
-    // ======== AVAILABILITY ========
-    match /availability/{slotId} {
-      // الجميع يقرأ
-      allow read: if true;
-      // المشرف يضيف مواعيده فقط
-      allow create: if request.auth != null
-        && request.auth.token.email != null
-        && isSupervisorOwner(request.resource.data.supervisorId);
-      // لا يحذف أحد مباشرة — يتم عبر Server Action
-      allow update: if false;
-      allow delete: if request.auth != null && isSupervisorOwner(resource.data.supervisorId);
-    }
-
-    // ======== BOOKINGS ========
-    match /bookings/{bookingId} {
-      // القراءة: المشرف المعني أو بالتوكن (عبر API)
-      allow read: if request.auth != null;
-      // الإنشاء: عبر Server Action فقط (Admin SDK)
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    // ======== REVIEWS ========
-    match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if true; // الطلاب يكتبون بدون حساب
-      allow update, delete: if isAdmin();
-    }
-
-    // ======== HELPERS ========
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == '${ADMIN_EMAIL}';
+        && request.auth.token.email == 'Maryam@sulukera.com';
+    }
+
+    function isSupervisor() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/supervisors/$(request.auth.uid));
     }
 
     function isSupervisorOwner(supervisorId) {
       return exists(/databases/$(database)/documents/supervisors/$(supervisorId))
         && get(/databases/$(database)/documents/supervisors/$(supervisorId)).data.email == request.auth.token.email;
     }
-  }
-}
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
 
-    // ===========================
-    // Helper Functions
-    // ===========================
-
-    // هل المستخدم أدمن؟
-    function isAdmin() {
-      return request.auth != null &&
-        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == "admin";
-    }
-
-    // هل المستخدم مشرف؟
-    function isSupervisor() {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/supervisors/$(request.auth.uid));
-    }
-
-    // هل المشرف هو صاحب البيانات؟
-    function isSupervisorOwner(supervisorId) {
-      return request.auth != null && request.auth.uid == supervisorId;
-    }
-
-    // هل الشهر مقفول؟
-    function isMonthLocked(supervisorId, traineeId, month) {
-      let snapshotId = supervisorId + "_" + traineeId + "_" + month;
-      let snapshot = get(/databases/$(database)/documents/monthlySnapshots/$(snapshotId));
-      return snapshot.data.lockedAt != null;
-    }
-
-    // هل الجلسة في الشهر الحالي؟
     function isCurrentMonth(month) {
       let now = request.time;
       let currentMonth = string(now.year()) + "-" +
@@ -97,23 +24,31 @@ service cloud.firestore {
       return month == currentMonth;
     }
 
-    // ===========================
-    // Collections الموجودة
-    // ===========================
-
     match /supervisors/{supervisorId} {
-      allow read: if request.auth != null;
+      allow read: if resource.data.isActive == true
+        || (request.auth != null && request.auth.token.email == resource.data.email)
+        || isAdmin();
       allow write: if isAdmin();
-    }
-
-    match /bookings/{bookingId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
     }
 
     match /availability/{slotId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && isSupervisorOwner(request.resource.data.supervisorId);
+      allow update: if false;
+      allow delete: if request.auth != null && isSupervisorOwner(resource.data.supervisorId);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
 
     match /settings/{doc} {
@@ -121,78 +56,48 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ===========================
-    // Collections الجديدة
-    // ===========================
-
-    // المتدربون
     match /trainees/{traineeId} {
-      // الأدمن يقرأ الكل
-      // المشرف يقرأ متدربيه فقط
       allow read: if isAdmin() ||
         (isSupervisor() &&
           resource.data.currentSupervisorId == request.auth.uid);
-
-      // الإضافة والتعديل للأدمن فقط
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if false; // لا حذف أبداً
-    }
-
-    // الإسناد
-    match /assignments/{assignmentId} {
-      allow read: if isAdmin() ||
-        (isSupervisor() &&
-          (resource.data.supervisorId == request.auth.uid));
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if false;
     }
 
-    // الجلسات
-    match /sessions/{sessionId} {
-      // القراءة: الأدمن والمشرف صاحب الجلسة
+    match /assignments/{assignmentId} {
       allow read: if isAdmin() ||
-        (isSupervisor() &&
-          resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
 
-      // الإضافة: المشرف في نفس الشهر فقط + الأدمن
+    match /sessions/{sessionId} {
+      allow read: if isAdmin() ||
+        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
       allow create: if isAdmin() ||
         (isSupervisor() &&
           request.resource.data.supervisorId == request.auth.uid &&
           isCurrentMonth(request.resource.data.month));
-
-      // التعديل: الأدمن فقط
       allow update: if isAdmin();
-
-      // الحذف: المشرف في نفس الشهر + الأدمن
       allow delete: if isAdmin() ||
         (isSupervisor() &&
           resource.data.supervisorId == request.auth.uid &&
           isCurrentMonth(resource.data.month));
     }
 
-    // الملخص الشهري
     match /monthlySnapshots/{snapshotId} {
-      // القراءة: الأدمن والمشرف صاحب الـ snapshot
       allow read: if isAdmin() ||
-        (isSupervisor() &&
-          resource.data.supervisorId == request.auth.uid);
-
-      // الإنشاء: تلقائي من الكود (عبر admin SDK) أو الأدمن
+        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
       allow create: if isAdmin() ||
-        (isSupervisor() &&
-          request.resource.data.supervisorId == request.auth.uid);
-
-      // التعديل: المشرف يعدّل workHours فقط + الأدمن يعدّل كل شيء
+        (isSupervisor() && request.resource.data.supervisorId == request.auth.uid);
       allow update: if isAdmin() ||
         (isSupervisor() &&
           resource.data.supervisorId == request.auth.uid &&
-          resource.data.lockedAt == null && // الشهر غير مقفول
-          // المشرف يعدّل workHours فقط
+          resource.data.lockedAt == null &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["workHours", "requiredHours", "updatedAt"]));
-
       allow delete: if false;
     }
 
