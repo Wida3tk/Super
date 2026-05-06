@@ -24,7 +24,7 @@ import type {
   SessionType,
   AbsenceReason,
   WarningReason,
-} from "../types";
+} from "../../types";
 
 // ===========================
 // helpers
