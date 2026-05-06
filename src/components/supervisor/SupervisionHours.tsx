@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSupervisorSupervision } from "@/lib/hooks/useSupervision";
 import type { Trainee, SessionType, AbsenceReason, WarningReason } from "@/types";
+
 // ===========================
 // الألوان والثوابت
 // ===========================
@@ -401,7 +403,7 @@ export default function SupervisionHours({ supervisorId }: { supervisorId: strin
   const {
     trainees, sessions, snapshots, selectedMonth, setSelectedMonth,
     loading, error, submitSession, submitWorkHours, getTraineeSnapshot, monthTotals,
-  } = useSupervisorSupervision(supervisorId);
+  } = useSupervisorSupervision();
 
   const [showModal, setShowModal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
