@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import type { Trainee, SessionType, AbsenceReason, WarningReason } from "@/types";
-import type { Trainee, SessionType, AbsenceReason, WarningReason } from "@/lib/types/index";
-
 // ===========================
 // الألوان والثوابت
 // ===========================
