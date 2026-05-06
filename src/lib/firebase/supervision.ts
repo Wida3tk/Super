@@ -12,7 +12,7 @@ import {
   writeBatch,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "./config"; // مسار firebase config الموجود عندك
+import { db } from "./client"; // مسار firebase config الموجود عندك
 import type {
   Trainee,
   Session,
