@@ -19,7 +19,7 @@ import type {
   TraineeStatus,
   OnboardingStage,
   License,
-} from "@/lib/types";
+} from "@/lib/types/index";
 
 // ===========================
 // Constants
