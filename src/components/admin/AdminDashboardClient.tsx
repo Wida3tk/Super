@@ -3,6 +3,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
+import AdminSupervisionPanel from './AdminSupervisionPanel';
 
 interface Props {
   stats: any;
@@ -14,14 +15,13 @@ interface Props {
 
 export default function AdminDashboardClient({ stats, bookings, supervisors, reviews, locale }: Props) {
   const t = useTranslations('admin');
-  const [activeTab, setActiveTab] = useState<'supervisors' | 'bookings' | 'reviews'>('supervisors');
+  const [activeTab, setActiveTab] = useState<'supervisors' | 'bookings' | 'reviews' | 'supervision'>('supervisors');
 
   const exportCSV = () => {
     const headers = ['ID', 'Student Name', 'Student Email', 'Supervisor ID', 'Date', 'Time', 'Status', 'Meet Link', 'Created At'];
     const rows = bookings.map((b: any) => [
       b.id, b.studentName, b.studentEmail, b.supervisorId, b.date, b.time, b.status, b.meetLink, b.createdAt
     ]);
-
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell || ''}"`).join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -33,7 +33,6 @@ export default function AdminDashboardClient({ stats, bookings, supervisors, rev
   };
 
   const toggleSupervisor = async (supervisorId: string, currentStatus: boolean) => {
-    // Server Action call via API
     await fetch('/api/admin/supervisor', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -46,7 +45,7 @@ export default function AdminDashboardClient({ stats, bookings, supervisors, rev
     <div>
       {/* Tabs + Export */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(['supervisors', 'bookings', 'reviews'] as const).map((tab) => (
             <button
               key={tab}
@@ -60,13 +59,28 @@ export default function AdminDashboardClient({ stats, bookings, supervisors, rev
               {t(tab)}
             </button>
           ))}
+
+          {/* تبويب الإشراف الأكاديمي */}
+          <button
+            onClick={() => setActiveTab('supervision')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'supervision'
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-700 text-slate-400 hover:text-white'
+            }`}
+          >
+            ⏱️ الإشراف الأكاديمي
+          </button>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          📥 {t('exportCSV')}
-        </button>
+
+        {activeTab !== 'supervision' && (
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            📥 {t('exportCSV')}
+          </button>
+        )}
       </div>
 
       {/* Supervisors Tab */}
@@ -170,6 +184,13 @@ export default function AdminDashboardClient({ stats, bookings, supervisors, rev
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Supervision Tab */}
+      {activeTab === 'supervision' && (
+        <div className="bg-white rounded-2xl p-6">
+          <AdminSupervisionPanel supervisors={supervisors} />
         </div>
       )}
     </div>
