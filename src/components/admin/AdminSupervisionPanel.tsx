@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { adminDb } from "@/lib/firebase/admin";
 import { useAdminSupervision } from "@/lib/hooks/useSupervision";
 import {
   getAllTrainees,
@@ -19,8 +18,7 @@ import type {
   TraineeStatus,
   OnboardingStage,
   License,
-} from "@/lib/types/index";
-
+} from "@/types";
 // ===========================
 // Constants
 // ===========================
