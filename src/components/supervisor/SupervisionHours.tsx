@@ -403,7 +403,7 @@ export default function SupervisionHours({ supervisorId }: { supervisorId: strin
   const {
     trainees, sessions, snapshots, selectedMonth, setSelectedMonth,
     loading, error, submitSession, submitWorkHours, getTraineeSnapshot, monthTotals,
-  } = useSupervisorSupervision();
+  } = useSupervisorSupervision(supervisorId);
 
   const [showModal, setShowModal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
