@@ -196,7 +196,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             <h2>⏱️ ساعات الإشراف الأكاديمي</h2>
             <span>خاص بالمشرف</span>
           </div>
-          <SupervisionHours supervisorId={supervisor.id} />
+          <div suppressHydrationWarning>   <SupervisionHours supervisorId={supervisor.id} /> </div>
 
         </div>
 
