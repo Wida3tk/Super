@@ -40,16 +40,11 @@ const STATUS_COLORS: Record<TraineeStatus, { bg: string; color: string }> = {
   completed: { bg: "#E1F5EE", color: "#0F6E56" },
 };
 
-const ONBOARDING_LABELS: Record<OnboardingStage, string> = {
-  initial_interview: "مقابلة أولية",
-  post_interview: "ما بعد المقابلة",
-  contracting: "التعاقد",
-};
-
-const ONBOARDING_NEXT: Partial<Record<OnboardingStage, OnboardingStage>> = {
-  initial_interview: "post_interview",
-  post_interview: "contracting",
-};
+const ONBOARDING_STAGES: { key: OnboardingStage; label: string }[] = [
+  { key: "initial_interview", label: "مقابلة أولية" },
+  { key: "post_interview", label: "ما بعد المقابلة" },
+  { key: "contracting", label: "التعاقد" },
+];
 
 function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
   return (
@@ -237,7 +232,6 @@ function AssignModal({ trainee, supervisors, onClose }: {
 async function exportToExcel(type: "supervisors" | "trainees", trainees: Trainee[], supervisors: any[], snapshots: MonthlySnapshot[], selectedMonth: string) {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
-
   if (type === "supervisors") {
     const summaryData = supervisors.map(sup => {
       const supSnaps = snapshots.filter(s => s.supervisorId === sup.id);
@@ -257,7 +251,7 @@ async function exportToExcel(type: "supervisors" | "trainees", trainees: Trainee
   } else {
     const summaryData = trainees.map(t => {
       const sup = supervisors.find(s => s.id === t.currentSupervisorId);
-      return { "المتدرب": t.name, "الإيميل": t.email, "الجوال": t.phone, "الرخصة": t.license, "الساعات المطلوبة": t.requiredHours, "فردية": t.totalIndividualHours, "جماعية": t.totalGroupHours, "الإجمالي": t.totalHours, "المتبقي": t.requiredHours - t.totalHours, "المشرف الحالي": sup?.name || "—", "الحالة": STATUS_LABELS[t.status] };
+      return { "المتدرب": t.name, "الإيميل": t.email, "الجوال": t.phone, "الرخصة": t.license, "الساعات المطلوبة": t.requiredHours, "فردية": t.totalIndividualHours || 0, "جماعية": t.totalGroupHours || 0, "الإجمالي": t.totalHours || 0, "المتبقي": t.requiredHours - (t.totalHours || 0), "المشرف الحالي": sup?.name || "—", "الحالة": STATUS_LABELS[t.status] };
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "ملخص عام");
     XLSX.writeFile(wb, `تقرير-المتدربين-${selectedMonth}.xlsx`);
@@ -279,6 +273,7 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
   const [showAddModal, setShowAddModal] = useState(false);
   const [assigningTrainee, setAssigningTrainee] = useState<Trainee | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<string | null>(null);
 
   const stats = {
     total: trainees.length,
@@ -287,9 +282,15 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
     paused: trainees.filter(t => t.status === "paused").length,
   };
 
-  const handleAdvanceOnboarding = async (traineeId: string, stage: OnboardingStage) => {
-    await apiPatch({ traineeId, action: 'updateOnboarding', stage });
-    window.location.reload();
+  const handleSetStage = async (traineeId: string, stage: OnboardingStage) => {
+    setLoadingStage(traineeId + stage);
+    try {
+      await apiPatch({ traineeId, action: 'updateOnboarding', stage });
+      window.location.reload();
+    } catch (e: any) {
+      alert("حدث خطأ: " + e.message);
+      setLoadingStage(null);
+    }
   };
 
   const handleChangeStatus = async (traineeId: string, status: TraineeStatus) => {
@@ -326,7 +327,12 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: 12 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {[{ label: "إجمالي المتدربين", value: stats.total, color: COLORS.primary }, { label: "نشط", value: stats.active, color: COLORS.success }, { label: "مؤجل", value: stats.paused, color: COLORS.warning }, { label: "قيد البوردنق", value: stats.onboarding, color: COLORS.gray500 }].map(s => (
+          {[
+            { label: "إجمالي المتدربين", value: stats.total, color: COLORS.primary },
+            { label: "نشط", value: stats.active, color: COLORS.success },
+            { label: "مؤجل", value: stats.paused, color: COLORS.warning },
+            { label: "قيد البوردنق", value: stats.onboarding, color: COLORS.gray500 },
+          ].map(s => (
             <div key={s.label} style={{ background: COLORS.gray100, borderRadius: 10, padding: "10px 16px", border: `1px solid ${COLORS.gray200}` }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 11, color: COLORS.gray500 }}>{s.label}</div>
@@ -493,44 +499,59 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
                 </tr>
               </thead>
               <tbody>
-                {trainees.filter(t => t.status === "onboarding").map(t => {
-                  const nextStage = t.onboardingStage ? ONBOARDING_NEXT[t.onboardingStage] : undefined;
-                  const isReady = t.onboardingStage === "contracting";
-                  return (
-                    <tr key={t.id} style={{ borderBottom: `1px solid ${COLORS.gray200}` }}>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#F1EFE8", color: "#5F5E5A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600 }}>{t.name?.slice(0, 2)}</div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</div>
-                            <div style={{ fontSize: 11, color: COLORS.gray500 }}>{t.email}</div>
-                          </div>
+                {trainees.filter(t => t.status === "onboarding").map(t => (
+                  <tr key={t.id} style={{ borderBottom: `1px solid ${COLORS.gray200}` }}>
+                    <td style={{ padding: "12px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#F1EFE8", color: "#5F5E5A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600 }}>{t.name?.slice(0, 2)}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</div>
+                          <div style={{ fontSize: 11, color: COLORS.gray500 }}>{t.email}</div>
                         </div>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}><Badge label={t.license} bg={COLORS.gray100} color={COLORS.gray500} /></td>
-                      <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.gray500, direction: "ltr", textAlign: "right" }}>{t.phone}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <Badge label={t.onboardingStage ? ONBOARDING_LABELS[t.onboardingStage] : "—"} bg={isReady ? "#EEEDFE" : "#F1EFE8"} color={isReady ? "#3C3489" : "#5F5E5A"} />
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          {nextStage && (
-                            <button onClick={() => handleAdvanceOnboarding(t.id, nextStage)}
-                              style={{ padding: "5px 10px", border: `1px solid ${COLORS.primary}`, borderRadius: 8, background: "#E6F1FB", color: COLORS.primary, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                              تقدّم ←
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}><Badge label={t.license} bg={COLORS.gray100} color={COLORS.gray500} /></td>
+                    <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.gray500, direction: "ltr", textAlign: "right" }}>{t.phone}</td>
+                    <td style={{ padding: "12px 16px" }}>
+                      {/* أزرار المراحل */}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {ONBOARDING_STAGES.map(stage => {
+                          const isCurrent = t.onboardingStage === stage.key;
+                          const isLoading = loadingStage === t.id + stage.key;
+                          return (
+                            <button
+                              key={stage.key}
+                              onClick={() => !isCurrent && handleSetStage(t.id, stage.key)}
+                              disabled={isLoading}
+                              style={{
+                                padding: "5px 10px",
+                                fontSize: 11,
+                                borderRadius: 8,
+                                cursor: isCurrent ? "default" : "pointer",
+                                fontFamily: "inherit",
+                                fontWeight: isCurrent ? 600 : 400,
+                                border: isCurrent ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.gray300}`,
+                                background: isCurrent ? "#E6F1FB" : "#fff",
+                                color: isCurrent ? COLORS.primary : COLORS.gray500,
+                                opacity: isLoading ? 0.6 : 1,
+                              }}
+                            >
+                              {isCurrent ? "✓ " : ""}{isLoading ? "..." : stage.label}
                             </button>
-                          )}
-                          {isReady && (
-                            <button onClick={() => setAssigningTrainee(t)}
-                              style={{ padding: "5px 10px", border: `1px solid ${COLORS.success}`, borderRadius: 8, background: "#E1F5EE", color: COLORS.success, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                              ✓ إسناد
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      {t.onboardingStage === "contracting" && (
+                        <button onClick={() => setAssigningTrainee(t)}
+                          style={{ padding: "6px 14px", border: `1px solid ${COLORS.success}`, borderRadius: 8, background: "#E1F5EE", color: COLORS.success, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                          ✓ إسناد لمشرف
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
                 {trainees.filter(t => t.status === "onboarding").length === 0 && (
                   <tr><td colSpan={5} style={{ padding: "2rem", textAlign: "center", color: COLORS.gray500, fontSize: 13 }}>لا يوجد متدربون قيد البوردنق حالياً</td></tr>
                 )}
