@@ -4,6 +4,7 @@ import Link from 'next/link';
 import AddSupervisorButton from '@/components/admin/AddSupervisorButton';
 import LogoutButton from '@/components/LogoutButton';
 import SupervisorTabs from '@/components/admin/SupervisorTabs';
+import AdminSupervisionPanel from '@/components/admin/AdminSupervisionPanel';
 
 interface Props { params: { locale: string }; }
 
@@ -18,13 +19,20 @@ export default async function AdminPage({ params }: Props) {
     if (sessionCookie) {
       const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
       if (decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-        const [bookingsSnap, supervisorsSnap] = await Promise.all([
+        const currentMonth = new Date().toISOString().slice(0, 7);
+
+        const [bookingsSnap, supervisorsSnap, traineesSnap, snapshotsSnap] = await Promise.all([
           adminDb.collection('bookings').get(),
           adminDb.collection('supervisors').get(),
+          adminDb.collection('trainees').get(),
+          adminDb.collection('monthlySnapshots').where('month', '==', currentMonth).get(),
         ]);
+
         data = {
           bookings: bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
           supervisors: supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+          trainees: traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+          snapshots: snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
         };
       }
     }
@@ -32,7 +40,7 @@ export default async function AdminPage({ params }: Props) {
 
   if (!data) redirect(`/${locale}/login`);
 
-  const { bookings, supervisors } = data;
+  const { bookings, supervisors, trainees, snapshots } = data;
   const confirmed = bookings.filter((b: any) => b.status === 'confirmed').length;
   const cancelled = bookings.filter((b: any) => b.status === 'cancelled').length;
 
@@ -86,9 +94,6 @@ export default async function AdminPage({ params }: Props) {
         .b-ok{background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.2);}
         .b-cancel{background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.15);}
         .b-pend{background:rgba(245,158,11,0.1);color:#d97706;border:1px solid rgba(245,158,11,0.2);}
-        .sup-tabs{display:flex;border-bottom:1px solid var(--gray-200);}
-        .sup-tab{padding:13px 24px;font-size:13px;font-weight:600;color:var(--gray-500);cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;}
-        .sup-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
         .footer{text-align:center;padding:24px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:40px;}
         .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
       `}</style>
@@ -107,11 +112,11 @@ export default async function AdminPage({ params }: Props) {
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <a href={`/${locale}/admin/cms`} style={{display:'flex',alignItems:'center',gap:6,background:'rgba(85,215,255,0.1)',color:'#55D7FF',textDecoration:'none',fontSize:13,fontWeight:600,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(85,215,255,0.25)',transition:'all .18s'}}>
-              🎨 لوحة التحكم CMS
-            </a>
-            <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
-          </div>
+              <a href={`/${locale}/admin/cms`} style={{display:'flex',alignItems:'center',gap:6,background:'rgba(85,215,255,0.1)',color:'#55D7FF',textDecoration:'none',fontSize:13,fontWeight:600,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(85,215,255,0.25)',transition:'all .18s'}}>
+                🎨 لوحة التحكم CMS
+              </a>
+              <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+            </div>
             <LogoutButton locale={locale} />
           </div>
         </nav>
@@ -127,7 +132,6 @@ export default async function AdminPage({ params }: Props) {
         </div>
 
         <div className="main">
-          {/* STATS */}
           <div className="stats">
             {[
               {icon:'📋',val:bookings.length,lbl:'إجمالي الحجوزات',clr:'#0D40FC',bg:'rgba(13,64,252,0.08)'},
@@ -145,7 +149,6 @@ export default async function AdminPage({ params }: Props) {
             ))}
           </div>
 
-          {/* BOOKINGS */}
           <div className="section">
             <div className="section-head">
               <div className="section-head-left">
@@ -189,7 +192,6 @@ export default async function AdminPage({ params }: Props) {
             </div>
           </div>
 
-          {/* SUPERVISORS */}
           <div className="section">
             <div className="section-head">
               <div className="section-head-left">
@@ -199,8 +201,24 @@ export default async function AdminPage({ params }: Props) {
               </div>
               <AddSupervisorButton />
             </div>
-
             <SupervisorTabs supervisors={supervisors} />
+          </div>
+
+          <div className="section">
+            <div className="section-head">
+              <div className="section-head-left">
+                <div className="section-icon">⏱️</div>
+                <span className="section-title">الإشراف الأكاديمي</span>
+                <span className="count-chip">{trainees.length} متدرب</span>
+              </div>
+            </div>
+            <div style={{padding:'1.5rem'}}>
+              <AdminSupervisionPanel
+                supervisors={supervisors}
+                initialTrainees={trainees}
+                initialSnapshots={snapshots}
+              />
+            </div>
           </div>
 
         </div>
