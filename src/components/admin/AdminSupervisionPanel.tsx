@@ -1,14 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  addTrainee,
-  assignTrainee,
-  updateOnboardingStage,
-  updateTraineeStatus,
-  lockMonth,
-  unlockMonth,
-} from "@/lib/firebase/supervision";
 import type {
   Trainee,
   MonthlySnapshot,
@@ -68,12 +60,42 @@ function Badge({ label, bg, color }: { label: string; bg: string; color: string 
 }
 
 // ===========================
+// API helpers
+// ===========================
+async function apiPost(data: any) {
+  const res = await fetch('/api/admin/trainee', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPatch(data: any) {
+  const res = await fetch('/api/admin/trainee', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPut(data: any) {
+  const res = await fetch('/api/admin/trainee', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ===========================
 // Modal إضافة متدرب
 // ===========================
-function AddTraineeModal({ onClose, onSubmit }: {
-  onClose: () => void;
-  onSubmit: (data: { name: string; email: string; phone: string; license: License }) => Promise<void>;
-}) {
+function AddTraineeModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -84,9 +106,13 @@ function AddTraineeModal({ onClose, onSubmit }: {
   const handleSubmit = async () => {
     if (!name || !email || !phone) { setError("يرجى تعبئة جميع الحقول"); return; }
     setLoading(true);
-    try { await onSubmit({ name, email, phone, license }); onClose(); }
-    catch (e: any) { setError(e.message || "حدث خطأ"); }
-    finally { setLoading(false); }
+    try {
+      await apiPost({ name, email, phone, license });
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message || "حدث خطأ");
+      setLoading(false);
+    }
   };
 
   return (
@@ -130,7 +156,7 @@ function AddTraineeModal({ onClose, onSubmit }: {
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 10, border: `1px solid ${COLORS.gray300}`, borderRadius: 8, background: "#fff", color: COLORS.gray500, cursor: "pointer", fontSize: 13 }}>إلغاء</button>
           <button onClick={handleSubmit} disabled={loading}
-            style={{ flex: 1, padding: 10, border: "none", borderRadius: 8, background: COLORS.deep, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+            style={{ flex: 1, padding: 10, border: "none", borderRadius: 8, background: loading ? COLORS.gray300 : COLORS.deep, color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }}>
             {loading ? "جاري الإضافة..." : "إضافة المتدرب"}
           </button>
         </div>
@@ -142,11 +168,10 @@ function AddTraineeModal({ onClose, onSubmit }: {
 // ===========================
 // Modal إسناد متدرب
 // ===========================
-function AssignModal({ trainee, supervisors, onClose, onSubmit }: {
+function AssignModal({ trainee, supervisors, onClose }: {
   trainee: Trainee;
   supervisors: any[];
   onClose: () => void;
-  onSubmit: (data: { traineeId: string; supervisorId: string; startDate: string }) => Promise<void>;
 }) {
   const [selectedSup, setSelectedSup] = useState("");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
@@ -156,9 +181,13 @@ function AssignModal({ trainee, supervisors, onClose, onSubmit }: {
   const handleSubmit = async () => {
     if (!selectedSup) { setError("يرجى اختيار مشرف"); return; }
     setLoading(true);
-    try { await onSubmit({ traineeId: trainee.id, supervisorId: selectedSup, startDate }); onClose(); }
-    catch (e: any) { setError(e.message || "حدث خطأ"); }
-    finally { setLoading(false); }
+    try {
+      await apiPatch({ traineeId: trainee.id, action: 'assign', supervisorId: selectedSup, startDate });
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message || "حدث خطأ");
+      setLoading(false);
+    }
   };
 
   return (
@@ -193,7 +222,7 @@ function AssignModal({ trainee, supervisors, onClose, onSubmit }: {
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 10, border: `1px solid ${COLORS.gray300}`, borderRadius: 8, background: "#fff", color: COLORS.gray500, cursor: "pointer", fontSize: 13 }}>إلغاء</button>
           <button onClick={handleSubmit} disabled={loading}
-            style={{ flex: 1, padding: 10, border: "none", borderRadius: 8, background: COLORS.success, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+            style={{ flex: 1, padding: 10, border: "none", borderRadius: 8, background: loading ? COLORS.gray300 : COLORS.success, color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600 }}>
             {loading ? "جاري الإسناد..." : "✓ تأكيد الإسناد"}
           </button>
         </div>
@@ -211,10 +240,10 @@ async function exportToExcel(type: "supervisors" | "trainees", trainees: Trainee
 
   if (type === "supervisors") {
     const summaryData = supervisors.map(sup => {
-      const supSnapshots = snapshots.filter(s => s.supervisorId === sup.id);
-      const totalInd = supSnapshots.reduce((a, s) => a + (s.individualHours || 0), 0);
-      const totalGrp = supSnapshots.reduce((a, s) => a + (s.groupHours || 0), 0);
-      return { "المشرف": sup.name, "الإيميل": sup.email, "عدد المتدربين": trainees.filter(t => t.currentSupervisorId === sup.id).length, "فردية (ساعة)": totalInd, "جماعية (ساعة)": totalGrp, "الإجمالي": totalInd + totalGrp };
+      const supSnaps = snapshots.filter(s => s.supervisorId === sup.id);
+      const totalInd = supSnaps.reduce((a, s) => a + (s.individualHours || 0), 0);
+      const totalGrp = supSnaps.reduce((a, s) => a + (s.groupHours || 0), 0);
+      return { "المشرف": sup.name, "الإيميل": sup.email, "عدد المتدربين": trainees.filter(t => t.currentSupervisorId === sup.id).length, "فردية": totalInd, "جماعية": totalGrp, "الإجمالي": totalInd + totalGrp };
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "ملخص عام");
     supervisors.forEach(sup => {
@@ -243,10 +272,10 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
   initialTrainees?: any[];
   initialSnapshots?: any[];
 }) {
-  const [trainees, setTrainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
+  const [trainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
   const [snapshots] = useState<MonthlySnapshot[]>(initialSnapshots as MonthlySnapshot[]);
   const [activeTab, setActiveTab] = useState<"supervisors" | "trainees" | "onboarding" | "months">("supervisors");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showAddModal, setShowAddModal] = useState(false);
   const [assigningTrainee, setAssigningTrainee] = useState<Trainee | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
@@ -258,33 +287,23 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
     paused: trainees.filter(t => t.status === "paused").length,
   };
 
-  const createTrainee = async (data: { name: string; email: string; phone: string; license: License }) => {
-    await addTrainee(data);
-    window.location.reload();
-  };
-
-  const assignTraineeToSupervisor = async (data: { traineeId: string; supervisorId: string; startDate: string }) => {
-    await assignTrainee({ ...data, adminId: "admin" });
-    window.location.reload();
-  };
-
   const handleAdvanceOnboarding = async (traineeId: string, stage: OnboardingStage) => {
-    await updateOnboardingStage(traineeId, stage);
+    await apiPatch({ traineeId, action: 'updateOnboarding', stage });
     window.location.reload();
   };
 
   const handleChangeStatus = async (traineeId: string, status: TraineeStatus) => {
-    await updateTraineeStatus(traineeId, status);
+    await apiPatch({ traineeId, action: 'updateStatus', status });
     window.location.reload();
   };
 
   const handleLock = async (supervisorId: string, traineeId: string, month: string) => {
-    await lockMonth(supervisorId, traineeId, month, "admin");
+    await apiPut({ supervisorId, traineeId, month, action: 'lock' });
     window.location.reload();
   };
 
   const handleUnlock = async (supervisorId: string, traineeId: string, month: string) => {
-    await unlockMonth(supervisorId, traineeId, month, "admin");
+    await apiPut({ supervisorId, traineeId, month, action: 'unlock' });
     window.location.reload();
   };
 
@@ -390,7 +409,7 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
       {activeTab === "trainees" && (
         <div style={{ background: "#fff", borderRadius: 14, border: `1px solid ${COLORS.gray200}`, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.gray200}`, background: COLORS.gray100 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.deep }}>قائمة المتدربين</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.deep }}>قائمة المتدربين ({trainees.filter(t => t.status !== "onboarding").length})</span>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
@@ -404,7 +423,7 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
               <tbody>
                 {trainees.filter(t => t.status !== "onboarding").map(t => {
                   const sup = supervisors.find(s => s.id === t.currentSupervisorId);
-                  const pct = Math.min(Math.round((t.totalHours / t.requiredHours) * 100), 100);
+                  const pct = Math.min(Math.round(((t.totalHours || 0) / t.requiredHours) * 100), 100);
                   const statusStyle = STATUS_COLORS[t.status];
                   return (
                     <tr key={t.id} style={{ borderBottom: `1px solid ${COLORS.gray200}` }}>
@@ -419,14 +438,14 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
                       </td>
                       <td style={{ padding: "12px 16px" }}><Badge label={t.license} bg={COLORS.gray100} color={COLORS.gray500} /></td>
                       <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.gray500 }}>{sup?.name || "—"}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500 }}>{t.totalIndividualHours}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500 }}>{t.totalGroupHours}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500 }}>{t.totalIndividualHours || 0}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500 }}>{t.totalGroupHours || 0}</td>
                       <td style={{ padding: "12px 16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ width: 80, height: 5, background: COLORS.gray200, borderRadius: 99, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? COLORS.success : COLORS.primary, borderRadius: 99 }} />
                           </div>
-                          <span style={{ fontSize: 11, color: COLORS.gray500 }}>{t.totalHours}/{t.requiredHours}</span>
+                          <span style={{ fontSize: 11, color: COLORS.gray500 }}>{t.totalHours || 0}/{t.requiredHours}</span>
                         </div>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
@@ -448,6 +467,9 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
                     </tr>
                   );
                 })}
+                {trainees.filter(t => t.status !== "onboarding").length === 0 && (
+                  <tr><td colSpan={8} style={{ padding: "2rem", textAlign: "center", color: COLORS.gray500, fontSize: 13 }}>لا يوجد متدربون بعد</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -577,8 +599,8 @@ export default function AdminSupervisionPanel({ supervisors, initialTrainees = [
         </div>
       )}
 
-      {showAddModal && <AddTraineeModal onClose={() => setShowAddModal(false)} onSubmit={createTrainee} />}
-      {assigningTrainee && <AssignModal trainee={assigningTrainee} supervisors={supervisors} onClose={() => setAssigningTrainee(null)} onSubmit={assignTraineeToSupervisor} />}
+      {showAddModal && <AddTraineeModal onClose={() => setShowAddModal(false)} />}
+      {assigningTrainee && <AssignModal trainee={assigningTrainee} supervisors={supervisors} onClose={() => setAssigningTrainee(null)} />}
     </div>
   );
 }
