@@ -6,6 +6,7 @@ import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
 import SeatsManager from '@/components/supervisor/SeatsManager';
 import SupervisionHours from '@/components/supervisor/SupervisionHours';
+import BookingsManager from '@/components/supervisor/BookingsManager';
 
 interface Props { params: { locale: string }; }
 
@@ -28,15 +29,14 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   const supervisor = await getAuthenticatedSupervisor();
   if (!supervisor) redirect(`/${locale}/login`);
 
-  const today = new Date().toISOString().split('T')[0];
   const currentMonth = new Date().toISOString().slice(0, 7);
 
+  // جلب كل الحجوزات المؤكدة (مش بس القادمة)
   const bookingsSnap = await adminDb.collection('bookings')
     .where('supervisorId', '==', supervisor.id)
     .where('status', '==', 'confirmed')
-    .where('date', '>=', today)
     .orderBy('date', 'asc').get();
-  const upcomingBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const allBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
   const traineesSnap = await adminDb.collection('trainees')
     .where('currentSupervisorId', '==', supervisor.id)
@@ -55,6 +55,10 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     .where('month', '==', currentMonth)
     .get();
   const initialSnapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
+  // إحصائيات سريعة
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingCount = allBookings.filter(b => b.date >= today && (!b.meetingStatus || b.meetingStatus === 'pending')).length;
 
   return (
     <>
@@ -85,28 +89,12 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         .stat-lbl{font-size:11px;font-weight:500;color:var(--gray-500);}
         .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
         @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
-        .card{background:#fff;border-radius:18px;border:1px solid var(--gray-200);box-shadow:0 1px 4px rgba(1,20,66,0.05);overflow:hidden;}
-        .card-head{padding:14px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:10px;}
-        .card-icon{width:32px;height:32px;border-radius:9px;background:rgba(13,64,252,0.07);display:flex;align-items:center;justify-content:center;font-size:15px;}
-        .card-title{font-size:14px;font-weight:700;color:var(--deep);}
-        .chip{margin-right:auto;background:rgba(13,64,252,0.07);color:var(--primary);font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;border:1px solid rgba(13,64,252,0.15);}
-        .card-body{padding:16px 20px;}
-        .b-item{background:var(--gray-100);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;border:1px solid var(--gray-200);}
-        .b-item:last-child{margin-bottom:0;}
-        .b-name{font-size:13px;font-weight:600;color:var(--deep);margin-bottom:2px;}
-        .b-email{font-size:11px;color:var(--gray-500);}
-        .b-date{font-size:12px;font-weight:600;color:var(--primary);text-align:end;}
-        .b-time{font-size:11px;color:var(--gray-500);text-align:end;}
-        .b-meet{display:block;font-size:11px;color:#10B981;margin-top:4px;text-decoration:none;}
-        .empty{padding:32px 20px;text-align:center;}
-        .empty-ico{font-size:28px;opacity:.3;margin-bottom:6px;}
-        .empty-txt{color:var(--gray-500);font-size:13px;}
-        .footer{text-align:center;padding:20px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:32px;}
-        .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
         .section-divider{height:1px;background:var(--gray-200);margin:28px 0;}
         .section-title-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
         .section-title-bar h2{font-size:15px;font-weight:700;color:var(--deep);}
         .section-title-bar span{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:3px 10px;border-radius:99px;border:1px solid var(--gray-200);}
+        .footer{text-align:center;padding:20px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:32px;}
+        .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
       `}</style>
 
       <div dir="rtl">
@@ -136,6 +124,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         </div>
 
         <div className="main">
+          {/* STATS */}
           <div className="stats">
             <div className="stat-card">
               <div className="stat-icon" style={{background:'rgba(13,64,252,0.08)'}}>📋</div>
@@ -152,49 +141,26 @@ export default async function SupervisorDashboardPage({ params }: Props) {
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon" style={{background:'rgba(16,185,129,0.08)'}}>🪑</div>
+              <div className="stat-icon" style={{background:'rgba(16,185,129,0.08)'}}>🗓️</div>
               <div>
-                <div className="stat-val" style={{color:'#059669'}}>{supervisor.availableSeats ?? 0}</div>
-                <div className="stat-lbl">المقاعد المتاحة</div>
+                <div className="stat-val" style={{color:'#059669'}}>{upcomingCount}</div>
+                <div className="stat-lbl">مقابلات قادمة</div>
               </div>
             </div>
           </div>
 
+          {/* Availability Manager */}
           <div style={{marginBottom:20}}>
             <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
           </div>
 
+          {/* Seats + Bookings */}
           <div className="dash-grid">
             <SeatsManager supervisorId={supervisor.id} currentSeats={supervisor.availableSeats ?? 0} />
-            <div className="card">
-              <div className="card-head">
-                <div className="card-icon">🗓️</div>
-                <span className="card-title">الجلسات القادمة</span>
-                <span className="chip">{upcomingBookings.length}</span>
-              </div>
-              <div className="card-body">
-                {upcomingBookings.length === 0 ? (
-                  <div className="empty">
-                    <div className="empty-ico">📭</div>
-                    <div className="empty-txt">لا توجد جلسات قادمة</div>
-                  </div>
-                ) : upcomingBookings.map((b:any) => (
-                  <div key={b.id} className="b-item">
-                    <div>
-                      <div className="b-name">{b.studentName||'—'}</div>
-                      <div className="b-email">{b.studentEmail||'—'}</div>
-                      {b.meetLink && <a href={b.meetLink} target="_blank" rel="noopener noreferrer" className="b-meet">🎥 Google Meet</a>}
-                    </div>
-                    <div>
-                      <div className="b-date">{b.date}</div>
-                      <div className="b-time">{b.time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <BookingsManager bookings={allBookings} />
           </div>
 
+          {/* ساعات الإشراف */}
           <div className="section-divider" />
           <div className="section-title-bar">
             <h2>⏱️ ساعات الإشراف الأكاديمي</h2>
