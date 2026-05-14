@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { addSession, updateWorkHours } from "@/lib/firebase/supervision";
 import type { Trainee, Session, MonthlySnapshot, SessionType, AbsenceReason, WarningReason } from "@/types";
 
 const COLORS = {
@@ -130,13 +129,13 @@ function SessionModal({ trainees, onClose, onSubmit }: {
                   <div style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, border: `1.5px solid ${selectedTrainees.includes(t.id) ? COLORS.primary : COLORS.gray300}`, background: selectedTrainees.includes(t.id) ? COLORS.primary : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {selectedTrainees.includes(t.id) && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize: 13, color: selectedTrainees.includes(t.id) ? "#0C447C" : COLORS.deep }}>{t.name}</span>
+                  <span style={{ fontSize: 13 }}>{t.name}</span>
                   <span style={{ fontSize: 11, color: COLORS.gray500, marginRight: "auto" }}>{t.license}</span>
                 </div>
               ))}
             </div>
             {selectedTrainees.length === 1 && <p style={{ fontSize: 12, color: "#854F0B", background: "#FAEEDA", padding: "8px 10px", borderRadius: 8, marginTop: 6 }}>⚠️ الجلسة الجماعية تتطلب متدربَين على الأقل</p>}
-            {selectedTrainees.length >= 2 && <p style={{ fontSize: 12, color: "#185FA5", background: "#E6F1FB", padding: "8px 10px", borderRadius: 8, marginTop: 6 }}>✓ ستُحتسب ساعة واحدة على المشرف، وساعة لكل متدرب</p>}
+            {selectedTrainees.length >= 2 && <p style={{ fontSize: 12, color: "#185FA5", background: "#E6F1FB", padding: "8px 10px", borderRadius: 8, marginTop: 6 }}>✓ ساعة واحدة على المشرف، وساعة لكل متدرب</p>}
           </div>
         )}
 
@@ -152,7 +151,7 @@ function SessionModal({ trainees, onClose, onSubmit }: {
               <option value="trainee_postpone">تأجيل بطلب من المتدرب</option>
               <option value="other">أخرى</option>
             </select>
-            <p style={{ fontSize: 12, color: "#854F0B", background: "#FAEEDA", padding: "8px 10px", borderRadius: 8, marginTop: 8 }}>في حال تكرار الغياب، يُرجى إبلاغ المرشد الأكاديمي للمتابعة مع المتدرب واتخاذ الإجراء المناسب.</p>
+            <p style={{ fontSize: 12, color: "#854F0B", background: "#FAEEDA", padding: "8px 10px", borderRadius: 8, marginTop: 8 }}>في حال تكرار الغياب، يُرجى إبلاغ المرشد الأكاديمي.</p>
           </div>
         )}
 
@@ -167,7 +166,7 @@ function SessionModal({ trainees, onClose, onSubmit }: {
               <option value="policy_violation">مخالفة سياسات البرنامج</option>
               <option value="other">أخرى</option>
             </select>
-            <p style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 8, marginTop: 8 }}>سيُسجَّل هذا الإنذار في ملف المتدرب ويكون مرئياً للإدارة.</p>
+            <p style={{ fontSize: 12, color: "#791F1F", background: "#FCEBEB", padding: "8px 10px", borderRadius: 8, marginTop: 8 }}>سيُسجَّل هذا الإنذار في ملف المتدرب.</p>
           </div>
         )}
 
@@ -216,7 +215,7 @@ function SessionModal({ trainees, onClose, onSubmit }: {
 // ===========================
 // بطاقة المتدرب
 // ===========================
-function TraineeCard({ trainee, snapshot, onSelect }: { trainee: Trainee; snapshot: any; onSelect: () => void; }) {
+function TraineeCard({ trainee, snapshot, onSelect }: { trainee: Trainee; snapshot: any; onSelect: () => void }) {
   const total = snapshot?.totalHours || 0;
   const pct = Math.min(Math.round((total / trainee.requiredHours) * 100), 100);
   const groupPct = snapshot?.groupPercentage || 0;
@@ -267,8 +266,8 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [trainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
-  const [sessions, setSessions] = useState<Session[]>(initialSessions as Session[]);
-  const [snapshots, setSnapshots] = useState<MonthlySnapshot[]>(initialSnapshots as MonthlySnapshot[]);
+  const [sessions] = useState<Session[]>(initialSessions as Session[]);
+  const [snapshots] = useState<MonthlySnapshot[]>(initialSnapshots as MonthlySnapshot[]);
   const [showModal, setShowModal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
   const months = getLast6Months();
@@ -287,13 +286,26 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
     return { individual, group, total: individual + group };
   }, [sessions]);
 
+  // تسجيل جلسة عبر API
   const submitSession = async (data: any) => {
-    await addSession({ ...data, supervisorId, createdBy: supervisorId });
+    const res = await fetch('/api/supervisor/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'حدث خطأ');
     window.location.reload();
   };
 
+  // تحديث ساعات العمل عبر API
   const submitWorkHours = async (traineeId: string, workHours: number) => {
-    await updateWorkHours(supervisorId, traineeId, selectedMonth, workHours);
+    const res = await fetch('/api/supervisor/session', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ traineeId, month: selectedMonth, workHours }),
+    });
+    if (!res.ok) throw new Error('فشل التحديث');
     window.location.reload();
   };
 
@@ -306,7 +318,7 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
     return (
       <div style={{ direction: "rtl" }}>
         <button onClick={() => setSelectedTrainee(null)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.gray500, cursor: "pointer", fontSize: 13, marginBottom: "1rem", padding: "6px 0" }}>
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.gray500, cursor: "pointer", fontSize: 13, marginBottom: "1rem" }}>
           → رجوع
         </button>
 
