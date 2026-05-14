@@ -318,10 +318,16 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
 
     return (
       <div style={{ direction: "rtl" }}>
-        <button onClick={() => setSelectedTrainee(null)}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.gray500, cursor: "pointer", fontSize: 13, marginBottom: "1rem" }}>
-          → رجوع
-        </button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <button onClick={() => setSelectedTrainee(null)}
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: COLORS.gray500, cursor: "pointer", fontSize: 13 }}>
+            → رجوع
+          </button>
+          <button onClick={() => setShowModal(true)}
+            style={{ background: COLORS.deep, color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            + تسجيل جلسة
+          </button>
+        </div>
 
         <div style={{ background: "#fff", borderRadius: 14, padding: "1.25rem", border: `1px solid ${COLORS.gray200}`, marginBottom: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1rem" }}>
@@ -387,7 +393,8 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
             </table>
           )}
         </div>
-      </div>
+      {showModal && <SessionModal trainees={trainees} onClose={() => setShowModal(false)} onSubmit={submitSession} />}
+    </div>
     );
   }
 
