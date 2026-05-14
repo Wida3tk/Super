@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { Trainee, Session, MonthlySnapshot, SessionType, AbsenceReason, WarningReason } from "@/types";
+import TraineeMonthlyView from "./TraineeMonthlyView";
 
 const COLORS = {
   primary: "#0D40FC", deep: "#001442", neon: "#55D7FF",
@@ -333,19 +334,8 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
             </div>
           </div>
 
-          <div style={{ background: COLORS.gray100, borderRadius: 10, padding: "12px 14px", marginBottom: "1rem" }}>
-            <label style={{ fontSize: 12, color: COLORS.gray500, display: "block", marginBottom: 8 }}>ساعات عمل المتدرب هذا الشهر (لحساب نسبة الـ5%)</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="number" min={0} placeholder="مثال: 120" defaultValue={snap?.workHours || ""}
-                onBlur={e => { const val = Number(e.target.value); if (val > 0) submitWorkHours(selectedTrainee.id, val); }}
-                style={{ flex: 1, padding: "8px 10px", fontSize: 13, border: `1px solid ${COLORS.gray300}`, borderRadius: 8 }} />
-              <div style={{ background: "#E6F1FB", color: "#185FA5", padding: "8px 12px", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-                المطلوب: <strong style={{ marginRight: 4 }}>{snap?.requiredHours || 0} ساعة</strong>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {/* ملخص الشهر الحالي */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: "1rem" }}>
             {[{ label: "فردية", value: snap?.individualHours || 0, color: COLORS.primary }, { label: "جماعية", value: snap?.groupHours || 0, color: "#0891b2" }, { label: "الإجمالي", value: snap?.totalHours || 0, color: COLORS.success }].map(s => (
               <div key={s.label} style={{ background: COLORS.gray100, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
@@ -353,6 +343,15 @@ export default function SupervisionHours({ supervisorId, initialTrainees = [], i
               </div>
             ))}
           </div>
+        </div>
+
+        {/* جدول الأشهر */}
+        <div style={{ background: "#fff", borderRadius: 14, border: `1px solid ${COLORS.gray200}`, overflow: "hidden", marginBottom: "1rem" }}>
+          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.gray200}`, background: COLORS.gray100 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.deep }}>📅 الملخص الشهري</span>
+            <span style={{ fontSize: 11, color: COLORS.gray500, marginRight: 8 }}>اضغط ✏️ لإدخال ساعات العمل</span>
+          </div>
+          <TraineeMonthlyView traineeId={selectedTrainee.id} supervisorId={supervisorId} />
         </div>
 
         <div style={{ background: "#fff", borderRadius: 14, border: `1px solid ${COLORS.gray200}`, overflow: "hidden" }}>
