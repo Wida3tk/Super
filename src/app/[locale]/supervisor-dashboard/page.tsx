@@ -80,8 +80,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         <nav className="nav">
           <div style={{display:'flex',alignItems:'center',gap:14}}>
             <div>
-              <div className="nav-logo">سلوكيرا</div>
-              <div className="nav-sub">Sulukera</div>
+              <img src="/logo.svg" alt="سلوكيرا" style={{height:'32px',width:'auto'}} />
             </div>
             <div className="nav-div"/>
             <span className="nav-title">لوحة المشرف</span>
