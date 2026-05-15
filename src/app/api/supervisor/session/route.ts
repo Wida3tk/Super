@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activityLog';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 import { cookies } from 'next/headers';
 
@@ -140,6 +141,19 @@ export async function POST(req: NextRequest) {
   }
 
   await batch.commit();
+
+  // تسجيل النشاط
+  const sessionTypeLabel = type === 'individual' ? 'فردية' : type === 'group' ? 'جماعية' : type === 'absence' ? 'غياب' : 'إنذار';
+  await logActivity({
+    type: 'session',
+    message: `سجّل ${supervisor.name} جلسة ${sessionTypeLabel}`,
+    actorId: supervisor.id,
+    actorName: supervisor.name,
+    supervisorId: supervisor.id,
+    traineeId: traineeIds[0],
+    meta: { sessionType: type, duration, date },
+  });
+
   return NextResponse.json({ success: true, sessionId: sessionRef.id });
 }
 

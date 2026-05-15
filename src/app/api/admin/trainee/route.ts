@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activityLog';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 import { cookies } from 'next/headers';
 
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
     totalHours: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  });
+
+  await logActivity({
+    type: 'trainee_added',
+    message: `أُضيف متدرب جديد: ${name}`,
+    traineeId: ref.id,
+    meta: { license },
   });
 
   return NextResponse.json({ id: ref.id });
