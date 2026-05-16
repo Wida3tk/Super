@@ -1,230 +1,297 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import AddSupervisorButton from '@/components/admin/AddSupervisorButton';
+import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import LogoutButton from '@/components/LogoutButton';
-import SupervisorTabs from '@/components/admin/SupervisorTabs';
-import AdminSupervisionPanel from '@/components/admin/AdminSupervisionPanel';
 
 interface Props { params: { locale: string }; }
 
-export default async function AdminPage({ params }: Props) {
-  const { locale } = await params;
-  let data: any = null;
-
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
+  if (!sessionCookie) return null;
   try {
-    const { adminDb, adminAuth } = await import('@/lib/firebase/admin');
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
-    if (sessionCookie) {
-      const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-      if (decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-        const currentMonth = new Date().toISOString().slice(0, 7);
+    const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) return null;
+    return { adminDb };
+  } catch { return null; }
+}
 
-        const [bookingsSnap, supervisorsSnap, traineesSnap, snapshotsSnap] = await Promise.all([
-          adminDb.collection('bookings').get(),
-          adminDb.collection('supervisors').get(),
-          adminDb.collection('trainees').get(),
-          adminDb.collection('monthlySnapshots').where('month', '==', currentMonth).get(),
-        ]);
+export default async function AdminDashboardPage({ params }: Props) {
+  const { locale } = await params;
+  const auth = await verifyAdmin();
+  if (!auth) redirect(`/${locale}/login`);
+  const { adminDb } = auth;
 
-        data = {
-          bookings: bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-          supervisors: supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-          trainees: traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-          snapshots: snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-        };
-      }
-    }
-  } catch { data = null; }
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const today = new Date().toISOString().split('T')[0];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  if (!data) redirect(`/${locale}/login`);
+  const [traineesSnap, supervisorsSnap, sessionsSnap, snapshotsSnap, activitySnap, notifsSnap] = await Promise.all([
+    adminDb.collection('trainees').get(),
+    adminDb.collection('supervisors').get(),
+    adminDb.collection('sessions').where('month', '==', currentMonth).get(),
+    adminDb.collection('monthlySnapshots').where('month', '==', currentMonth).get(),
+    adminDb.collection('activityLog').orderBy('createdAt', 'desc').limit(10).get(),
+    adminDb.collection('notifications').where('read', '==', false).get(),
+  ]);
 
-  const { bookings, supervisors, trainees, snapshots } = data;
-  const confirmed = bookings.filter((b: any) => b.status === 'confirmed').length;
-  const cancelled = bookings.filter((b: any) => b.status === 'cancelled').length;
+  const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const snapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const activities = activitySnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const notifCount = notifsSnap.size;
+
+  // إحصائيات
+  const activeTrainees = trainees.filter(t => t.status === 'active');
+  const onboardingTrainees = trainees.filter(t => t.status === 'onboarding');
+  const readyToAssign = trainees.filter(t => t.status === 'onboarding' && t.onboardingStage === 'contracting');
+  const totalHours = snapshots.reduce((a, s) => a + (s.totalHours || 0), 0);
+  const weekSessions = sessions.filter(s => s.date >= weekAgo);
+
+  // تنبيهات
+  const over25 = snapshots.filter(s => (s.groupPercentage || 0) > 25);
+  const noWorkHours = snapshots.filter(s => !s.workHours || s.workHours === 0);
+  const atRisk = trainees.filter(t => {
+    if (t.status !== 'active') return false;
+    const snap = snapshots.find(s => s.traineeId === t.id);
+    return snap && (snap.absenceCount || 0) >= 3;
+  });
+
+  // تقدم المتدربين
+  const traineeProgress = activeTrainees.map(t => {
+    const snap = snapshots.find(s => s.traineeId === t.id);
+    const pct = t.requiredHours > 0 ? Math.round(((snap?.totalHours || 0) / t.requiredHours) * 100) : 0;
+    return { ...t, pct, totalHours: snap?.totalHours || 0, snap };
+  }).sort((a, b) => b.pct - a.pct).slice(0, 5);
+
+  const timeAgo = (iso: string) => {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `منذ ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `منذ ${hrs} ساعة`;
+    return `منذ ${Math.floor(hrs / 24)} يوم`;
+  };
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+        @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;font-family:'IBM Plex Sans Arabic',sans-serif;}
-        :root{--primary:#0D40FC;--deep:#001442;--neon:#55D7FF;--gray-100:#F8FAFC;--gray-200:#EEF2F7;--gray-300:#D1D9E6;--gray-500:#8898AA;--gray-700:#4A5568;--success:#10B981;--danger:#EF4444;}
-        body{background:var(--gray-100);direction:rtl;color:var(--deep);}
-        .nav{background:var(--deep);padding:0 40px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(1,20,66,0.18);}
-        .nav-brand{display:flex;align-items:center;gap:14px;}
-        .nav-logo{font-size:26px;font-weight:800;color:var(--primary);letter-spacing:-1px;}
-        .nav-sub{font-size:11px;font-weight:500;color:var(--neon);letter-spacing:0.12em;text-transform:uppercase;opacity:.85;}
-        .nav-div{width:1px;height:28px;background:rgba(255,255,255,0.12);}
-        .nav-title{font-size:14px;font-weight:600;color:rgba(255,255,255,0.7);}
-        .nav-back{display:flex;align-items:center;gap:6px;color:var(--neon);text-decoration:none;font-size:13px;font-weight:500;padding:7px 16px;border-radius:8px;border:1px solid rgba(85,215,255,0.25);transition:all .18s;}
-        .nav-back:hover{background:rgba(85,215,255,0.1);border-color:rgba(85,215,255,0.5);color:#fff;}
-        .hero{background:linear-gradient(135deg,var(--primary) 0%,var(--deep) 100%);padding:32px 40px;display:flex;align-items:center;justify-content:space-between;}
-        .hero h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;}
-        .hero p{font-size:13px;color:rgba(255,255,255,0.6);}
-        .hero-date{font-size:12px;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.08);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);}
-        .main{max-width:1280px;margin:0 auto;padding:32px 40px 64px;}
-        @media(max-width:768px){.main{padding:24px 16px 48px;}}
-        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;}
-        @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr);}}
-        .stat-card{background:#fff;border-radius:16px;padding:24px 20px;border:1px solid var(--gray-200);box-shadow:0 1px 4px rgba(1,20,66,0.06);display:flex;align-items:flex-start;gap:16px;transition:box-shadow .18s,transform .18s;}
-        .stat-card:hover{box-shadow:0 6px 20px rgba(13,64,252,0.1);transform:translateY(-2px);}
-        .stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
-        .stat-val{font-size:36px;font-weight:800;line-height:1;margin-bottom:4px;}
-        .stat-lbl{font-size:12px;font-weight:500;color:var(--gray-500);}
-        .section{background:#fff;border-radius:20px;border:1px solid var(--gray-200);box-shadow:0 1px 4px rgba(1,20,66,0.05);overflow:hidden;margin-bottom:24px;}
-        .section-head{padding:18px 24px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;background:#fff;}
-        .section-head-left{display:flex;align-items:center;gap:12px;}
-        .section-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;background:rgba(13,64,252,0.07);}
-        .section-title{font-size:15px;font-weight:700;color:var(--deep);}
-        .count-chip{background:rgba(13,64,252,0.07);color:var(--primary);font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;border:1px solid rgba(13,64,252,0.15);}
-        .csv-btn{display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:8px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(13,64,252,0.25);transition:all .18s;}
-        .csv-btn:hover{background:#0935d4;transform:translateY(-1px);}
-        .tbl-wrap{overflow-x:auto;}
-        table{width:100%;border-collapse:collapse;font-size:13.5px;}
-        thead{background:var(--gray-100);}
-        th{padding:11px 20px;color:var(--gray-500);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;text-align:right;border-bottom:1px solid var(--gray-200);}
-        th.c{text-align:center;}
-        td{padding:14px 20px;border-bottom:1px solid var(--gray-200);color:var(--gray-700);vertical-align:middle;}
-        td.c{text-align:center;}
-        tbody tr:last-child td{border-bottom:none;}
-        tbody tr{transition:background .12s;}
-        tbody tr:hover{background:rgba(13,64,252,0.025);}
-        .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
-        .b-ok{background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.2);}
-        .b-cancel{background:rgba(239,68,68,0.08);color:#dc2626;border:1px solid rgba(239,68,68,0.15);}
-        .b-pend{background:rgba(245,158,11,0.1);color:#d97706;border:1px solid rgba(245,158,11,0.2);}
-        .footer{text-align:center;padding:24px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:40px;}
-        .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
+        body{background:#F8FAFC;direction:rtl;color:#001442;}
+        .layout{display:flex;min-height:100vh;}
+        .main{flex:1;overflow:auto;}
+        .topbar{background:#fff;border-bottom:0.5px solid #EEF2F7;padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+        .page-title{font-size:16px;font-weight:600;color:#001442;}
+        .page-date{font-size:12px;color:#8898AA;}
+        .content{padding:24px 28px;}
+        .alerts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+        .alert-card{background:#fff;border-radius:14px;padding:14px 16px;border:0.5px solid #EEF2F7;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 4px rgba(1,20,66,0.04);}
+        .alert-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+        .alert-count{font-size:24px;font-weight:700;line-height:1;margin-bottom:2px;}
+        .alert-label{font-size:12px;font-weight:500;}
+        .alert-sub{font-size:11px;color:#8898AA;margin-top:2px;}
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+        .stat{background:#F8FAFC;border-radius:10px;padding:14px 16px;border:0.5px solid #EEF2F7;}
+        .stat-label{font-size:11px;color:#8898AA;margin-bottom:4px;}
+        .stat-val{font-size:26px;font-weight:700;}
+        .stat-note{font-size:11px;color:#8898AA;margin-top:2px;}
+        .bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .card{background:#fff;border-radius:16px;border:0.5px solid #EEF2F7;overflow:hidden;box-shadow:0 1px 4px rgba(1,20,66,0.04);}
+        .card-head{padding:12px 16px;border-bottom:0.5px solid #EEF2F7;display:flex;align-items:center;justify-content:space-between;}
+        .card-title{font-size:13px;font-weight:600;color:#001442;display:flex;align-items:center;gap:6px;}
+        .card-body{padding:12px 16px;}
+        .feed-item{display:flex;gap:10px;padding:9px 0;border-bottom:0.5px solid #EEF2F7;}
+        .feed-item:last-child{border-bottom:none;}
+        .feed-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;}
+        .feed-text{font-size:12px;color:#001442;line-height:1.5;}
+        .feed-time{font-size:11px;color:#8898AA;margin-top:2px;}
+        .progress-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #EEF2F7;}
+        .progress-row:last-child{border-bottom:none;}
+        .progress-name{font-size:12px;font-weight:500;width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .progress-bar{flex:1;height:5px;background:#EEF2F7;border-radius:99px;overflow:hidden;}
+        .progress-fill{height:100%;border-radius:99px;}
+        .tag{font-size:10px;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;white-space:nowrap;}
+        .right-col{display:flex;flex-direction:column;gap:16px;}
+        @media(max-width:900px){.alerts{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:1fr 1fr;}.bottom{grid-template-columns:1fr;}}
       `}</style>
 
-      <div dir="rtl">
-        <nav className="nav">
-          <div style={{display:'flex',alignItems:'center',gap:16}}>
-            <div className="nav-brand">
-              <div>
-                <div className="nav-logo">سلوكيرا</div>
-                <div className="nav-sub">Sulukera</div>
-              </div>
-            </div>
-            <div className="nav-div"/>
-            <span className="nav-title">لوحة الإدارة</span>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <a href={`/${locale}/admin/cms`} style={{display:'flex',alignItems:'center',gap:6,background:'rgba(85,215,255,0.1)',color:'#55D7FF',textDecoration:'none',fontSize:13,fontWeight:600,padding:'7px 14px',borderRadius:8,border:'1px solid rgba(85,215,255,0.25)',transition:'all .18s'}}>
-                🎨 لوحة التحكم CMS
-              </a>
-              <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
-            </div>
-            <LogoutButton locale={locale} />
-          </div>
-        </nav>
-
-        <div className="hero">
-          <div>
-            <h1>مرحباً 👋 — لوحة التحكم الرئيسية</h1>
-            <p>إدارة الحجوزات والمشرفين في منصة الإشراف الأكاديمي</p>
-          </div>
-          <div className="hero-date">
-            {new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
-          </div>
-        </div>
+      <div className="layout" dir="rtl">
+        <AdminSidebar locale={locale} notifCount={notifCount} />
 
         <div className="main">
-          <div className="stats">
-            {[
-              {icon:'📋',val:bookings.length,lbl:'إجمالي الحجوزات',clr:'#0D40FC',bg:'rgba(13,64,252,0.08)'},
-              {icon:'✅',val:confirmed,lbl:'حجوزات مؤكدة',clr:'#10B981',bg:'rgba(16,185,129,0.08)'},
-              {icon:'❌',val:cancelled,lbl:'حجوزات ملغاة',clr:'#EF4444',bg:'rgba(239,68,68,0.08)'},
-              {icon:'👨‍🏫',val:supervisors.length,lbl:'المشرفون النشطون',clr:'#001442',bg:'rgba(85,215,255,0.1)'},
-            ].map(s => (
-              <div key={s.lbl} className="stat-card">
-                <div className="stat-icon" style={{background:s.bg}}>{s.icon}</div>
+          {/* Topbar */}
+          <div className="topbar">
+            <div>
+              <div className="page-title">الداشبورد</div>
+              <div className="page-date">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <LogoutButton locale={locale} />
+            </div>
+          </div>
+
+          <div className="content">
+
+            {/* تنبيهات عاجلة */}
+            <div className="alerts">
+              <div className="alert-card" style={{ borderColor: readyToAssign.length > 0 ? '#F7C1C1' : '#EEF2F7' }}>
+                <div className="alert-icon" style={{ background: '#FCEBEB' }}>
+                  <i className="ti ti-user-check" style={{ color: '#A32D2D' }} aria-hidden="true" />
+                </div>
                 <div>
-                  <div className="stat-val" style={{color:s.clr}}>{s.val}</div>
-                  <div className="stat-lbl">{s.lbl}</div>
+                  <div className="alert-count" style={{ color: '#A32D2D' }}>{readyToAssign.length}</div>
+                  <div className="alert-label">جاهزون للإسناد</div>
+                  <div className="alert-sub">أكملوا مرحلة التعاقد</div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="section">
-            <div className="section-head">
-              <div className="section-head-left">
-                <div className="section-icon">📅</div>
-                <span className="section-title">الحجوزات</span>
-                <span className="count-chip">{bookings.length}</span>
-              </div>
-              <a href="/api/admin/export" className="csv-btn">📥 تصدير CSV</a>
-            </div>
-            <div className="tbl-wrap">
-              {bookings.length === 0 ? (
-                <div style={{padding:'48px 24px',textAlign:'center'}}>
-                  <div style={{fontSize:36,marginBottom:10,opacity:.3}}>📭</div>
-                  <div style={{color:'var(--gray-500)',fontSize:14}}>لا توجد حجوزات بعد</div>
+              <div className="alert-card" style={{ borderColor: over25.length > 0 ? '#FAC775' : '#EEF2F7' }}>
+                <div className="alert-icon" style={{ background: '#FAEEDA' }}>
+                  <i className="ti ti-alert-triangle" style={{ color: '#854F0B' }} aria-hidden="true" />
                 </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>الطالب</th><th>البريد الإلكتروني</th>
-                      <th className="c">التاريخ</th><th className="c">الوقت</th><th className="c">الحالة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((b: any) => (
-                      <tr key={b.id}>
-                        <td style={{color:'var(--deep)',fontWeight:600}}>{b.studentName||'—'}</td>
-                        <td style={{color:'var(--gray-500)',fontSize:12}}>{b.studentEmail||'—'}</td>
-                        <td className="c">{b.date||'—'}</td>
-                        <td className="c">{b.time||'—'}</td>
-                        <td className="c">
-                          <span className={`badge ${b.status==='confirmed'?'b-ok':b.status==='cancelled'?'b-cancel':'b-pend'}`}>
-                            {b.status==='confirmed'?'✓ مؤكد':b.status==='cancelled'?'✕ ملغى':'⏳ معلق'}
-                          </span>
-                        </td>
-                      </tr>
+                <div>
+                  <div className="alert-count" style={{ color: '#854F0B' }}>{over25.length}</div>
+                  <div className="alert-label">تجاوزوا 25% جماعية</div>
+                  <div className="alert-sub">يحتاجون مراجعة</div>
+                </div>
+              </div>
+
+              <div className="alert-card" style={{ borderColor: atRisk.length > 0 ? '#F7C1C1' : '#EEF2F7' }}>
+                <div className="alert-icon" style={{ background: '#FCEBEB' }}>
+                  <i className="ti ti-heart-broken" style={{ color: '#A32D2D' }} aria-hidden="true" />
+                </div>
+                <div>
+                  <div className="alert-count" style={{ color: '#A32D2D' }}>{atRisk.length}</div>
+                  <div className="alert-label">متدربون في خطر</div>
+                  <div className="alert-sub">3+ غيابات هذا الشهر</div>
+                </div>
+              </div>
+            </div>
+
+            {/* إحصائيات */}
+            <div className="stats">
+              <div className="stat">
+                <div className="stat-label">ساعات الشهر</div>
+                <div className="stat-val" style={{ color: '#0D40FC' }}>{totalHours}</div>
+                <div className="stat-note">إجمالي كل المشرفين</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">متدربون نشطون</div>
+                <div className="stat-val">{activeTrainees.length}</div>
+                <div className="stat-note">من أصل {trainees.length}</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">جلسات هذا الأسبوع</div>
+                <div className="stat-val" style={{ color: '#10B981' }}>{weekSessions.length}</div>
+                <div className="stat-note">فردية وجماعية</div>
+              </div>
+              <div className="stat">
+                <div className="stat-label">قيد البوردنق</div>
+                <div className="stat-val" style={{ color: '#8898AA' }}>{onboardingTrainees.length}</div>
+                <div className="stat-note">منهم {readyToAssign.length} جاهز</div>
+              </div>
+            </div>
+
+            {/* Bottom */}
+            <div className="bottom">
+              {/* Feed */}
+              <div className="card">
+                <div className="card-head">
+                  <div className="card-title">
+                    <i className="ti ti-activity" style={{ fontSize: 15 }} aria-hidden="true" />
+                    آخر النشاطات
+                  </div>
+                  <span style={{ fontSize: 11, color: '#8898AA' }}>{activities.length} حدث</span>
+                </div>
+                <div className="card-body">
+                  {activities.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#8898AA', fontSize: 13 }}>
+                      لا توجد نشاطات بعد — ستظهر هنا عند تسجيل الجلسات
+                    </div>
+                  ) : activities.map(a => (
+                    <div key={a.id} className="feed-item">
+                      <div className="feed-avatar" style={{
+                        background: a.type === 'session' ? '#E6F1FB' : a.type === 'trainee_added' ? '#EAF3DE' : '#FAEEDA',
+                        color: a.type === 'session' ? '#185FA5' : a.type === 'trainee_added' ? '#3B6D11' : '#854F0B',
+                      }}>
+                        {(a.actorName || 'م').slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="feed-text">{a.message}</div>
+                        <div className="feed-time">{timeAgo(a.createdAt)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* اليمين */}
+              <div className="right-col">
+                {/* تقدم المتدربين */}
+                <div className="card">
+                  <div className="card-head">
+                    <div className="card-title">
+                      <i className="ti ti-target" style={{ fontSize: 15 }} aria-hidden="true" />
+                      تقدم نحو الرخصة
+                    </div>
+                    <span className="tag" style={{ background: '#E6F1FB', color: '#185FA5' }}>الشهر الحالي</span>
+                  </div>
+                  <div className="card-body">
+                    {traineeProgress.length === 0 ? (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#8898AA', fontSize: 12 }}>لا يوجد متدربون نشطون</div>
+                    ) : traineeProgress.map(t => (
+                      <div key={t.id} className="progress-row">
+                        <div className="progress-name">{t.name}</div>
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${t.pct}%`, background: t.pct >= 100 ? '#10B981' : '#0D40FC' }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: t.pct >= 100 ? '#10B981' : '#8898AA', minWidth: 30 }}>{t.pct}%</span>
+                        {t.pct >= 90 && t.pct < 100 && <span className="tag" style={{ background: '#FAEEDA', color: '#854F0B' }}>قريب</span>}
+                        {t.pct >= 100 && <span className="tag" style={{ background: '#EAF3DE', color: '#3B6D11' }}>✓</span>}
+                        {(t.snap?.absenceCount || 0) >= 3 && <span className="tag" style={{ background: '#FCEBEB', color: '#A32D2D' }}>خطر</span>}
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+                  </div>
+                </div>
 
-          <div className="section">
-            <div className="section-head">
-              <div className="section-head-left">
-                <div className="section-icon">👨‍🏫</div>
-                <span className="section-title">المشرفون</span>
-                <span className="count-chip">{supervisors.length}</span>
+                {/* المشرفون */}
+                <div className="card">
+                  <div className="card-head">
+                    <div className="card-title">
+                      <i className="ti ti-chart-bar" style={{ fontSize: 15 }} aria-hidden="true" />
+                      إنتاجية المشرفين
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    {supervisors.map(sup => {
+                      const supSnaps = snapshots.filter(s => s.supervisorId === sup.id);
+                      const total = supSnaps.reduce((a, s) => a + (s.totalHours || 0), 0);
+                      const count = activeTrainees.filter(t => t.currentSupervisorId === sup.id).length;
+                      return (
+                        <div key={sup.id} className="progress-row">
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E6F1FB', color: '#185FA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                            {sup.name?.slice(0, 2)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sup.name}</div>
+                            <div style={{ fontSize: 11, color: '#8898AA' }}>{count} متدرب</div>
+                          </div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: '#0D40FC' }}>{total}</div>
+                          <div style={{ fontSize: 11, color: '#8898AA' }}>ساعة</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <AddSupervisorButton />
             </div>
-            <SupervisorTabs supervisors={supervisors} />
+
           </div>
-
-          <div className="section">
-            <div className="section-head">
-              <div className="section-head-left">
-                <div className="section-icon">⏱️</div>
-                <span className="section-title">الإشراف الأكاديمي</span>
-                <span className="count-chip">{trainees.length} متدرب</span>
-              </div>
-            </div>
-            <div style={{padding:'1.5rem'}}>
-              <AdminSupervisionPanel
-                supervisors={supervisors}
-                initialTrainees={trainees}
-                initialSnapshots={snapshots}
-              />
-            </div>
-          </div>
-
-        </div>
-
-        <div className="footer">
-          منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a> © {new Date().getFullYear()}
         </div>
       </div>
     </>
