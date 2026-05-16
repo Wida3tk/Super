@@ -18,7 +18,7 @@ export default async function SupervisorsPage({ params }: Props) {
       adminDb.collection('supervisors').get(),
       adminDb.collection('bookings').get(),
     ]);
-    const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
     const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const stats = {
       sessionsBySupervisor: supervisors.map((s: any) => ({
@@ -27,7 +27,7 @@ export default async function SupervisorsPage({ params }: Props) {
     };
     return (
       <AdminPageLayout locale={locale} title="إنتاجية المشرفين">
-        <SupervisorTabs supervisors={supervisors} />
+        <SupervisorTabs supervisors={supervisors as any} />
       </AdminPageLayout>
     );
   } catch { redirect(`/${locale}/login`); }
