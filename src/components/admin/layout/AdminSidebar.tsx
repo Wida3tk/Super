@@ -1,22 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const COLORS = {
-  primary: "#0D40FC",
-  deep: "#001442",
-  gray100: "#F8FAFC",
-  gray200: "#EEF2F7",
-  gray500: "#8898AA",
-};
 
 interface NavItem {
   href: string;
   icon: string;
   label: string;
   badge?: number;
+  emoji?: string;
 }
 
 interface NavSection {
@@ -32,25 +24,25 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
     {
       title: "الرئيسية",
       items: [
-        { href: `${base}`, icon: "ti-layout-dashboard", label: "الداشبورد" },
-        { href: `${base}/notifications`, icon: "ti-bell", label: "الإشعارات", badge: notifCount },
+        { href: `${base}`, icon: "ti-layout-dashboard", label: "الداشبورد", emoji: "🏠" },
+        { href: `${base}/notifications`, icon: "ti-bell", label: "الإشعارات", badge: notifCount, emoji: "🔔" },
       ],
     },
     {
       title: "الإشراف",
       items: [
-        { href: `${base}/trainees`, icon: "ti-users", label: "المتدربون" },
-        { href: `${base}/supervisors`, icon: "ti-chart-bar", label: "إنتاجية المشرفين" },
-        { href: `${base}/onboarding`, icon: "ti-user-check", label: "البوردنق والإسناد" },
-        { href: `${base}/months`, icon: "ti-calendar-stats", label: "إدارة الأشهر" },
+        { href: `${base}/trainees`, icon: "ti-users", label: "المتدربون", emoji: "👥" },
+        { href: `${base}/supervisors`, icon: "ti-chart-bar", label: "إنتاجية المشرفين", emoji: "📊" },
+        { href: `${base}/onboarding`, icon: "ti-user-check", label: "البوردنق والإسناد", emoji: "🎯" },
+        { href: `${base}/months`, icon: "ti-calendar-stats", label: "إدارة الأشهر", emoji: "📅" },
       ],
     },
     {
       title: "النظام",
       items: [
-        { href: `${base}/bookings`, icon: "ti-calendar", label: "الحجوزات" },
-        { href: `${base}/export`, icon: "ti-file-export", label: "التصدير" },
-        { href: `${base}/cms`, icon: "ti-settings", label: "الإعدادات" },
+        { href: `${base}/bookings`, icon: "ti-calendar", label: "الحجوزات", emoji: "📋" },
+        { href: `${base}/export`, icon: "ti-file-export", label: "التصدير", emoji: "📤" },
+        { href: `${base}/cms`, icon: "ti-settings", label: "الإعدادات", emoji: "⚙️" },
       ],
     },
   ];
@@ -64,22 +56,33 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
     <aside style={{
       width: 220, flexShrink: 0,
       background: "#fff",
-      borderLeft: `0.5px solid ${COLORS.gray200}`,
+      borderLeft: "1px solid #E2E8F0",
       display: "flex", flexDirection: "column",
       height: "100vh", position: "sticky", top: 0,
       overflowY: "auto",
+      boxShadow: "2px 0 8px rgba(0,0,0,0.03)",
     }}>
       {/* Logo */}
-      <div style={{ padding: "1.25rem 1rem", borderBottom: `0.5px solid ${COLORS.gray200}` }}>
-        <img src="/logo.svg" alt="سلوكيرا" style={{ height: 30, width: "auto" }} />
-        <div style={{ fontSize: 10, color: COLORS.gray500, marginTop: 4, letterSpacing: "0.06em" }}>لوحة الإدارة</div>
+      <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid #F1F5F9" }}>
+        <img src="/logo.svg" alt="سلوكيرا" style={{ height: 28, width: "auto" }} />
+        <div style={{
+          fontSize: 10, color: "#94A3B8", marginTop: 6,
+          background: "#F8FAFC", border: "1px solid #E2E8F0",
+          padding: "2px 8px", borderRadius: 99, display: "inline-block",
+          fontWeight: 500, letterSpacing: "0.04em",
+        }}>
+          لوحة الإدارة
+        </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "0.75rem 0.5rem" }}>
+      <nav style={{ flex: 1, padding: "10px 10px" }}>
         {sections.map(section => (
-          <div key={section.title} style={{ marginBottom: "0.5rem" }}>
-            <div style={{ fontSize: 10, color: COLORS.gray500, padding: "6px 0.75rem 4px", letterSpacing: "0.06em", fontWeight: 500 }}>
+          <div key={section.title} style={{ marginBottom: "4px" }}>
+            <div style={{
+              fontSize: 10, color: "#CBD5E1", padding: "8px 8px 4px",
+              letterSpacing: "0.08em", fontWeight: 600, textTransform: "uppercase",
+            }}>
               {section.title}
             </div>
             {section.items.map(item => {
@@ -88,18 +91,27 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
                 <Link key={item.href} href={item.href}
                   style={{
                     display: "flex", alignItems: "center", gap: 9,
-                    padding: "8px 0.75rem", borderRadius: 8,
+                    padding: "9px 10px", borderRadius: 10,
                     fontSize: 13, textDecoration: "none",
-                    color: active ? COLORS.primary : COLORS.gray500,
-                    background: active ? "#E6F1FB" : "transparent",
-                    fontWeight: active ? 500 : 400,
+                    color: active ? "#0D40FC" : "#64748B",
+                    background: active ? "#EEF2FF" : "transparent",
+                    fontWeight: active ? 600 : 400,
                     marginBottom: 2,
                     transition: "all 0.15s",
-                  }}>
-                  <i className={`ti ${item.icon}`} style={{ fontSize: 16, flexShrink: 0 }} aria-hidden="true" />
+                    border: active ? "1px solid #C7D2FE" : "1px solid transparent",
+                  }}
+                  onMouseOver={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                  onMouseOut={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{item.emoji}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {item.badge && item.badge > 0 && (
-                    <span style={{ background: "#E24B4A", color: "#fff", fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99 }}>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span style={{
+                      background: "#EF4444", color: "#fff",
+                      fontSize: 10, fontWeight: 700,
+                      padding: "1px 6px", borderRadius: 99,
+                      minWidth: 18, textAlign: "center",
+                    }}>
                       {item.badge}
                     </span>
                   )}
@@ -111,11 +123,19 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
       </nav>
 
       {/* Bottom */}
-      <div style={{ padding: "0.75rem 0.5rem", borderTop: `0.5px solid ${COLORS.gray200}` }}>
+      <div style={{ padding: "10px", borderTop: "1px solid #F1F5F9" }}>
         <Link href={`/${locale}`}
-          style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 0.75rem", borderRadius: 8, fontSize: 13, color: COLORS.gray500, textDecoration: "none" }}>
-          <i className="ti ti-home" style={{ fontSize: 16 }} aria-hidden="true" />
-          الموقع الرئيسي
+          style={{
+            display: "flex", alignItems: "center", gap: 9,
+            padding: "9px 10px", borderRadius: 10,
+            fontSize: 13, color: "#94A3B8", textDecoration: "none",
+            transition: "all 0.15s",
+          }}
+          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
+          <span style={{ fontSize: 16 }}>🌐</span>
+          <span>الموقع الرئيسي</span>
         </Link>
       </div>
     </aside>
