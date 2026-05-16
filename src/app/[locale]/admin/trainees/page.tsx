@@ -23,8 +23,24 @@ export default async function TraineesPage({ params }: Props) {
     const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const snapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const active = trainees.filter((t: any) => t.status === 'active').length;
+    const onboarding = trainees.filter((t: any) => t.status === 'onboarding').length;
     return (
       <AdminPageLayout locale={locale} title="المتدربون">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+          {[
+            { emoji: '👥', val: trainees.length, label: 'إجمالي المتدربين', color: '#4F46E5', border: '#4F46E5' },
+            { emoji: '✅', val: active, label: 'نشطون', color: '#16A34A', border: '#16A34A' },
+            { emoji: '🎓', val: onboarding, label: 'قيد البوردنق', color: '#D97706', border: '#D97706' },
+            { emoji: '⏸️', val: trainees.filter((t: any) => t.status === 'paused').length, label: 'مؤجل', color: '#64748B', border: '#64748B' },
+          ].map(s => (
+            <div key={s.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #E2E8F0', borderTop: `3px solid ${s.border}` }}>
+              <div style={{ fontSize: 24, marginBottom: 6 }}>{s.emoji}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.val}</div>
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
         <AdminSupervisionPanel supervisors={supervisors} initialTrainees={trainees} initialSnapshots={snapshots} />
       </AdminPageLayout>
     );

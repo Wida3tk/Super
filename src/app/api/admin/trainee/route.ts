@@ -79,6 +79,31 @@ export async function PATCH(req: NextRequest) {
       createdBy: 'admin',
     });
     await batch.commit();
+    if (action === 'assign') {
+      const { logActivity } = await import('@/lib/activityLog');
+      const supSnap = await adminDb.collection('supervisors').doc(data.supervisorId).get();
+      const traineeSnap = await adminDb.collection('trainees').doc(traineeId).get();
+      const supName = supSnap.exists ? (supSnap.data() as any).name : data.supervisorId;
+      const traineeName = traineeSnap.exists ? (traineeSnap.data() as any).name : traineeId;
+      await logActivity({
+        type: 'assigned',
+        message: `تم إسناد ${traineeName} للمشرف ${supName}`,
+        supervisorId: data.supervisorId,
+        traineeId,
+        meta: { startDate: data.startDate },
+      });
+    } else if (action === 'updateOnboarding') {
+      const { logActivity } = await import('@/lib/activityLog');
+      const traineeSnap = await adminDb.collection('trainees').doc(traineeId).get();
+      const traineeName = traineeSnap.exists ? (traineeSnap.data() as any).name : traineeId;
+      const stageLabels: Record<string, string> = { initial_interview: 'مقابلة أولية', post_interview: 'ما بعد المقابلة', contracting: 'التعاقد' };
+      await logActivity({
+        type: 'onboarding',
+        message: `انتقل ${traineeName} لمرحلة ${stageLabels[data.stage] || data.stage}`,
+        traineeId,
+        meta: { stage: data.stage },
+      });
+    }
   }
 
   return NextResponse.json({ success: true });

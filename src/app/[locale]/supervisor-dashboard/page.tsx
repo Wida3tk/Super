@@ -6,6 +6,7 @@ import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
 import SeatsManager from '@/components/supervisor/SeatsManager';
 import SupervisorTabs from '@/components/supervisor/SupervisorTabs';
+import SupervisorNotifications from '@/components/supervisor/SupervisorNotifications';
 
 interface Props { params: { locale: string }; }
 
@@ -31,19 +32,22 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const today = new Date().toISOString().split('T')[0];
 
-  const [bookingsSnap, traineesSnap, sessionsSnap, snapshotsSnap] = await Promise.all([
+  const [bookingsSnap, traineesSnap, sessionsSnap, snapshotsSnap, notifsSnap] = await Promise.all([
     adminDb.collection('bookings').where('supervisorId', '==', supervisor.id).where('status', '==', 'confirmed').orderBy('date', 'asc').get(),
     adminDb.collection('trainees').where('currentSupervisorId', '==', supervisor.id).where('status', '==', 'active').get(),
     adminDb.collection('sessions').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
     adminDb.collection('monthlySnapshots').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
+    adminDb.collection('notifications').where('supervisorId', '==', supervisor.id).orderBy('createdAt', 'desc').limit(20).get(),
   ]);
 
   const allBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const initialTrainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const initialSessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const initialSnapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const notifications = notifsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const unreadCount = notifications.filter((n: any) => !n.read).length;
 
-  const upcomingCount = allBookings.filter(b => b.date >= today && (!b.meetingStatus || b.meetingStatus === 'pending')).length;
+  const upcomingCount = allBookings.filter((b: any) => b.date >= today && (!b.meetingStatus || b.meetingStatus === 'pending')).length;
 
   return (
     <>
@@ -134,6 +138,22 @@ export default async function SupervisorDashboardPage({ params }: Props) {
           <div style={{marginBottom:24}}>
             <SeatsManager supervisorId={supervisor.id} currentSeats={supervisor.availableSeats ?? 0} />
           </div>
+
+          {/* إشعارات الإدارة */}
+          {notifications.length > 0 && (
+            <div style={{background:'#fff',borderRadius:16,border:'1px solid #E2E8F0',overflow:'hidden',marginBottom:20,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+              <div style={{padding:'12px 20px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FAFAFA'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:18}}>🔔</span>
+                  <span style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>رسائل الإدارة</span>
+                  {unreadCount > 0 && <span style={{background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:99}}>{unreadCount}</span>}
+                </div>
+              </div>
+              <div style={{padding:'12px 16px'}}>
+                <SupervisorNotifications notifications={notifications} supervisorId={supervisor.id} />
+              </div>
+            </div>
+          )}
 
           {/* Main Tabs */}
           <SupervisorTabs
