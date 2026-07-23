@@ -8,6 +8,7 @@ import type {
   OnboardingStage,
   License,
 } from "@/types";
+import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 
 const COLORS = {
   primary: "#0D40FC", deep: "#001442", success: "#10B981",
@@ -116,7 +117,7 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
       <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: "100%", maxWidth: 440, direction: "rtl" }}>
         <p style={{ fontSize: 16, fontWeight: 600, color: COLORS.deep, marginBottom: "1.25rem" }}>إضافة متدرب جديد</p>
         <p style={{ fontSize: 12, color: COLORS.gray500, marginBottom: "1.25rem", background: COLORS.gray100, padding: "8px 12px", borderRadius: 8 }}>
-          سيُضاف في مرحلة "مقابلة أولية" — الإسناد لمشرف يتم لاحقاً بعد التعاقد
+          سيُضاف في مرحلة &quot;مقابلة أولية&quot; — الإسناد لمشرف يتم لاحقاً بعد التعاقد
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: "1rem" }}>
           <div>
@@ -227,34 +228,23 @@ function AssignModal({ trainee, supervisors, onClose }: {
 }
 
 // ===========================
-// Export to Excel
+// Export to CSV
 // ===========================
 async function exportToExcel(type: "supervisors" | "trainees", trainees: Trainee[], supervisors: any[], snapshots: MonthlySnapshot[], selectedMonth: string) {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
   if (type === "supervisors") {
-    const summaryData = supervisors.map(sup => {
+    const summaryData: CsvRow[] = supervisors.map(sup => {
       const supSnaps = snapshots.filter(s => s.supervisorId === sup.id);
       const totalInd = supSnaps.reduce((a, s) => a + (s.individualHours || 0), 0);
       const totalGrp = supSnaps.reduce((a, s) => a + (s.groupHours || 0), 0);
       return { "المشرف": sup.name, "الإيميل": sup.email, "عدد المتدربين": trainees.filter(t => t.currentSupervisorId === sup.id).length, "فردية": totalInd, "جماعية": totalGrp, "الإجمالي": totalInd + totalGrp };
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "ملخص عام");
-    supervisors.forEach(sup => {
-      const data = trainees.filter(t => t.currentSupervisorId === sup.id).map(t => {
-        const snap = snapshots.find(s => s.traineeId === t.id && s.supervisorId === sup.id);
-        return { "المتدرب": t.name, "الرخصة": t.license, "الساعات المطلوبة": t.requiredHours, "فردية": snap?.individualHours || 0, "جماعية": snap?.groupHours || 0, "الإجمالي": snap?.totalHours || 0, "الحالة": STATUS_LABELS[t.status] };
-      });
-      if (data.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), sup.name?.slice(0, 31) || sup.id);
-    });
-    XLSX.writeFile(wb, `تقرير-المشرفين-${selectedMonth}.xlsx`);
+    downloadCsv(`تقرير-المشرفين-${selectedMonth}.csv`, summaryData);
   } else {
-    const summaryData = trainees.map(t => {
+    const summaryData: CsvRow[] = trainees.map(t => {
       const sup = supervisors.find(s => s.id === t.currentSupervisorId);
       return { "المتدرب": t.name, "الإيميل": t.email, "الجوال": t.phone, "الرخصة": t.license, "الساعات المطلوبة": t.requiredHours, "فردية": t.totalIndividualHours || 0, "جماعية": t.totalGroupHours || 0, "الإجمالي": t.totalHours || 0, "المتبقي": t.requiredHours - (t.totalHours || 0), "المشرف الحالي": sup?.name || "—", "الحالة": STATUS_LABELS[t.status] };
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), "ملخص عام");
-    XLSX.writeFile(wb, `تقرير-المتدربين-${selectedMonth}.xlsx`);
+    downloadCsv(`تقرير-المتدربين-${selectedMonth}.csv`, summaryData);
   }
 }
 

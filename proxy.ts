@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // استثناء API Routes

@@ -35,8 +35,6 @@ export async function GET(request: NextRequest) {
         date: data.date,
         time: data.time,
         status: data.status,
-        // نعطي الـ token فقط للإدارة
-        managementToken: data.status === 'confirmed' ? data.managementToken : null,
       }
     });
   } catch (error: any) {

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       decoded = await adminAuth.verifyIdToken(token);
     } catch (e: any) {
       console.error('verifyIdToken failed:', e.message);
-      return NextResponse.json({ error: 'INVALID_TOKEN', detail: e.message }, { status: 401 });
+      return NextResponse.json({ error: 'INVALID_TOKEN' }, { status: 401 });
     }
 
     let sessionCookie;
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (e: any) {
       console.error('createSessionCookie failed:', e.message);
-      return NextResponse.json({ error: 'SESSION_FAILED', detail: e.message }, { status: 500 });
+      return NextResponse.json({ error: 'SESSION_FAILED' }, { status: 500 });
     }
 
     const isAdmin = decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase();
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true, isAdmin });
     response.cookies.set('__session', sessionCookie, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 5,
       path: '/',
       sameSite: 'lax',
@@ -43,6 +43,6 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error: any) {
     console.error('Session API error:', error.message);
-    return NextResponse.json({ error: 'SERVER_ERROR', detail: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 });
   }
 }

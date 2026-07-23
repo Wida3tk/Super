@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import BookingSection from '@/components/booking/BookingSection';
 import Link from 'next/link';
 
-interface Props { params: { locale: string; id: string }; }
+interface Props { params: Promise<{ locale: string; id: string }>; }
 
 export default async function SupervisorPage({ params }: Props) {
   const { locale, id } = await params;

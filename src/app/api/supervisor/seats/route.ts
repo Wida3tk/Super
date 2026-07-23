@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
+import { adminDb } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const { adminDb, adminAuth } = await import('@/lib/firebase/admin');
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
-    if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    await adminAuth.verifySessionCookie(sessionCookie, true);
+    const supervisor = await getAuthenticatedSupervisor();
+    if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { supervisorId, seats } = await request.json();
-    if (!supervisorId || seats === undefined) return NextResponse.json({ error: 'MISSING' }, { status: 400 });
+    const { seats } = await request.json();
+    const parsedSeats = typeof seats === 'number' ? seats : Number(seats);
+    if (!Number.isInteger(parsedSeats) || parsedSeats < 0 || parsedSeats > 10000) {
+      return NextResponse.json({ error: 'INVALID_SEATS' }, { status: 400 });
+    }
 
-    await adminDb.collection('supervisors').doc(supervisorId).update({
-      availableSeats: Math.max(0, parseInt(seats)),
+    await adminDb.collection('supervisors').doc(supervisor.id).update({
+      availableSeats: parsedSeats,
       updatedAt: new Date().toISOString(),
     });
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error('Update seats error:', error);
+    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 });
   }
 }

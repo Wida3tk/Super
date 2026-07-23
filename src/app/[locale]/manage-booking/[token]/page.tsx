@@ -2,7 +2,7 @@ import { getBookingByToken } from '@/lib/actions/bookingActions';
 import CancelBookingClient from '@/components/booking/CancelBookingClient';
 import Link from 'next/link';
 
-interface Props { params: { locale: string; token: string }; }
+interface Props { params: Promise<{ locale: string; token: string }>; }
 
 export default async function ManageBookingPage({ params }: Props) {
   const { locale, token } = await params;

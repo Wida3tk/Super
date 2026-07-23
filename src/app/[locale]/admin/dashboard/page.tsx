@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import LogoutButton from '@/components/LogoutButton';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 async function verifyAdmin() {
   const cookieStore = await cookies();

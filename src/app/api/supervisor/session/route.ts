@@ -26,6 +26,23 @@ export async function POST(req: NextRequest) {
   if (!traineeIds || !type || !date) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
+  if (!Array.isArray(traineeIds) || traineeIds.length === 0 || traineeIds.length > 50) {
+    return NextResponse.json({ error: 'Invalid trainees' }, { status: 400 });
+  }
+  if (!['individual', 'group', 'absence', 'warning'].includes(type)) {
+    return NextResponse.json({ error: 'Invalid session type' }, { status: 400 });
+  }
+
+  const uniqueTraineeIds = [...new Set(traineeIds.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+  if (uniqueTraineeIds.length !== traineeIds.length) {
+    return NextResponse.json({ error: 'Invalid trainees' }, { status: 400 });
+  }
+  const traineeDocs = await Promise.all(
+    uniqueTraineeIds.map(id => adminDb.collection('trainees').doc(id).get()),
+  );
+  if (traineeDocs.some(doc => !doc.exists || doc.data()?.currentSupervisorId !== supervisor.id)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const month = date.slice(0, 7);
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -45,7 +62,7 @@ export async function POST(req: NextRequest) {
   const sessionRef = adminDb.collection('sessions').doc();
   batch.set(sessionRef, {
     supervisorId: supervisor.id,
-    traineeIds,
+    traineeIds: uniqueTraineeIds,
     type,
     date,
     month,
@@ -61,7 +78,7 @@ export async function POST(req: NextRequest) {
   if (type === 'individual' || type === 'group') {
     const dur = duration || 1;
 
-    for (const traineeId of traineeIds) {
+    for (const traineeId of uniqueTraineeIds) {
       const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
       const snapshotRef = adminDb.collection('monthlySnapshots').doc(snapshotId);
       const snapshotSnap = await snapshotRef.get();
@@ -119,7 +136,7 @@ export async function POST(req: NextRequest) {
 
   // تحديث عداد الغياب/الإنذار
   if (type === 'absence' || type === 'warning') {
-    const traineeId = traineeIds[0];
+    const traineeId = uniqueTraineeIds[0];
     const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
     const snapshotRef = adminDb.collection('monthlySnapshots').doc(snapshotId);
     const snapshotSnap = await snapshotRef.get();
@@ -150,7 +167,7 @@ export async function POST(req: NextRequest) {
     actorId: supervisor.id,
     actorName: supervisor.name,
     supervisorId: supervisor.id,
-    traineeId: traineeIds[0],
+    traineeId: uniqueTraineeIds[0],
     meta: { sessionType: type, duration, date },
   });
 
@@ -163,14 +180,29 @@ export async function PATCH(req: NextRequest) {
   if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { traineeId, month, workHours } = await req.json();
+  if (
+    typeof traineeId !== 'string' ||
+    !/^\d{4}-\d{2}$/.test(month) ||
+    typeof workHours !== 'number' ||
+    !Number.isFinite(workHours) ||
+    workHours < 0 ||
+    workHours > 1000
+  ) {
+    return NextResponse.json({ error: 'Invalid fields' }, { status: 400 });
+  }
+  const trainee = await adminDb.collection('trainees').doc(traineeId).get();
+  if (!trainee.exists || trainee.data()?.currentSupervisorId !== supervisor.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
   const requiredHours = Math.round(workHours * 0.05 * 10) / 10;
 
-  await adminDb.collection('monthlySnapshots').doc(snapshotId).update({
-    workHours,
-    requiredHours,
-    updatedAt: new Date().toISOString(),
-  });
+  const snapshotRef = adminDb.collection('monthlySnapshots').doc(snapshotId);
+  const snapshot = await snapshotRef.get();
+  if (!snapshot.exists) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (snapshot.data()?.lockedAt) return NextResponse.json({ error: 'Month locked' }, { status: 409 });
+
+  await snapshotRef.update({ workHours, requiredHours, updatedAt: new Date().toISOString() });
 
   return NextResponse.json({ success: true });
 }

@@ -8,7 +8,7 @@ import SeatsManager from '@/components/supervisor/SeatsManager';
 import SupervisorTabs from '@/components/supervisor/SupervisorTabs';
 import SupervisorNotifications from '@/components/supervisor/SupervisorNotifications';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 async function getAuthenticatedSupervisor() {
   const cookieStore = await cookies();

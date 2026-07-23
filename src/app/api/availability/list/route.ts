@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
+import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const supervisorId = searchParams.get('supervisorId');
-  if (!supervisorId) return NextResponse.json({ slots: [] });
-
   try {
-    const { adminDb } = await import('@/lib/firebase/admin');
+    const supervisor = await getAuthenticatedSupervisor();
+    if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const today = new Date().toISOString().split('T')[0];
 
     const snap = await adminDb.collection('availability')
-      .where('supervisorId', '==', supervisorId)
+      .where('supervisorId', '==', supervisor.id)
       .where('date', '>=', today)
       .orderBy('date', 'asc')
       .get();
