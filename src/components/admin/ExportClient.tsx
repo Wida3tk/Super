@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 
 const COLORS = {
   primary: "#0D40FC", deep: "#001442", success: "#10B981",
@@ -27,14 +28,14 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
   const allMonths = [...new Set(snapshots.map(s => s.month))].sort().reverse();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  const exportXLSX = async (type: string) => {
+  const exportReport = async (type: string) => {
     setLoading(type);
     try {
-      const XLSX = await import("xlsx");
-      const wb = XLSX.utils.book_new();
+      let data: CsvRow[] = [];
+      let filename = `report-${new Date().toISOString().split("T")[0]}.csv`;
 
       if (type === "trainees") {
-        const data = trainees.map(t => {
+        data = trainees.map(t => {
           const sup = supervisors.find(s => s.id === t.currentSupervisorId);
           return {
             "الاسم": t.name, "الإيميل": t.email, "الجوال": t.phone,
@@ -48,31 +49,23 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
             "تاريخ الإضافة": t.createdAt?.split("T")[0] || "—",
           };
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "المتدربون");
-        XLSX.writeFile(wb, `تقرير-المتدربين-${new Date().toISOString().split("T")[0]}.xlsx`);
-
+        filename = `تقرير-المتدربين-${new Date().toISOString().split("T")[0]}.csv`;
       } else if (type === "supervisors_month") {
         const monthSnaps = snapshots.filter(s => s.month === selectedMonth);
-        const data = supervisors.map(sup => {
-          const supSnaps = monthSnaps.filter(s => s.supervisorId === sup.id);
-          const totalInd = supSnaps.reduce((a, s) => a + (s.individualHours || 0), 0);
-          const totalGrp = supSnaps.reduce((a, s) => a + (s.groupHours || 0), 0);
-          return {
-            "المشرف": sup.name, "الإيميل": sup.email,
-            "عدد المتدربين": trainees.filter(t => t.currentSupervisorId === sup.id && t.status === "active").length,
-            "فردية": totalInd, "جماعية": totalGrp, "الإجمالي": totalInd + totalGrp,
-            "الشهر": formatMonth(selectedMonth),
-          };
-        });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "إنتاجية المشرفين");
-
-        // تفصيل لكل مشرف
-        supervisors.forEach(sup => {
+        data = supervisors.flatMap((sup): CsvRow[] => {
           const supTrainees = trainees.filter(t => t.currentSupervisorId === sup.id);
-          if (supTrainees.length === 0) return;
-          const detail = supTrainees.map(t => {
+          if (supTrainees.length === 0) {
+            return [{
+              "المشرف": sup.name,
+              "إيميل المشرف": sup.email,
+              "المتدرب": "—",
+              "الشهر": formatMonth(selectedMonth),
+            }];
+          }
+          return supTrainees.map(t => {
             const snap = monthSnaps.find(s => s.traineeId === t.id && s.supervisorId === sup.id);
             return {
+              "المشرف": sup.name, "إيميل المشرف": sup.email,
               "المتدرب": t.name, "الرخصة": t.license,
               "ساعات العمل": snap?.workHours || 0,
               "المطلوب 5%": snap?.requiredHours || 0,
@@ -84,12 +77,10 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
               "إنذارات": snap?.warningCount || 0,
             };
           });
-          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), sup.name?.slice(0, 28) || sup.id);
         });
-        XLSX.writeFile(wb, `إنتاجية-المشرفين-${selectedMonth}.xlsx`);
-
+        filename = `إنتاجية-المشرفين-${selectedMonth}.csv`;
       } else if (type === "bookings") {
-        const data = bookings.map(b => ({
+        data = bookings.map(b => ({
           "الطالب": b.studentName, "الإيميل": b.studentEmail,
           "الجوال": b.studentPhone || "—",
           "التاريخ": b.date, "الوقت": b.time,
@@ -99,11 +90,9 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
           "رابط Meet": b.meetLink || "—",
           "تاريخ الحجز": b.createdAt?.split("T")[0] || "—",
         }));
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "الحجوزات");
-        XLSX.writeFile(wb, `الحجوزات-${new Date().toISOString().split("T")[0]}.xlsx`);
-
+        filename = `الحجوزات-${new Date().toISOString().split("T")[0]}.csv`;
       } else if (type === "sessions") {
-        const data = sessions.map(s => {
+        data = sessions.map(s => {
           const sup = supervisors.find(sv => sv.id === s.supervisorId);
           return {
             "المشرف": sup?.name || s.supervisorId,
@@ -114,9 +103,9 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
             "ملاحظات": s.notes || "—",
           };
         });
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "الجلسات");
-        XLSX.writeFile(wb, `الجلسات-${new Date().toISOString().split("T")[0]}.xlsx`);
+        filename = `الجلسات-${new Date().toISOString().split("T")[0]}.csv`;
       }
+      downloadCsv(filename, data);
     } finally {
       setLoading(null);
     }
@@ -157,7 +146,7 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
     <div style={{ direction: "rtl", maxWidth: 900 }}>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: COLORS.deep, marginBottom: 4 }}>تصدير التقارير</h2>
-        <p style={{ fontSize: 13, color: COLORS.gray500 }}>جميع التقارير تُصدَّر بصيغة Excel (.xlsx) وتدعم اللغة العربية</p>
+        <p style={{ fontSize: 13, color: COLORS.gray500 }}>جميع التقارير تُصدَّر بصيغة CSV الآمنة والمتوافقة مع Excel وGoogle Sheets</p>
       </div>
 
       {/* فلتر الشهر */}
@@ -193,7 +182,7 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
                 {opt.records} سجل
               </span>
               <button
-                onClick={() => exportXLSX(opt.key)}
+                onClick={() => exportReport(opt.key)}
                 disabled={loading === opt.key}
                 style={{
                   padding: "8px 18px", border: "none", borderRadius: 10,
@@ -203,7 +192,7 @@ export default function ExportClient({ supervisors, trainees, snapshots, booking
                   display: "flex", alignItems: "center", gap: 6,
                   transition: "all 0.15s",
                 }}>
-                {loading === opt.key ? "جاري التصدير..." : "📥 تصدير Excel"}
+                {loading === opt.key ? "جاري التصدير..." : "📥 تصدير CSV"}
               </button>
             </div>
           </div>

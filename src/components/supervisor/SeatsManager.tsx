@@ -20,7 +20,7 @@ export default function SeatsManager({ supervisorId, currentSeats }: Props) {
       const res = await fetch('/api/supervisor/seats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supervisorId, seats: newVal }),
+        body: JSON.stringify({ seats: newVal }),
       });
       const data = await res.json();
       if (data.success) {

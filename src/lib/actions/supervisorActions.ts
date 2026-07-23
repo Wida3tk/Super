@@ -2,6 +2,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase/admin';
+import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
 import { AvailabilitySlot } from '@/types';
 
 /**
@@ -34,6 +35,14 @@ export async function addAvailability(
   startTime: string,
   endTime: string
 ): Promise<{ success: boolean; slotsCreated: number; error?: string }> {
+  const supervisor = await getAuthenticatedSupervisor();
+  if (!supervisor) {
+    return { success: false, slotsCreated: 0, error: 'UNAUTHORIZED' };
+  }
+  if (supervisor.id !== supervisorId) {
+    return { success: false, slotsCreated: 0, error: 'FORBIDDEN' };
+  }
+
   // التحقق من التاريخ
   const selectedDate = new Date(date);
   const today = new Date();
@@ -126,7 +135,15 @@ export async function getActiveSupervisors() {
  */
 export async function deleteAvailability(slotId: string): Promise<{ success: boolean }> {
   try {
-    await adminDb.collection('availability').doc(slotId).delete();
+    const supervisor = await getAuthenticatedSupervisor();
+    if (!supervisor) return { success: false };
+
+    const slot = await adminDb.collection('availability').doc(slotId).get();
+    if (!slot.exists || slot.data()?.supervisorId !== supervisor.id || slot.data()?.isBooked) {
+      return { success: false };
+    }
+
+    await slot.ref.delete();
     return { success: true };
   } catch {
     return { success: false };

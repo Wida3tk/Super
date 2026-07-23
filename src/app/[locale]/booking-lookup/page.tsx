@@ -149,10 +149,10 @@ export default function BookingLookupPage() {
             </div>
 
             <div className="result-actions">
-              {result.status === 'confirmed' && result.managementToken && (
-                <Link href={`/ar/manage-booking/${result.managementToken}`} className="btn-manage">
-                  ⚙️ إدارة الحجز أو الإلغاء
-                </Link>
+              {result.status === 'confirmed' && (
+                <p style={{color:'#64748B',fontSize:13,marginTop:16}}>
+                  استخدم الرابط الآمن المرسل إلى بريدك الإلكتروني لإدارة الحجز أو إلغائه.
+                </p>
               )}
               <Link href="/ar" className="btn-home">
                 ← العودة للرئيسية
