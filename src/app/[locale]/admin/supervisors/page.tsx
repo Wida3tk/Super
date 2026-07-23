@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import SupervisorTabs from '@/components/admin/SupervisorTabs';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 export default async function SupervisorsPage({ params }: Props) {
   const { locale } = await params;

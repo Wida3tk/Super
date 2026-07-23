@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 interface Props {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
   searchParams: { token?: string; ref?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; };
 }
 

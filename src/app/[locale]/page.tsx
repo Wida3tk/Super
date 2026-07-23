@@ -3,7 +3,7 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 
 interface HomePageProps {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }
 
 export default async function HomePage({ params }: HomePageProps) {

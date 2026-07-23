@@ -4,7 +4,7 @@ import AdminSidebar from '@/components/admin/layout/AdminSidebar';
 import LogoutButton from '@/components/LogoutButton';
 import Link from 'next/link';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 async function verifyAdmin() {
   const cookieStore = await cookies();

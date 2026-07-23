@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 const COLORS = { primary: '#0D40FC', gray200: '#EEF2F7', gray500: '#8898AA', deep: '#001442', gray100: '#F8FAFC', gray700: '#4A5568' };
 

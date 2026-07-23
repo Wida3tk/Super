@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import ExportClient from '@/components/admin/ExportClient';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 export default async function ExportPage({ params }: Props) {
   const { locale } = await params;

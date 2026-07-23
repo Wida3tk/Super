@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import AdminSupervisionPanel from '@/components/admin/AdminSupervisionPanel';
 
-interface Props { params: { locale: string }; }
+interface Props { params: Promise<{ locale: string }>; }
 
 export default async function OnboardingPage({ params }: Props) {
   const { locale } = await params;
