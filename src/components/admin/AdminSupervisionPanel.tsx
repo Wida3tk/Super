@@ -74,7 +74,15 @@ async function apiPatch(data: any) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const messages: Record<string, string> = {
+      EMAIL_ROLE_CONFLICT: 'هذا البريد مستخدم لحساب مدير أو مشرف ولا يمكن استخدامه للمتدرب',
+      'auth/email-already-exists': 'البريد مستخدم مسبقًا في حساب آخر',
+      'auth/invalid-email': 'بريد المتدرب غير صالح',
+    };
+    throw new Error(messages[payload?.error] || payload?.detail || payload?.error || `تعذر تنفيذ الإسناد (${res.status})`);
+  }
   return res.json();
 }
 

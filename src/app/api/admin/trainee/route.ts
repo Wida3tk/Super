@@ -75,13 +75,27 @@ export async function PATCH(req: NextRequest) {
     try {
       authUser = await adminAuth.getUserByEmail(normalizedEmail);
     } catch (error: any) {
-      if (error?.code !== 'auth/user-not-found') throw error;
-      authUser = await adminAuth.createUser({ email: normalizedEmail, displayName: traineeData.name, emailVerified: false });
+      if (error?.code !== 'auth/user-not-found') {
+        console.error('Trainee auth lookup failed:', error);
+        return NextResponse.json({ error: error?.code || 'AUTH_LOOKUP_FAILED' }, { status: 500 });
+      }
+      try {
+        authUser = await adminAuth.createUser({ email: normalizedEmail, displayName: traineeData.name, emailVerified: false });
+      } catch (createError: any) {
+        console.error('Trainee auth creation failed:', createError);
+        return NextResponse.json({ error: createError?.code || 'AUTH_CREATE_FAILED' }, { status: 500 });
+      }
     }
-    await adminAuth.setCustomUserClaims(authUser.uid, { role: 'trainee', traineeId });
-    const resetLink = await adminAuth.generatePasswordResetLink(normalizedEmail, {
-      url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://super-gray-zeta.vercel.app'}/ar/login`,
-    });
+    let resetLink: string;
+    try {
+      await adminAuth.setCustomUserClaims(authUser.uid, { role: 'trainee', traineeId });
+      // Use Firebase's hosted password setup flow. A custom continue URL would
+      // fail unless every deployment domain is allow-listed in Firebase Auth.
+      resetLink = await adminAuth.generatePasswordResetLink(normalizedEmail);
+    } catch (linkError: any) {
+      console.error('Trainee invitation link failed:', linkError);
+      return NextResponse.json({ error: linkError?.code || 'INVITE_LINK_FAILED' }, { status: 500 });
+    }
     const batch = adminDb.batch();
     batch.update(ref, {
       currentSupervisorId: data.supervisorId,
