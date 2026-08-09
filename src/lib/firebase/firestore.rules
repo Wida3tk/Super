@@ -106,5 +106,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /fieldworkActivities/{activityId} {
+      allow read: if isAdmin() ||
+        (request.auth != null && resource.data.traineeId == request.auth.token.traineeId) ||
+        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+      allow write: if false;
+    }
+
   }
 }

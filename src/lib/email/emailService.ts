@@ -40,6 +40,17 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   console.log('[EMAIL SENT]', { to, subject, id: result.id });
 }
 
+export async function sendTraineeInvitationEmail(data: { name: string; email: string; resetLink: string; supervisorName: string }): Promise<void> {
+  const html = baseTemplate(`
+    <h2>مرحبًا ${data.name}</h2>
+    <p>تم إنشاء حسابك في منصة سلوكيرا وإسنادك إلى المشرف <strong>${data.supervisorName}</strong>.</p>
+    <p>اضغط الزر التالي لإنشاء كلمة المرور والدخول إلى لوحة تسجيل الساعات:</p>
+    <div style="text-align:center;margin:24px 0"><a href="${data.resetLink}" class="btn">إنشاء كلمة المرور</a></div>
+    <p style="font-size:12px;color:#94A3B8">هذا الرابط مخصص لك، فلا تشاركه مع أي شخص.</p>
+  `);
+  await sendEmail(data.email, 'إنشاء حساب المتدرب في منصة سلوكيرا', html);
+}
+
 // ─── Template base ───────────────────────────────────────────────
 function baseTemplate(content: string, dir: 'rtl' | 'ltr' = 'rtl') {
   return `<!DOCTYPE html>

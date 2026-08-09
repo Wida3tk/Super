@@ -139,6 +139,32 @@ export interface Trainee {
   totalIndividualHours: number;
   totalGroupHours: number;
   totalHours: number;
+  authUid?: string;
+  accountStatus?: "invited" | "active";
+}
+
+export type FieldworkActivityType = "direct" | "indirect" | "supervision_direct" | "supervision_indirect";
+export type FieldworkActivityStatus = "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+
+export interface FieldworkActivity {
+  id: string;
+  traineeId: string;
+  supervisorId: string;
+  date: string;
+  month: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  activityType: FieldworkActivityType;
+  setting?: "in_person" | "video";
+  format?: "individual" | "group";
+  observedWithClient?: boolean;
+  description: string;
+  status: FieldworkActivityStatus;
+  reviewerNote?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ===========================

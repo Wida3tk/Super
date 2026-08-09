@@ -178,7 +178,10 @@ function AssignModal({ trainee, supervisors, onClose }: {
     if (!selectedSup) { setError("يرجى اختيار مشرف"); return; }
     setLoading(true);
     try {
-      await apiPatch({ traineeId: trainee.id, action: 'assign', supervisorId: selectedSup, startDate });
+      const result = await apiPatch({ traineeId: trainee.id, action: 'assign', supervisorId: selectedSup, startDate });
+      if (result.inviteLink) {
+        window.prompt('تم إنشاء الحساب. انسخ رابط تفعيل المتدرب:', result.inviteLink);
+      }
       window.location.reload();
     } catch (e: any) {
       setError(e.message || "حدث خطأ");

@@ -62,11 +62,33 @@ export async function PATCH(req: NextRequest) {
   } else if (action === 'updateOnboarding') {
     await ref.update({ onboardingStage: data.stage, updatedAt: new Date().toISOString() });
   } else if (action === 'assign') {
+    const traineeBefore = await ref.get();
+    if (!traineeBefore.exists) return NextResponse.json({ error: 'Trainee not found' }, { status: 404 });
+    const traineeData = traineeBefore.data() as any;
+    const normalizedEmail = String(traineeData.email || '').trim().toLowerCase();
+    if (!normalizedEmail) return NextResponse.json({ error: 'Trainee email is required' }, { status: 400 });
+    const supervisorWithEmail = await adminDb.collection('supervisors').where('email', '==', normalizedEmail).limit(1).get();
+    if (normalizedEmail === process.env.ADMIN_EMAIL?.trim().toLowerCase() || !supervisorWithEmail.empty) {
+      return NextResponse.json({ error: 'EMAIL_ROLE_CONFLICT' }, { status: 409 });
+    }
+    let authUser;
+    try {
+      authUser = await adminAuth.getUserByEmail(normalizedEmail);
+    } catch (error: any) {
+      if (error?.code !== 'auth/user-not-found') throw error;
+      authUser = await adminAuth.createUser({ email: normalizedEmail, displayName: traineeData.name, emailVerified: false });
+    }
+    await adminAuth.setCustomUserClaims(authUser.uid, { role: 'trainee', traineeId });
+    const resetLink = await adminAuth.generatePasswordResetLink(normalizedEmail, {
+      url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://super-gray-zeta.vercel.app'}/ar/login`,
+    });
     const batch = adminDb.batch();
     batch.update(ref, {
       currentSupervisorId: data.supervisorId,
       status: 'active',
       onboardingStage: null,
+      authUid: authUser.uid,
+      accountStatus: 'invited',
       updatedAt: new Date().toISOString(),
     });
     const assignRef = adminDb.collection('assignments').doc();
@@ -92,6 +114,16 @@ export async function PATCH(req: NextRequest) {
         traineeId,
         meta: { startDate: data.startDate },
       });
+      const { sendTraineeInvitationEmail } = await import('@/lib/email/emailService');
+      try {
+        await sendTraineeInvitationEmail({ name: traineeName, email: normalizedEmail, resetLink, supervisorName: supName });
+      } catch (emailError) {
+        console.error('Trainee invitation email failed:', emailError);
+        return NextResponse.json({ success: true, inviteLink: resetLink, warning: 'EMAIL_FAILED' });
+      }
+      if (!process.env.EMAIL_SERVICE_API_KEY) {
+        return NextResponse.json({ success: true, inviteLink: resetLink });
+      }
     } else if (action === 'updateOnboarding') {
       const { logActivity } = await import('@/lib/activityLog');
       const traineeSnap = await adminDb.collection('trainees').doc(traineeId).get();

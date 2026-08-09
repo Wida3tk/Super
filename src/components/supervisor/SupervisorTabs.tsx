@@ -3,6 +3,7 @@
 import { useState } from "react";
 import BookingsManager from "./BookingsManager";
 import SupervisionHours from "./SupervisionHours";
+import FieldworkReview from "./FieldworkReview";
 
 const COLORS = {
   primary: "#0D40FC", deep: "#001442",
@@ -17,18 +18,20 @@ interface Props {
   initialSnapshots: any[];
   upcomingCount: number;
   traineesCount: number;
+  fieldworkActivities: any[];
 }
 
 export default function SupervisorTabs({
   bookings, supervisorId, initialTrainees,
-  initialSessions, initialSnapshots, upcomingCount, traineesCount,
+  initialSessions, initialSnapshots, upcomingCount, traineesCount, fieldworkActivities,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"bookings" | "hours">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "hours" | "fieldwork">("bookings");
 
   const tabs = [
     { key: "bookings", label: "المقابلات", icon: "🗓️", count: upcomingCount },
     { key: "hours", label: "ساعات الإشراف", icon: "⏱️", count: traineesCount },
   ];
+  tabs.push({ key: "fieldwork", label: "ساعات المتدربين", icon: "📊", count: fieldworkActivities.length });
 
   return (
     <div>
@@ -80,6 +83,7 @@ export default function SupervisorTabs({
           initialSnapshots={initialSnapshots}
         />
       )}
+      {activeTab === "fieldwork" && <FieldworkReview initialActivities={fieldworkActivities} trainees={initialTrainees} />}
     </div>
   );
 }

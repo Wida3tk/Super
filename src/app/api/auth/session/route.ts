@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,9 +29,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SESSION_FAILED' }, { status: 500 });
     }
 
-    const isAdmin = decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase();
+    const email = decoded.email?.trim().toLowerCase() || '';
+    const isAdmin = email === process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    let role: 'admin' | 'supervisor' | 'trainee' | 'unknown' = isAdmin ? 'admin' : 'unknown';
+    if (!isAdmin && email) {
+      const [supervisor, trainee] = await Promise.all([
+        adminDb.collection('supervisors').where('email', '==', email).limit(1).get(),
+        adminDb.collection('trainees').where('email', '==', email).limit(1).get(),
+      ]);
+      if (!supervisor.empty) role = 'supervisor';
+      else if (!trainee.empty) role = 'trainee';
+    }
 
-    const response = NextResponse.json({ success: true, isAdmin });
+    const response = NextResponse.json({ success: true, isAdmin, role });
     response.cookies.set('__session', sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

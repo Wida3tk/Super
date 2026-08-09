@@ -12,6 +12,15 @@ export interface AuthenticatedSupervisor {
   [key: string]: unknown;
 }
 
+export interface AuthenticatedTrainee {
+  id: string;
+  name: string;
+  email: string;
+  currentSupervisorId?: string;
+  status: string;
+  [key: string]: unknown;
+}
+
 export async function getSessionUser(): Promise<DecodedIdToken | null> {
   const sessionCookie = (await cookies()).get('__session')?.value;
   if (!sessionCookie) return null;
@@ -59,4 +68,22 @@ export async function getAuthenticatedSupervisor(): Promise<AuthenticatedSupervi
   const data = doc.data() as Omit<AuthenticatedSupervisor, 'id'>;
   if (data.isActive === false) return null;
   return { id: doc.id, ...data } as AuthenticatedSupervisor;
+}
+
+export async function getAuthenticatedTrainee(): Promise<AuthenticatedTrainee | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+
+  const byUid = await adminDb.collection('trainees').where('authUid', '==', user.uid).limit(1).get();
+  if (!byUid.empty) {
+    const doc = byUid.docs[0];
+    return { id: doc.id, ...doc.data() } as AuthenticatedTrainee;
+  }
+
+  const email = user.email?.trim().toLowerCase();
+  if (!email) return null;
+  const byEmail = await adminDb.collection('trainees').where('email', '==', email).limit(1).get();
+  if (byEmail.empty) return null;
+  const doc = byEmail.docs[0];
+  return { id: doc.id, ...doc.data() } as AuthenticatedTrainee;
 }

@@ -32,12 +32,13 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const today = new Date().toISOString().split('T')[0];
 
-  const [bookingsSnap, traineesSnap, sessionsSnap, snapshotsSnap, notifsSnap] = await Promise.all([
+  const [bookingsSnap, traineesSnap, sessionsSnap, snapshotsSnap, notifsSnap, fieldworkSnap] = await Promise.all([
     adminDb.collection('bookings').where('supervisorId', '==', supervisor.id).where('status', '==', 'confirmed').orderBy('date', 'asc').get(),
     adminDb.collection('trainees').where('currentSupervisorId', '==', supervisor.id).where('status', '==', 'active').get(),
     adminDb.collection('sessions').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
     adminDb.collection('monthlySnapshots').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
     adminDb.collection('notifications').where('supervisorId', '==', supervisor.id).orderBy('createdAt', 'desc').limit(20).get(),
+    adminDb.collection('fieldworkActivities').where('supervisorId', '==', supervisor.id).limit(300).get(),
   ]);
 
   const allBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
@@ -45,6 +46,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   const initialSessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const initialSnapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const notifications = notifsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const fieldworkActivities = (fieldworkSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[]).filter(a => a.status === 'submitted');
   const unreadCount = notifications.filter((n: any) => !n.read).length;
 
   const upcomingCount = allBookings.filter((b: any) => b.date >= today && (!b.meetingStatus || b.meetingStatus === 'pending')).length;
@@ -164,6 +166,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             initialSnapshots={initialSnapshots}
             upcomingCount={upcomingCount}
             traineesCount={initialTrainees.length}
+            fieldworkActivities={fieldworkActivities}
           />
         </div>
 

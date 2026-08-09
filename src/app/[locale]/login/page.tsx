@@ -69,8 +69,8 @@ export default function LoginPage() {
 
       // Step 4: Redirect
       setStep('تم! جارٍ التوجيه...');
-      const isAdmin = sessionData.isAdmin || false;
-      const dest = isAdmin ? '/ar/admin' : '/ar/supervisor-dashboard';
+      const role = sessionData.role || (sessionData.isAdmin ? 'admin' : 'supervisor');
+      const dest = role === 'admin' ? '/ar/admin' : role === 'trainee' ? '/ar/trainee-dashboard' : '/ar/supervisor-dashboard';
       // انتظر ثانية عشان الـ cookie ينحفظ
       await new Promise(r => setTimeout(r, 800));
       window.location.href = dest;
