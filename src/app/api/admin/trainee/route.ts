@@ -91,7 +91,12 @@ export async function PATCH(req: NextRequest) {
       await adminAuth.setCustomUserClaims(authUser.uid, { role: 'trainee', traineeId });
       // Use Firebase's hosted password setup flow. A custom continue URL would
       // fail unless every deployment domain is allow-listed in Firebase Auth.
-      resetLink = await adminAuth.generatePasswordResetLink(normalizedEmail);
+      const firebaseResetLink = await adminAuth.generatePasswordResetLink(normalizedEmail);
+      const actionCode = new URL(firebaseResetLink).searchParams.get('oobCode');
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://super-gray-zeta.vercel.app';
+      resetLink = actionCode
+        ? `${appUrl}/ar/setup-password?oobCode=${encodeURIComponent(actionCode)}`
+        : firebaseResetLink;
     } catch (linkError: any) {
       console.error('Trainee invitation link failed:', linkError);
       return NextResponse.json({ error: linkError?.code || 'INVITE_LINK_FAILED' }, { status: 500 });

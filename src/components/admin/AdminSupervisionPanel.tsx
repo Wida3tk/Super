@@ -181,6 +181,8 @@ function AssignModal({ trainee, supervisors, onClose }: {
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async () => {
     if (!selectedSup) { setError("يرجى اختيار مشرف"); return; }
@@ -188,7 +190,9 @@ function AssignModal({ trainee, supervisors, onClose }: {
     try {
       const result = await apiPatch({ traineeId: trainee.id, action: 'assign', supervisorId: selectedSup, startDate });
       if (result.inviteLink) {
-        window.prompt('تم إنشاء الحساب. انسخ رابط تفعيل المتدرب:', result.inviteLink);
+        setInviteLink(result.inviteLink);
+        setLoading(false);
+        return;
       }
       window.location.reload();
     } catch (e: any) {
@@ -196,6 +200,18 @@ function AssignModal({ trainee, supervisors, onClose }: {
       setLoading(false);
     }
   };
+
+  if (inviteLink) return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: "100%", maxWidth: 500, direction: "rtl" }}>
+        <div style={{width:48,height:48,borderRadius:'50%',background:'#EAF3DE',color:'#059669',display:'grid',placeItems:'center',fontSize:24,marginBottom:12}}>✓</div>
+        <h3 style={{margin:'0 0 6px',color:COLORS.deep}}>تم الإسناد وإنشاء الحساب</h3>
+        <p style={{fontSize:13,color:COLORS.gray500,lineHeight:1.7}}>تم إنشاء رابط تعيين كلمة المرور للمتدرب. انسخي الرابط وأرسليه له إذا لم تكن خدمة البريد مفعلة.</p>
+        <div dir="ltr" style={{margin:'14px 0',padding:11,background:COLORS.gray100,border:`1px solid ${COLORS.gray200}`,borderRadius:9,fontSize:11,wordBreak:'break-all'}}>{inviteLink}</div>
+        <div style={{display:'flex',gap:8}}><button onClick={async()=>{await navigator.clipboard.writeText(inviteLink);setCopied(true)}} style={{flex:1,padding:10,border:'none',borderRadius:8,background:COLORS.primary,color:'#fff',cursor:'pointer'}}>{copied?'تم النسخ ✓':'نسخ الرابط'}</button><button onClick={()=>window.location.reload()} style={{flex:1,padding:10,border:`1px solid ${COLORS.gray300}`,borderRadius:8,background:'#fff',cursor:'pointer'}}>إغلاق</button></div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}
