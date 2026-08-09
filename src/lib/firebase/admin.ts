@@ -1,6 +1,11 @@
-import { initializeApp, getApps, cert, applicationDefault, App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import type { App } from 'firebase-admin/app';
+
+// Use the CommonJS entry points on the server. Vercel's external ESM loader can
+// otherwise rewrite firebase-admin to a deployment-specific package name that
+// is unavailable when the function starts.
+const { initializeApp, getApps, cert, applicationDefault } = require('firebase-admin/app') as typeof import('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore') as typeof import('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth') as typeof import('firebase-admin/auth');
 
 function getAdminApp(): App {
   if (getApps().length > 0) {
