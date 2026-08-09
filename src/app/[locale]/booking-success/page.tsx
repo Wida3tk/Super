@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 interface Props {
   params: Promise<{ locale: string }>;
-  searchParams: { token?: string; ref?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; };
+  searchParams: Promise<{ token?: string; ref?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; }>;
 }
 
 export default async function BookingSuccessPage({ params, searchParams }: Props) {
