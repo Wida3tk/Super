@@ -1,30 +1,36 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBooking } from '@/lib/actions/bookingActions';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createBooking } from "@/lib/actions/bookingActions";
 
 interface BookingSectionProps {
   supervisor: any;
   availableDates: string[];
   locale: string;
+  bookingType?: "initial_interview" | "consultation";
 }
 
-export default function BookingSection({ supervisor, availableDates, locale }: BookingSectionProps) {
+export default function BookingSection({
+  supervisor,
+  availableDates,
+  locale,
+  bookingType = "initial_interview",
+}: BookingSectionProps) {
   const router = useRouter();
 
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState("");
   const [slots, setSlots] = useState<any[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState('');
-  const [studentPhone, setStudentPhone] = useState('');
+  const [studentName, setStudentName] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [step, setStep] = useState<1|2>(1);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
 
-  const dates = availableDates.length > 0 ? availableDates : ['2026-05-10'];
+  const dates = availableDates;
 
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
@@ -32,7 +38,9 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
     setSlots([]);
     setLoadingSlots(true);
     try {
-      const res = await fetch(`/api/availability?supervisorId=${supervisor.id}&date=${date}`);
+      const res = await fetch(
+        `/api/availability?supervisorId=${supervisor.id}&date=${date}`,
+      );
       const data = await res.json();
       setSlots(data.slots || []);
     } catch {
@@ -51,28 +59,46 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
     e.preventDefault();
     if (!selectedSlot) return;
     setSubmitting(true);
-    setError('');
+    setError("");
     const result = await createBooking(
-      { studentName, studentEmail, studentPhone, supervisorId: supervisor.id, availabilitySlotId: selectedSlot.id, date: selectedSlot.date, time: selectedSlot.time },
-      locale as 'ar' | 'en'
+      {
+        studentName,
+        studentEmail,
+        studentPhone,
+        supervisorId: supervisor.id,
+        availabilitySlotId: selectedSlot.id,
+        date: selectedSlot.date,
+        time: selectedSlot.time,
+        bookingType,
+      },
+      locale as "ar" | "en",
     );
-    if (!result.success && result.error === 'NO_SEATS_AVAILABLE') {
-      setError('عذراً، المقاعد امتلأت للتو. يرجى التواصل مع المشرف مباشرة.');
+    if (!result.success && result.error === "NO_SEATS_AVAILABLE") {
+      setError("عذراً، المقاعد امتلأت للتو. يرجى التواصل مع المشرف مباشرة.");
       setSubmitting(false);
       return;
     }
     if (result.success) {
-      router.push(`/${locale}/booking-success?token=${result.managementToken}&ref=${result.referenceNumber}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`);
+      router.push(
+        `/${locale}/booking-success?token=${result.managementToken}&ref=${result.referenceNumber}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`,
+      );
     } else {
-      setError(result.error || 'حدث خطأ، حاول مرة أخرى');
+      setError(result.error || "حدث خطأ، حاول مرة أخرى");
       setSubmitting(false);
     }
   };
 
   const formatDate = (d: string) => {
     try {
-      return new Date(d).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    } catch { return d; }
+      return new Date(d).toLocaleDateString("ar-SA", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return d;
+    }
   };
 
   return (
@@ -243,23 +269,45 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
       `}</style>
 
       <div className="bk-root">
+        <div
+          style={{
+            background: bookingType === "consultation" ? "#F0FDF4" : "#EEF4FF",
+            color: bookingType === "consultation" ? "#047857" : "#0D40FC",
+            borderRadius: 11,
+            padding: "10px 13px",
+            fontSize: 12,
+            fontWeight: 700,
+            marginBottom: 14,
+          }}
+        >
+          {bookingType === "consultation"
+            ? "استشارة مهنية فردية عن بُعد"
+            : "مقابلة أولية لبدء برنامج الإشراف"}
+        </div>
 
         {/* No dates at all */}
         {dates.length === 0 ? (
           <div className="no-dates">
             <div className="no-dates-icon">📅</div>
-            <div className="no-dates-text">لا توجد مواعيد متاحة حالياً<br/>يرجى التواصل مع المشرف مباشرة</div>
+            <div className="no-dates-text">
+              لا توجد مواعيد متاحة حالياً
+              <br />
+              يرجى التواصل مع المشرف مباشرة
+            </div>
           </div>
         ) : (
           <>
             {/* STEPS */}
             <div className="bk-steps">
-              <div className={`bk-step ${step === 1 ? 'active' : 'done'}`} onClick={() => setStep(1)}>
-                <div className="bk-step-num">{step > 1 ? '✓' : '١'}</div>
+              <div
+                className={`bk-step ${step === 1 ? "active" : "done"}`}
+                onClick={() => setStep(1)}
+              >
+                <div className="bk-step-num">{step > 1 ? "✓" : "١"}</div>
                 اختر الموعد
               </div>
               <div className="bk-step-divider" />
-              <div className={`bk-step ${step === 2 ? 'active' : ''}`}>
+              <div className={`bk-step ${step === 2 ? "active" : ""}`}>
                 <div className="bk-step-num">٢</div>
                 بيانات الحجز
               </div>
@@ -275,13 +323,17 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                   onChange={(e) => handleDateChange(e.target.value)}
                 >
                   <option value="">— اختر تاريخاً —</option>
-                  {dates.map(d => (
-                    <option key={d} value={d}>{formatDate(d)}</option>
+                  {dates.map((d) => (
+                    <option key={d} value={d}>
+                      {formatDate(d)}
+                    </option>
                   ))}
                 </select>
 
                 {loadingSlots && (
-                  <div className="slots-loading">⏳ جارٍ تحميل الأوقات المتاحة...</div>
+                  <div className="slots-loading">
+                    ⏳ جارٍ تحميل الأوقات المتاحة...
+                  </div>
                 )}
 
                 {!loadingSlots && selectedDate && slots.length === 0 && (
@@ -292,12 +344,14 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
 
                 {!loadingSlots && slots.length > 0 && (
                   <>
-                    <label className="bk-label" style={{ marginTop: 20 }}>🕐 اختر الوقت</label>
+                    <label className="bk-label" style={{ marginTop: 20 }}>
+                      🕐 اختر الوقت
+                    </label>
                     <div className="slots-grid">
-                      {slots.map(slot => (
+                      {slots.map((slot) => (
                         <button
                           key={slot.id}
-                          className={`slot-btn ${selectedSlot?.id === slot.id ? 'selected' : ''}`}
+                          className={`slot-btn ${selectedSlot?.id === slot.id ? "selected" : ""}`}
                           onClick={() => handleSlotSelect(slot)}
                         >
                           {slot.time}
@@ -318,13 +372,21 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                     <div className="selected-banner-info">
                       <div className="selected-banner-icon">🗓</div>
                       <div>
-                        <div className="selected-banner-date">{formatDate(selectedSlot.date)}</div>
-                        <div className="selected-banner-time">الساعة {selectedSlot.time}</div>
+                        <div className="selected-banner-date">
+                          {formatDate(selectedSlot.date)}
+                        </div>
+                        <div className="selected-banner-time">
+                          الساعة {selectedSlot.time}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
                       <span className="selected-banner-duration">٣٠ دقيقة</span>
-                      <button className="change-btn" onClick={() => setStep(1)}>تغيير</button>
+                      <button className="change-btn" onClick={() => setStep(1)}>
+                        تغيير
+                      </button>
                     </div>
                   </div>
                 )}
@@ -336,7 +398,7 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                       className="bk-input"
                       type="text"
                       value={studentName}
-                      onChange={e => setStudentName(e.target.value)}
+                      onChange={(e) => setStudentName(e.target.value)}
                       placeholder="أدخل اسمك الكامل"
                       required
                     />
@@ -347,7 +409,7 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                       className="bk-input"
                       type="email"
                       value={studentEmail}
-                      onChange={e => setStudentEmail(e.target.value)}
+                      onChange={(e) => setStudentEmail(e.target.value)}
                       placeholder="example@email.com"
                       required
                     />
@@ -358,15 +420,13 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                       className="bk-input"
                       type="tel"
                       value={studentPhone}
-                      onChange={e => setStudentPhone(e.target.value)}
+                      onChange={(e) => setStudentPhone(e.target.value)}
                       placeholder="+966 5X XXX XXXX"
                       required
                     />
                   </div>
 
-                  {error && (
-                    <div className="bk-error">⚠️ {error}</div>
-                  )}
+                  {error && <div className="bk-error">⚠️ {error}</div>}
 
                   <button
                     type="submit"
@@ -376,12 +436,15 @@ export default function BookingSection({ supervisor, availableDates, locale }: B
                     {submitting ? (
                       <>⏳ جارٍ تأكيد الحجز...</>
                     ) : (
-                      <>✅ تأكيد الحجز</>
+                      <>
+                        ✅ تأكيد حجز{" "}
+                        {bookingType === "consultation"
+                          ? "الاستشارة"
+                          : "المقابلة"}
+                      </>
                     )}
                   </button>
-                  <div className="bk-note">
-                    🔒 بياناتك محمية وآمنة تماماً
-                  </div>
+                  <div className="bk-note">🔒 بياناتك محمية وآمنة تماماً</div>
                 </form>
               </div>
             )}

@@ -141,6 +141,7 @@ export default async function HomePage({ params }: HomePageProps) {
           margin-bottom: 48px;
         }
         .hero-cta:hover { background: var(--primary); box-shadow: 0 6px 20px rgba(13,64,252,0.35); transform: translateY(-2px); }
+        .hero-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:42px}.hero-actions .hero-cta{margin-bottom:0}.hero-cta.secondary{background:#fff;color:var(--deep);border:1px solid var(--gray-200);box-shadow:0 2px 10px rgba(1,20,66,.08)}
         .hero-stats {
           display: inline-flex; gap: 0;
           background: #fff;
@@ -152,6 +153,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .hero-stat:not(:last-child) { border-left: 1px solid var(--gray-100); }
         .hero-stat-num { font-size: 24px; font-weight: 800; color: var(--deep); }
         .hero-stat-lbl { font-size: 11px; color: var(--gray-400); font-weight: 500; margin-top: 2px; }
+        .services{max-width:1080px;margin:-34px auto 0;position:relative;z-index:3;padding:0 24px}.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.service-card{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:24px;box-shadow:0 12px 34px rgba(1,20,66,.1);display:flex;gap:16px;align-items:flex-start}.service-icon{width:48px;height:48px;border-radius:14px;background:#EEF4FF;color:var(--primary);display:grid;place-items:center;font-size:22px;flex:none}.service-card.consult .service-icon{background:#ECFDF5;color:#047857}.service-card h2{font-size:18px;margin-bottom:5px}.service-card p{font-size:13px;color:var(--gray-600);line-height:1.7}.service-link{display:inline-block;margin-top:12px;color:var(--primary);font-size:13px;font-weight:800;text-decoration:none}.consult .service-link{color:#047857}.sup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sup-actions .sup-btn{font-size:12px;padding:10px}.sup-btn.consult{background:#fff;color:#047857;border:1px solid #A7F3D0;box-shadow:none}
 
         /* ── SUPERVISORS ── */
         .section { max-width: 1200px; margin: 0 auto; padding: 56px 40px; }
@@ -286,6 +288,7 @@ export default async function HomePage({ params }: HomePageProps) {
           .section { padding: 40px 20px; }
           .how-section { padding: 48px 24px; }
           .footer { padding: 24px 20px; }
+          .services-grid{grid-template-columns:1fr}.services{margin-top:-20px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
         }
       `}</style>
 
@@ -313,17 +316,23 @@ export default async function HomePage({ params }: HomePageProps) {
         <section className="hero">
           <div className="hero-badge">
             <div className="hero-badge-dot"></div>
-            معتمد من QABA
+            إشراف واستشارات تحليل السلوك التطبيقي عن بُعد
           </div>
           <h1>
-            ابدأ إشرافك مع <span>سلوكيرا</span>
+            الواجهة الموحّدة <span>للإشراف</span>
           </h1>
           <p className="hero-sub">
-            بوابتك للحصول على الاعتماد المهني في تحليل السلوك التطبيقي
+            مكان واحد لاختيار المشرف، حجز المقابلة الأولية، الاستشارات المهنية،
+            ومتابعة رحلة الإشراف
           </p>
-          <a href="#supervisors" className="hero-cta">
-            احجز مقابلتك الأولية ←
-          </a>
+          <div className="hero-actions">
+            <a href="#supervisors" className="hero-cta">
+              احجز مقابلتك الأولية ←
+            </a>
+            <a href="#supervisors" className="hero-cta secondary">
+              احجز استشارة مهنية
+            </a>
+          </div>
           <div className="hero-stats">
             <div className="hero-stat">
               <div className="hero-stat-num">
@@ -346,6 +355,37 @@ export default async function HomePage({ params }: HomePageProps) {
           </div>
         </section>
 
+        <section className="services" aria-label="خدمات الواجهة الموحدة">
+          <div className="services-grid">
+            <article className="service-card">
+              <div className="service-icon">↗</div>
+              <div>
+                <h2>المقابلة الأولية</h2>
+                <p>
+                  لقاء تعارفي لاختيار مسار QASP-S أو QBA، فهم متطلبات الإشراف،
+                  والتأكد من ملاءمة البرنامج قبل بدء التعاقد.
+                </p>
+                <a href="#supervisors" className="service-link">
+                  اختيار المشرف وموعد المقابلة ←
+                </a>
+              </div>
+            </article>
+            <article className="service-card consult">
+              <div className="service-icon">✦</div>
+              <div>
+                <h2>الاستشارة المهنية</h2>
+                <p>
+                  جلسة فردية عن بُعد لمناقشة حالة أو خطة أو تحدٍ مهني في تحليل
+                  السلوك التطبيقي دون الالتحاق ببرنامج إشراف كامل.
+                </p>
+                <a href="#supervisors" className="service-link">
+                  اختيار مستشار وحجز الموعد ←
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+
         {/* SUPERVISORS */}
         <section className="section" id="supervisors">
           <div className="section-header">
@@ -354,7 +394,7 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <div className="section-title">المشرفون المتاحون</div>
                 <div className="section-sub">
-                  اختر مشرفك المعتمد وابدأ رحلتك
+                  اختر المشرف ثم حدد مقابلة أولية أو استشارة مهنية
                 </div>
               </div>
             </div>
@@ -426,12 +466,20 @@ export default async function HomePage({ params }: HomePageProps) {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/${locale}/supervisor/${sup.id}`}
-                        className="sup-btn"
-                      >
-                        احجز مقابلة أولية ←
-                      </Link>
+                      <div className="sup-actions">
+                        <Link
+                          href={`/${locale}/supervisor/${sup.id}?type=initial_interview`}
+                          className="sup-btn"
+                        >
+                          مقابلة أولية
+                        </Link>
+                        <Link
+                          href={`/${locale}/supervisor/${sup.id}?type=consultation`}
+                          className="sup-btn consult"
+                        >
+                          استشارة مهنية
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );

@@ -1,37 +1,50 @@
-import { notFound } from 'next/navigation';
-import BookingSection from '@/components/booking/BookingSection';
-import Link from 'next/link';
+import { notFound } from "next/navigation";
+import BookingSection from "@/components/booking/BookingSection";
+import Link from "next/link";
 
-interface Props { params: Promise<{ locale: string; id: string }>; }
+interface Props {
+  params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ type?: string }>;
+}
 
-export default async function SupervisorPage({ params }: Props) {
+export default async function SupervisorPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
+  const query = await searchParams;
+  const bookingType =
+    query.type === "consultation" ? "consultation" : "initial_interview";
 
   let supervisor: any = null;
   let availableDates: string[] = [];
   let reviews: any[] = [];
 
   try {
-    const { adminDb } = await import('@/lib/firebase/admin');
-    const snap = await adminDb.collection('supervisors').doc(id).get();
+    const { adminDb } = await import("@/lib/firebase/admin");
+    const snap = await adminDb.collection("supervisors").doc(id).get();
     if (!snap.exists) notFound();
     supervisor = { id: snap.id, ...snap.data() };
     if (!supervisor.isActive) notFound();
 
-    const today = new Date().toISOString().split('T')[0];
-    const slotsSnap = await adminDb.collection('availability')
-      .where('supervisorId', '==', id)
-      .where('isBooked', '==', false)
-      .where('date', '>=', today)
+    const today = new Date().toISOString().split("T")[0];
+    const slotsSnap = await adminDb
+      .collection("availability")
+      .where("supervisorId", "==", id)
+      .where("isBooked", "==", false)
+      .where("date", ">=", today)
       .get();
 
-    const dates = slotsSnap.docs.map(d => d.data().date as string);
+    const dates = slotsSnap.docs.map((d) => d.data().date as string);
     availableDates = [...new Set(dates)].sort();
 
     try {
-      const rSnap = await adminDb.collection('reviews').where('supervisorId','==',id).limit(5).get();
-      reviews = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch { reviews = []; }
+      const rSnap = await adminDb
+        .collection("reviews")
+        .where("supervisorId", "==", id)
+        .limit(5)
+        .get();
+      reviews = rSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch {
+      reviews = [];
+    }
   } catch (e) {
     if (!supervisor) notFound();
   }
@@ -47,9 +60,9 @@ export default async function SupervisorPage({ params }: Props) {
   };
 
   const rating = supervisor?.ratingAverage || 0;
-  const initials = (supervisor?.name || 'م')[0];
+  const initials = (supervisor?.name || "م")[0];
   const seats = supervisor?.availableSeats ?? 0;
-  const specialization = supervisor?.specialization || 'مشرف أكاديمي';
+  const specialization = supervisor?.specialization || "مشرف أكاديمي";
 
   return (
     <>
@@ -147,28 +160,35 @@ export default async function SupervisorPage({ params }: Props) {
               <div className="brand-sub">SULUKERA</div>
             </div>
           </Link>
-          <Link href={`/${locale}`} className="nav-back">← العودة للرئيسية</Link>
+          <Link href={`/${locale}`} className="nav-back">
+            ← العودة للرئيسية
+          </Link>
         </nav>
 
         <div className="wrap">
-
           {/* PROFILE CARD */}
           <div className="profile-card">
             <div className="profile-banner">
               <div className="profile-avatar">
-                {supervisor?.photo
-                  ? <img src={photoUrl(supervisor.photo)} alt={supervisor.name} />
-                  : initials
-                }
+                {supervisor?.photo ? (
+                  <img src={photoUrl(supervisor.photo)} alt={supervisor.name} />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="profile-info">
                 <div className="profile-name">{supervisor?.name}</div>
                 <div className="profile-spec">{specialization}</div>
                 {rating > 0 && (
                   <div className="profile-stars">
-                    <span className="stars">{'★'.repeat(Math.floor(rating))}{'☆'.repeat(5-Math.floor(rating))}</span>
+                    <span className="stars">
+                      {"★".repeat(Math.floor(rating))}
+                      {"☆".repeat(5 - Math.floor(rating))}
+                    </span>
                     <span className="rating-num">{rating.toFixed(1)}</span>
-                    <span className="rating-count">({reviews.length} تقييم)</span>
+                    <span className="rating-count">
+                      ({reviews.length} تقييم)
+                    </span>
                   </div>
                 )}
               </div>
@@ -178,22 +198,40 @@ export default async function SupervisorPage({ params }: Props) {
               <div className="kpis">
                 <div className="kpi">
                   <div className="kpi-icon">📚</div>
-                  <div className="kpi-val">{supervisor?.totalSessions ?? 0}</div>
+                  <div className="kpi-val">
+                    {supervisor?.totalSessions ?? 0}
+                  </div>
                   <div className="kpi-lbl">إجمالي الجلسات</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-icon">⭐</div>
-                  <div className="kpi-val" style={{color:'#F59E0B'}}>{rating > 0 ? rating.toFixed(1) : '—'}</div>
+                  <div className="kpi-val" style={{ color: "#F59E0B" }}>
+                    {rating > 0 ? rating.toFixed(1) : "—"}
+                  </div>
                   <div className="kpi-lbl">متوسط التقييم</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-icon">📅</div>
-                  <div className="kpi-val" style={{color:'#10B981'}}>{availableDates.length}</div>
+                  <div className="kpi-val" style={{ color: "#10B981" }}>
+                    {availableDates.length}
+                  </div>
                   <div className="kpi-lbl">أيام متاحة</div>
                 </div>
                 <div className="kpi">
                   <div className="kpi-icon">🪑</div>
-                  <div className="kpi-val" style={{color: seats > 5 ? '#10B981' : seats > 0 ? '#F59E0B' : '#EF4444'}}>{seats}</div>
+                  <div
+                    className="kpi-val"
+                    style={{
+                      color:
+                        seats > 5
+                          ? "#10B981"
+                          : seats > 0
+                            ? "#F59E0B"
+                            : "#EF4444",
+                    }}
+                  >
+                    {seats}
+                  </div>
                   <div className="kpi-lbl">مقاعد متاحة</div>
                 </div>
               </div>
@@ -215,9 +253,7 @@ export default async function SupervisorPage({ params }: Props) {
                 </div>
               )}
 
-              {supervisor?.bio && (
-                <p className="bio-text">{supervisor.bio}</p>
-              )}
+              {supervisor?.bio && <p className="bio-text">{supervisor.bio}</p>}
 
               {availableDates.length > 0 && (
                 <div className="avail-badge">
@@ -238,16 +274,27 @@ export default async function SupervisorPage({ params }: Props) {
                 </div>
                 <div className="section-body">
                   {reviews.length === 0 ? (
-                    <div className="no-reviews">لا توجد تقييمات بعد — كن أول من يقيّم!</div>
-                  ) : reviews.map(r => (
-                    <div key={r.id} className="review-item">
-                      <div className="review-top">
-                        <span className="review-author">{r.studentName || 'طالب'}</span>
-                        <span className="review-stars">{'★'.repeat(r.rating||5)}{'☆'.repeat(5-(r.rating||5))}</span>
-                      </div>
-                      {r.comment && <p className="review-text">{r.comment}</p>}
+                    <div className="no-reviews">
+                      لا توجد تقييمات بعد — كن أول من يقيّم!
                     </div>
-                  ))}
+                  ) : (
+                    reviews.map((r) => (
+                      <div key={r.id} className="review-item">
+                        <div className="review-top">
+                          <span className="review-author">
+                            {r.studentName || "طالب"}
+                          </span>
+                          <span className="review-stars">
+                            {"★".repeat(r.rating || 5)}
+                            {"☆".repeat(5 - (r.rating || 5))}
+                          </span>
+                        </div>
+                        {r.comment && (
+                          <p className="review-text">{r.comment}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -257,28 +304,52 @@ export default async function SupervisorPage({ params }: Props) {
               <div className="booking-head">
                 <div className="booking-head-icon">🗓</div>
                 <div>
-                  <div className="booking-head-title">احجز جلستك الآن</div>
-                  <div className="booking-head-sub">اختر التاريخ والوقت المناسب لك</div>
+                  <div className="booking-head-title">
+                    {bookingType === "consultation"
+                      ? "احجز استشارتك"
+                      : "احجز المقابلة الأولية"}
+                  </div>
+                  <div className="booking-head-sub">
+                    جلسة عن بُعد · اختر التاريخ والوقت المناسب
+                  </div>
                 </div>
               </div>
               <div className="booking-body">
-                {seats === 0 ? (
-                  <div style={{textAlign:'center',padding:'32px 16px'}}>
-                    <div style={{fontSize:36,marginBottom:12}}>🪑</div>
-                    <div style={{fontWeight:700,color:'#001442',marginBottom:8}}>المقاعد ممتلئة</div>
-                    <div style={{fontSize:13,color:'#8898AA'}}>لا تتوفر مقاعد حالياً، تابعنا للمزيد</div>
+                {seats === 0 && bookingType === "initial_interview" ? (
+                  <div style={{ textAlign: "center", padding: "32px 16px" }}>
+                    <div style={{ fontSize: 36, marginBottom: 12 }}>🪑</div>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: "#001442",
+                        marginBottom: 8,
+                      }}
+                    >
+                      المقاعد ممتلئة
+                    </div>
+                    <div style={{ fontSize: 13, color: "#8898AA" }}>
+                      لا تتوفر مقاعد حالياً، تابعنا للمزيد
+                    </div>
                   </div>
                 ) : (
-                  <BookingSection supervisor={supervisor} availableDates={availableDates} locale={locale} />
+                  <BookingSection
+                    supervisor={supervisor}
+                    availableDates={availableDates}
+                    locale={locale}
+                    bookingType={bookingType}
+                  />
                 )}
               </div>
             </div>
           </div>
-
         </div>
 
         <div className="footer">
-          منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a> © {new Date().getFullYear()}
+          منصة الإشراف الأكاديمي ·{" "}
+          <a href="https://sulukera.com" target="_blank">
+            سلوكيرا
+          </a>{" "}
+          © {new Date().getFullYear()}
         </div>
       </div>
     </>

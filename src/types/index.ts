@@ -1,6 +1,10 @@
 // src/types/index.ts
 
-export type BookingStatus = 'confirmed' | 'cancelled' | 'rescheduled' | 'completed';
+export type BookingStatus =
+  | "confirmed"
+  | "cancelled"
+  | "rescheduled"
+  | "completed";
 
 export interface Supervisor {
   id: string;
@@ -16,8 +20,8 @@ export interface Supervisor {
 export interface AvailabilitySlot {
   id: string;
   supervisorId: string;
-  date: string;           // YYYY-MM-DD
-  time: string;           // HH:mm
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
   isBooked: boolean;
   bookingId?: string;
 }
@@ -39,13 +43,14 @@ export interface Booking {
   availabilitySlotId?: string;
   reminderSent?: boolean;
   createdAt: string;
+  bookingType?: "initial_interview" | "consultation";
 }
 
 export interface Review {
   id: string;
   bookingId: string;
   supervisorId: string;
-  rating: number;        // 1–5
+  rating: number; // 1–5
   comment: string;
   createdAt: string;
 }
@@ -58,6 +63,7 @@ export interface CreateBookingPayload {
   availabilitySlotId: string;
   date: string;
   time: string;
+  bookingType?: "initial_interview" | "consultation";
 }
 
 export interface CalendarEventPayload {
@@ -143,8 +149,17 @@ export interface Trainee {
   accountStatus?: "invited" | "active";
 }
 
-export type FieldworkActivityType = "direct" | "indirect" | "supervision_direct" | "supervision_indirect";
-export type FieldworkActivityStatus = "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
+export type FieldworkActivityType =
+  | "direct"
+  | "indirect"
+  | "supervision_direct"
+  | "supervision_indirect";
+export type FieldworkActivityStatus =
+  | "draft"
+  | "submitted"
+  | "approved"
+  | "revision_requested"
+  | "rejected";
 
 export interface FieldworkActivity {
   id: string;
@@ -160,7 +175,18 @@ export interface FieldworkActivity {
   format?: "individual" | "group";
   observedWithClient?: boolean;
   description: string;
-  activityCategory?: "service_delivery" | "data_collection" | "data_analysis" | "assessment" | "program_development" | "reporting_graphing" | "stakeholder_training" | "fidelity_monitoring" | "person_centered_meeting" | "research_programming" | "other_aba";
+  activityCategory?:
+    | "service_delivery"
+    | "data_collection"
+    | "data_analysis"
+    | "assessment"
+    | "program_development"
+    | "reporting_graphing"
+    | "stakeholder_training"
+    | "fidelity_monitoring"
+    | "person_centered_meeting"
+    | "research_programming"
+    | "other_aba";
   centerName?: string;
   clientCode?: string;
   planGoalId?: string;
@@ -172,12 +198,92 @@ export interface FieldworkActivity {
   updatedAt: string;
 }
 
-export type SupervisionDocumentType = 'contract' | 'guardian_consent' | 'center_approval' | 'observation_consent' | 'video_consent' | 'data_consent' | 'supervisor_credential' | 'coursework' | 'background_check' | 'recommendation' | 'final_verification' | 'other';
-export interface SupervisionDocument { id:string; traineeId:string; supervisorId:string; type:SupervisionDocumentType; title:string; centerName?:string; clientCode?:string; issuedAt:string; expiresAt?:string; status:'uploaded'|'reviewed'|'replace_required'|'valid'|'expired'|'revoked'; fileName?:string; fileUrl?:string; notes?:string; createdAt:string; }
-export interface MeetingMinute { id:string; traineeId:string; supervisorId:string; date:string; startTime:string; endTime:string; format:'individual'|'group'; setting:'in_person'|'video'; observedWithClient:boolean; agenda:string; discussion:string; decisions:string; actionItems:string; competencyIds:string[]; planGoalIds:string[]; acknowledgedByTrainee?:boolean; createdAt:string; updatedAt:string; }
-export interface CompetencyScore { competencyId:string; score:number; observationMethod:'live'|'role_play'|'discussion'|'work_product'; note?:string; }
-export interface CompetencyAssessment { id:string; traineeId:string; supervisorId:string; date:string; period:'initial'|'quarterly'; scores:CompetencyScore[]; strengths?:string; developmentPriorities?:string; recommendation?:string; totalScore:number; maxScore:number; createdAt:string; }
-export interface SupervisionPlanGoal { id:string; domain:string; title:string; startDate?:string; dueDate?:string; masteryCriterion?:string; status:'not_started'|'in_progress'|'achieved'|'retrain'; supervisorNote?:string; order:number; }
+export type SupervisionDocumentType =
+  | "contract"
+  | "guardian_consent"
+  | "center_approval"
+  | "observation_consent"
+  | "video_consent"
+  | "data_consent"
+  | "supervisor_credential"
+  | "coursework"
+  | "background_check"
+  | "recommendation"
+  | "final_verification"
+  | "other";
+export interface SupervisionDocument {
+  id: string;
+  traineeId: string;
+  supervisorId: string;
+  type: SupervisionDocumentType;
+  title: string;
+  centerName?: string;
+  clientCode?: string;
+  issuedAt: string;
+  expiresAt?: string;
+  status:
+    | "uploaded"
+    | "reviewed"
+    | "replace_required"
+    | "valid"
+    | "expired"
+    | "revoked";
+  fileName?: string;
+  fileUrl?: string;
+  notes?: string;
+  createdAt: string;
+}
+export interface MeetingMinute {
+  id: string;
+  traineeId: string;
+  supervisorId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  format: "individual" | "group";
+  setting: "in_person" | "video";
+  observedWithClient: boolean;
+  agenda: string;
+  discussion: string;
+  decisions: string;
+  actionItems: string;
+  competencyIds: string[];
+  planGoalIds: string[];
+  acknowledgedByTrainee?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CompetencyScore {
+  competencyId: string;
+  score: number;
+  observationMethod: "live" | "role_play" | "discussion" | "work_product";
+  note?: string;
+}
+export interface CompetencyAssessment {
+  id: string;
+  traineeId: string;
+  supervisorId: string;
+  date: string;
+  period: "initial" | "quarterly";
+  scores: CompetencyScore[];
+  strengths?: string;
+  developmentPriorities?: string;
+  recommendation?: string;
+  totalScore: number;
+  maxScore: number;
+  createdAt: string;
+}
+export interface SupervisionPlanGoal {
+  id: string;
+  domain: string;
+  title: string;
+  startDate?: string;
+  dueDate?: string;
+  masteryCriterion?: string;
+  status: "not_started" | "in_progress" | "achieved" | "retrain";
+  supervisorNote?: string;
+  order: number;
+}
 
 // ===========================
 // الإسناد (ربط المتدرب بالمشرف)

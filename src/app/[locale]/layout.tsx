@@ -1,17 +1,18 @@
 // src/app/[locale]/layout.tsx
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-import { notFound } from 'next/navigation';
-import { routing } from '@/i18n/routing';
-import type { Metadata } from 'next';
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { routing } from "@/i18n/routing";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'سلوكيرا — منصة الإشراف الأكاديمي',
-  description: 'احجز جلستك مع مشرفك الأكاديمي في دقيقتين',
+  title: "الواجهة الموحّدة للإشراف | سلوكيرا",
+  description:
+    "احجز مقابلة أولية لبدء الإشراف أو استشارة مهنية في تحليل السلوك التطبيقي مع مشرفي سلوكيرا.",
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
 };
 
@@ -20,7 +21,10 @@ interface RootLayoutProps {
   params: Promise<{ locale: string }>;
 }
 
-export default async function RootLayout({ children, params }: RootLayoutProps) {
+export default async function RootLayout({
+  children,
+  params,
+}: RootLayoutProps) {
   const { locale } = await params;
 
   if (!routing.locales.includes(locale as any)) {
@@ -28,20 +32,24 @@ export default async function RootLayout({ children, params }: RootLayoutProps) 
   }
 
   const messages = await getMessages();
-  const isRTL = locale === 'ar';
+  const isRTL = locale === "ar";
 
   return (
-    <html lang={locale} dir={isRTL ? 'rtl' : 'ltr'}>
+    <html lang={locale} dir={isRTL ? "rtl" : "ltr"}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body style={{minHeight:'100vh',margin:0,padding:0}}>
+      <body style={{ minHeight: "100vh", margin: 0, padding: 0 }}>
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>
