@@ -26,6 +26,7 @@ export default function BookingSection({
   const [studentName, setStudentName] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
@@ -70,11 +71,19 @@ export default function BookingSection({
         date: selectedSlot.date,
         time: selectedSlot.time,
         bookingType,
+        password,
       },
       locale as "ar" | "en",
     );
     if (!result.success && result.error === "NO_SEATS_AVAILABLE") {
       setError("عذراً، المقاعد امتلأت للتو. يرجى التواصل مع المشرف مباشرة.");
+      setSubmitting(false);
+      return;
+    }
+    if (!result.success && result.error === "ACCOUNT_EXISTS") {
+      setError(
+        "يوجد حساب بهذا البريد بالفعل. سجل الدخول إلى حسابك لحجز موعد جديد.",
+      );
       setSubmitting(false);
       return;
     }
@@ -424,6 +433,23 @@ export default function BookingSection({
                       placeholder="+966 5X XXX XXXX"
                       required
                     />
+                  </div>
+
+                  <div className="bk-field">
+                    <label className="bk-label">كلمة مرور حسابك</label>
+                    <input
+                      className="bk-input"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="8 أحرف على الأقل"
+                      required
+                    />
+                    <div className="bk-note">
+                      ستستخدم البريد وكلمة المرور للدخول ومتابعة جميع مواعيدك.
+                    </div>
                   </div>
 
                   {error && <div className="bk-error">⚠️ {error}</div>}

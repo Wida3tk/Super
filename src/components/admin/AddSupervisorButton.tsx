@@ -1,29 +1,47 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 export default function AddSupervisorButton() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '', bio: '' });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    bio: "",
+    accountType: "supervisor",
+  });
 
   const reset = () => {
-    setForm({ name: '', email: '', password: '', bio: '' });
-    setMsg(''); setIsError(false);
+    setForm({
+      name: "",
+      email: "",
+      password: "",
+      bio: "",
+      accountType: "supervisor",
+    });
+    setMsg("");
+    setIsError(false);
   };
 
-  const close = () => { setOpen(false); reset(); };
+  const close = () => {
+    setOpen(false);
+    reset();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true); setMsg(''); setIsError(false);
+    setLoading(true);
+    setMsg("");
+    setIsError(false);
 
     try {
-      const res = await fetch('/api/admin/create-supervisor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/create-supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
@@ -31,20 +49,29 @@ export default function AddSupervisorButton() {
       if (data.success) {
         setMsg(`✅ تم إنشاء حساب المشرف "${form.name}" بنجاح!`);
         setIsError(false);
-        setForm({ name: '', email: '', password: '', bio: '' });
-        setTimeout(() => { close(); window.location.reload(); }, 1800);
+        setForm({
+          name: "",
+          email: "",
+          password: "",
+          bio: "",
+          accountType: "supervisor",
+        });
+        setTimeout(() => {
+          close();
+          window.location.reload();
+        }, 1800);
       } else {
         setIsError(true);
         const errMap: Record<string, string> = {
-          EMAIL_EXISTS: 'البريد الإلكتروني مسجل مسبقاً',
-          MISSING_FIELDS: 'يرجى تعبئة جميع الحقول المطلوبة',
-          SERVER_ERROR: 'حدث خطأ، حاولي مرة أخرى',
+          EMAIL_EXISTS: "البريد الإلكتروني مسجل مسبقاً",
+          MISSING_FIELDS: "يرجى تعبئة جميع الحقول المطلوبة",
+          SERVER_ERROR: "حدث خطأ، حاولي مرة أخرى",
         };
         setMsg(errMap[data.error] ?? data.error);
       }
     } catch {
       setIsError(true);
-      setMsg('حدث خطأ في الاتصال');
+      setMsg("حدث خطأ في الاتصال");
     }
     setLoading(false);
   };
@@ -167,66 +194,126 @@ export default function AddSupervisorButton() {
       </button>
 
       {open && (
-        <div className="overlay" onClick={e => { if (e.target === e.currentTarget) close(); }}>
+        <div
+          className="overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
           <div className="modal" dir="rtl">
             <div className="modal-head">
               <div className="modal-head-left">
                 <div className="modal-icon">👨‍🏫</div>
                 <div>
                   <div className="modal-title">إضافة مشرف جديد</div>
-                  <div className="modal-sub">سيتمكن من تسجيل الدخول وإدارة مواعيده</div>
+                  <div className="modal-sub">
+                    سيتمكن من تسجيل الدخول وإدارة مواعيده
+                  </div>
                 </div>
               </div>
-              <button className="modal-close" onClick={close}>✕</button>
+              <button className="modal-close" onClick={close}>
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 <div className="field">
-                  <label>الاسم الكامل <span>*</span></label>
+                  <label>
+                    نوع الحساب <span>*</span>
+                  </label>
+                  <select
+                    value={form.accountType}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, accountType: e.target.value }))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: 11,
+                      border: "1.5px solid #D1D9E6",
+                      borderRadius: 10,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <option value="supervisor">
+                      مشرف — للمقابلات الأولية والإشراف
+                    </option>
+                    <option value="consultant">
+                      مستشار — للاستشارات المهنية
+                    </option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>
+                    الاسم الكامل <span>*</span>
+                  </label>
                   <input
-                    type="text" placeholder="د. أحمد المنصوري"
+                    type="text"
+                    placeholder="د. أحمد المنصوري"
                     value={form.name}
-                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, name: e.target.value }))
+                    }
                     required
                   />
                 </div>
                 <div className="field">
-                  <label>البريد الإلكتروني <span>*</span></label>
+                  <label>
+                    البريد الإلكتروني <span>*</span>
+                  </label>
                   <input
-                    type="email" placeholder="supervisor@sulukera.com"
+                    type="email"
+                    placeholder="supervisor@sulukera.com"
                     value={form.email}
-                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, email: e.target.value }))
+                    }
                     required
                   />
                 </div>
                 <div className="field">
-                  <label>كلمة المرور <span>*</span></label>
+                  <label>
+                    كلمة المرور <span>*</span>
+                  </label>
                   <input
-                    type="password" placeholder="8 أحرف على الأقل"
+                    type="password"
+                    placeholder="8 أحرف على الأقل"
                     value={form.password}
-                    onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, password: e.target.value }))
+                    }
                     minLength={8}
                     required
                   />
-                  <div className="pass-hint">شاركها مع المشرف، يمكنه تغييرها لاحقاً</div>
+                  <div className="pass-hint">
+                    شاركها مع المشرف، يمكنه تغييرها لاحقاً
+                  </div>
                 </div>
                 <div className="field">
                   <label>نبذة مختصرة (اختياري)</label>
                   <input
-                    type="text" placeholder="مشرف تحليل السلوك التطبيقي"
+                    type="text"
+                    placeholder="مشرف تحليل السلوك التطبيقي"
                     value={form.bio}
-                    onChange={e => setForm(p => ({ ...p, bio: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, bio: e.target.value }))
+                    }
                   />
                 </div>
 
-                {msg && <div className={`modal-msg ${isError ? 'err' : 'ok'}`}>{msg}</div>}
+                {msg && (
+                  <div className={`modal-msg ${isError ? "err" : "ok"}`}>
+                    {msg}
+                  </div>
+                )}
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn-cancel" onClick={close}>إلغاء</button>
+                <button type="button" className="btn-cancel" onClick={close}>
+                  إلغاء
+                </button>
                 <button type="submit" className="btn-submit" disabled={loading}>
-                  {loading ? '⏳ جارٍ الإنشاء...' : '✓ إنشاء الحساب'}
+                  {loading ? "⏳ جارٍ الإنشاء..." : "✓ إنشاء الحساب"}
                 </button>
               </div>
             </form>

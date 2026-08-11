@@ -10,37 +10,52 @@ interface BookingEmailData {
   meetLink: string;
   managementToken: string;
   referenceNumber?: string;
-  locale?: 'ar' | 'en';
+  locale?: "ar" | "en";
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://super-gray-zeta.vercel.app';
-const PRIMARY = '#0D40FC';
-const DEEP = '#001442';
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL || "https://super-gray-zeta.vercel.app";
+const PRIMARY = "#0D40FC";
+const DEEP = "#001442";
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+): Promise<void> {
   const apiKey = process.env.EMAIL_SERVICE_API_KEY;
   if (!apiKey) {
-    console.log('[EMAIL MOCK]', { to, subject });
+    console.log("[EMAIL MOCK]", { to, subject });
     return;
   }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      from: `${process.env.EMAIL_FROM_NAME || 'سلوكيرا'} <${process.env.EMAIL_FROM_ADDRESS || 'noreply@sulukera.com'}>`,
-      to, subject, html,
+      from: `${process.env.EMAIL_FROM_NAME || "سلوكيرا"} <${process.env.EMAIL_FROM_ADDRESS || "noreply@sulukera.com"}>`,
+      to,
+      subject,
+      html,
     }),
   });
   if (!res.ok) {
     const error = await res.json();
-    console.error('Resend API error:', JSON.stringify(error));
+    console.error("Resend API error:", JSON.stringify(error));
     throw new Error(`Email failed: ${JSON.stringify(error)}`);
   }
   const result = await res.json();
-  console.log('[EMAIL SENT]', { to, subject, id: result.id });
+  console.log("[EMAIL SENT]", { to, subject, id: result.id });
 }
 
-export async function sendTraineeInvitationEmail(data: { name: string; email: string; resetLink: string; supervisorName: string }): Promise<void> {
+export async function sendTraineeInvitationEmail(data: {
+  name: string;
+  email: string;
+  resetLink: string;
+  supervisorName: string;
+}): Promise<void> {
   const html = baseTemplate(`
     <h2>مرحبًا ${data.name}</h2>
     <p>تم إنشاء حسابك في منصة سلوكيرا وإسنادك إلى المشرف <strong>${data.supervisorName}</strong>.</p>
@@ -48,13 +63,13 @@ export async function sendTraineeInvitationEmail(data: { name: string; email: st
     <div style="text-align:center;margin:24px 0"><a href="${data.resetLink}" class="btn">إنشاء كلمة المرور</a></div>
     <p style="font-size:12px;color:#94A3B8">هذا الرابط مخصص لك، فلا تشاركه مع أي شخص.</p>
   `);
-  await sendEmail(data.email, 'إنشاء حساب المتدرب في منصة سلوكيرا', html);
+  await sendEmail(data.email, "إنشاء حساب المتدرب في منصة سلوكيرا", html);
 }
 
 // ─── Template base ───────────────────────────────────────────────
-function baseTemplate(content: string, dir: 'rtl' | 'ltr' = 'rtl') {
+function baseTemplate(content: string, dir: "rtl" | "ltr" = "rtl") {
   return `<!DOCTYPE html>
-<html dir="${dir}" lang="${dir==='rtl'?'ar':'en'}">
+<html dir="${dir}" lang="${dir === "rtl" ? "ar" : "en"}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><style>
   body{margin:0;padding:0;background:#F8FAFC;font-family:Arial,Helvetica,sans-serif;}
   .wrap{max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
@@ -91,20 +106,25 @@ function baseTemplate(content: string, dir: 'rtl' | 'ltr' = 'rtl') {
 }
 
 // ─── 1. تأكيد الحجز — للطالب ─────────────────────────────────────
-export async function sendBookingConfirmationEmail(data: BookingEmailData): Promise<void> {
-  const manageUrl = `${APP_URL}/ar/manage-booking/${data.managementToken}`;
-  const lookupUrl = `${APP_URL}/ar/booking-lookup`;
+export async function sendBookingConfirmationEmail(
+  data: BookingEmailData,
+): Promise<void> {
+  const manageUrl = `${APP_URL}/ar/login`;
 
   const html = baseTemplate(`
     <h2>مرحباً ${data.studentName}، 🎉</h2>
     <p>تم تأكيد حجز جلستك بنجاح. إليك كل التفاصيل:</p>
 
-    ${data.referenceNumber ? `
+    ${
+      data.referenceNumber
+        ? `
     <div class="ref-box">
       <div class="ref-label">رقم الحجز المرجعي — احتفظ به</div>
       <div class="ref-num">${data.referenceNumber}</div>
       <div style="font-size:11px;color:#94A3B8;margin-top:6px;">يمكنك تتبع حجزك عبر هذا الرقم</div>
-    </div>` : ''}
+    </div>`
+        : ""
+    }
 
     <table class="details">
       <tr><td>👨‍🏫 المشرف</td><td>${data.supervisorName}</td></tr>
@@ -114,8 +134,8 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData): Prom
     </table>
 
     <div style="text-align:center;margin:24px 0;">
-      ${data.meetLink ? `<a href="${data.meetLink}" class="btn">🎥 انضم عبر Google Meet</a>` : ''}
-      <a href="${manageUrl}" class="btn-outline">⚙️ إدارة الحجز</a>
+      ${data.meetLink ? `<a href="${data.meetLink}" class="btn">🎥 انضم عبر Google Meet</a>` : ""}
+      <a href="${manageUrl}" class="btn-outline">الدخول إلى حسابي</a>
     </div>
 
     <div class="alert-box">
@@ -127,20 +147,21 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData): Prom
     </div>
 
     <p style="font-size:12px;color:#94A3B8;margin-top:20px;">
-      للاستفسار أو الإلغاء: <a href="${manageUrl}" style="color:${PRIMARY};">إدارة الحجز</a> |
-      تتبع الحجز بالرقم المرجعي: <a href="${lookupUrl}" style="color:${PRIMARY};">اضغط هنا</a>
+      يمكنك متابعة جميع مواعيدك من <a href="${manageUrl}" style="color:${PRIMARY};">حسابك في الواجهة الموحّدة للإشراف</a>.
     </p>
   `);
 
   await sendEmail(
     data.studentEmail,
     `✅ تم تأكيد حجزك — ${data.date} الساعة ${data.time}`,
-    html
+    html,
   );
 }
 
 // ─── 2. إشعار للمشرف عند حجز جديد ───────────────────────────────
-export async function sendSupervisorBookingNotification(data: BookingEmailData): Promise<void> {
+export async function sendSupervisorBookingNotification(
+  data: BookingEmailData,
+): Promise<void> {
   if (!data.supervisorEmail) return;
 
   const html = baseTemplate(`
@@ -152,13 +173,17 @@ export async function sendSupervisorBookingNotification(data: BookingEmailData):
       <tr><td>📅 التاريخ</td><td>${data.date}</td></tr>
       <tr><td>🕐 الوقت</td><td>${data.time}</td></tr>
       <tr><td>⏱️ المدة</td><td>30 دقيقة</td></tr>
-      ${data.referenceNumber ? `<tr><td>🔢 الرقم المرجعي</td><td style="font-family:monospace;font-weight:700;">${data.referenceNumber}</td></tr>` : ''}
+      ${data.referenceNumber ? `<tr><td>🔢 الرقم المرجعي</td><td style="font-family:monospace;font-weight:700;">${data.referenceNumber}</td></tr>` : ""}
     </table>
 
-    ${data.meetLink ? `
+    ${
+      data.meetLink
+        ? `
     <div style="text-align:center;margin:24px 0;">
       <a href="${data.meetLink}" class="btn">🎥 رابط Google Meet</a>
-    </div>` : ''}
+    </div>`
+        : ""
+    }
 
     <p style="font-size:12px;color:#94A3B8;">
       يمكنك إدارة مواعيدك من <a href="${APP_URL}/ar/supervisor-dashboard" style="color:${PRIMARY};">لوحة المشرف</a>
@@ -168,7 +193,7 @@ export async function sendSupervisorBookingNotification(data: BookingEmailData):
   await sendEmail(
     data.supervisorEmail,
     `📬 حجز جديد — ${data.studentName} | ${data.date} الساعة ${data.time}`,
-    html
+    html,
   );
 }
 
@@ -184,10 +209,14 @@ export async function sendReminderEmail(data: BookingEmailData): Promise<void> {
       <tr><td>🕐 الوقت</td><td>${data.time}</td></tr>
     </table>
 
-    ${data.meetLink ? `
+    ${
+      data.meetLink
+        ? `
     <div style="text-align:center;margin:24px 0;">
       <a href="${data.meetLink}" class="btn">🎥 انضم عبر Google Meet</a>
-    </div>` : ''}
+    </div>`
+        : ""
+    }
 
     <div class="alert-box">
       <div class="alert-title">📌 تذكير</div>
@@ -199,14 +228,17 @@ export async function sendReminderEmail(data: BookingEmailData): Promise<void> {
   await sendEmail(
     data.studentEmail,
     `⏰ تذكير: جلستك غداً مع ${data.supervisorName} الساعة ${data.time}`,
-    html
+    html,
   );
 }
 
 // ─── 4. إيميل الإلغاء — للطالب ───────────────────────────────────
 export async function sendCancellationEmail(
-  studentEmail: string, studentName: string,
-  date: string, time: string, locale: 'ar' | 'en' = 'ar'
+  studentEmail: string,
+  studentName: string,
+  date: string,
+  time: string,
+  locale: "ar" | "en" = "ar",
 ): Promise<void> {
   const html = baseTemplate(`
     <h2>تم إلغاء حجزك</h2>

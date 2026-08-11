@@ -15,6 +15,7 @@ interface Supervisor {
   credentialNumber?: string;
   credentialExpiresAt?: string;
   supervisionTrainingCompleted?: boolean;
+  accountType?: string;
 }
 
 interface Props {
@@ -45,6 +46,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
     credentialExpiresAt: "",
     supervisionTrainingCompleted: false,
     isActive: true,
+    accountType: "supervisor",
   });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -63,6 +65,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
       credentialExpiresAt: s.credentialExpiresAt || "",
       supervisionTrainingCompleted: Boolean(s.supervisionTrainingCompleted),
       isActive: s.isActive ?? true,
+      accountType: s.accountType === "consultant" ? "consultant" : "supervisor",
     });
     setMsg("");
     setIsError(false);
@@ -383,6 +386,21 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
 
             <form onSubmit={handleSubmit}>
               <div className="ep-body">
+                <div className="ep-field">
+                  <label className="ep-label">نوع الحساب</label>
+                  <select
+                    className="ep-input"
+                    value={form.accountType}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, accountType: e.target.value }))
+                    }
+                  >
+                    <option value="supervisor">
+                      مشرف — مقابلات أولية وإشراف
+                    </option>
+                    <option value="consultant">مستشار — استشارات مهنية</option>
+                  </select>
+                </div>
                 <div className="ep-field">
                   <label className="ep-label">الاسم الكامل</label>
                   <input

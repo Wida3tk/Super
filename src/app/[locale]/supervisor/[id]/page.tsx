@@ -10,7 +10,7 @@ interface Props {
 export default async function SupervisorPage({ params, searchParams }: Props) {
   const { locale, id } = await params;
   const query = await searchParams;
-  const bookingType =
+  let bookingType: "initial_interview" | "consultation" =
     query.type === "consultation" ? "consultation" : "initial_interview";
 
   let supervisor: any = null;
@@ -48,6 +48,10 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
   } catch (e) {
     if (!supervisor) notFound();
   }
+  bookingType =
+    supervisor?.accountType === "consultant"
+      ? "consultation"
+      : "initial_interview";
 
   // تحويل رابط Google Drive
   const photoUrl = (url: string) => {

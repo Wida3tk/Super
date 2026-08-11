@@ -40,23 +40,26 @@ export default function SupervisorTabs({
     "overview" | "bookings" | "hours" | "fieldwork" | "workspace"
   >("overview");
 
+  const isConsultant = supervisor?.accountType === "consultant";
   const tabs = [
     { key: "overview", label: "نظرة عامة", icon: "⌂", count: 0 },
     { key: "bookings", label: "المقابلات", icon: "🗓️", count: upcomingCount },
     { key: "hours", label: "ساعات الإشراف", icon: "⏱️", count: traineesCount },
   ];
-  tabs.push({
-    key: "fieldwork",
-    label: "ساعات المتدربين",
-    icon: "📊",
-    count: fieldworkActivities.length,
-  });
-  tabs.push({
-    key: "workspace",
-    label: "ملفات الإشراف",
-    icon: "📁",
-    count: traineesCount,
-  });
+  if (!isConsultant)
+    tabs.push({
+      key: "fieldwork",
+      label: "ساعات المتدربين",
+      icon: "📊",
+      count: fieldworkActivities.length,
+    });
+  if (!isConsultant)
+    tabs.push({
+      key: "workspace",
+      label: "ملفات الإشراف",
+      icon: "📁",
+      count: traineesCount,
+    });
 
   return (
     <div>

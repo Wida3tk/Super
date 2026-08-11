@@ -64,6 +64,7 @@ export interface CreateBookingPayload {
   date: string;
   time: string;
   bookingType?: "initial_interview" | "consultation";
+  password?: string;
 }
 
 export interface CalendarEventPayload {

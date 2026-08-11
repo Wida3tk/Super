@@ -2,13 +2,14 @@
 
 import { randomBytes } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import {
   sendBookingConfirmationEmail,
   sendCancellationEmail,
   sendSupervisorBookingNotification,
 } from "@/lib/email/emailService";
 import type { Booking, BookingStatus, CreateBookingPayload } from "@/types";
+import { getSessionUser } from "@/lib/auth/serverAuth";
 import {
   isManagementToken,
   validateBookingPayload,
@@ -28,6 +29,7 @@ const BOOKING_ERRORS = new Set([
   "NO_SEATS_AVAILABLE",
   "INVALID_SLOT",
   "SLOT_NOT_AVAILABLE",
+  "ACCOUNT_EXISTS",
 ]);
 
 export async function createBooking(
@@ -75,8 +77,36 @@ export async function createBooking(
     createdAt: new Date().toISOString(),
     bookingType,
   };
+  let createdAuthUid = "";
 
   try {
+    const sessionUser = await getSessionUser();
+    const bookingFromOwnAccount =
+      sessionUser?.email?.trim().toLowerCase() === normalizedEmail;
+    try {
+      await adminAuth.getUserByEmail(normalizedEmail);
+      if (!bookingFromOwnAccount) throw new Error("ACCOUNT_EXISTS");
+    } catch (error: any) {
+      if (error?.message === "ACCOUNT_EXISTS") throw error;
+      if (error?.code !== "auth/user-not-found") throw error;
+    }
+    if (!bookingFromOwnAccount) {
+      const account = await adminAuth.createUser({
+        email: normalizedEmail,
+        password: payload.password,
+        displayName: bookingData.studentName,
+      });
+      createdAuthUid = account.uid;
+      await adminDb
+        .collection("clients")
+        .doc(account.uid)
+        .set({
+          name: bookingData.studentName,
+          email: normalizedEmail,
+          phone: bookingData.studentPhone,
+          createdAt: new Date().toISOString(),
+        });
+    }
     const supervisor = await adminDb.runTransaction(async (transaction) => {
       const [existingBookings, supervisorSnap, slotSnap] = await Promise.all([
         transaction.get(existingBookingQuery),
@@ -174,6 +204,12 @@ export async function createBooking(
       referenceNumber,
     };
   } catch (error) {
+    if (createdAuthUid) {
+      await Promise.allSettled([
+        adminAuth.deleteUser(createdAuthUid),
+        adminDb.collection("clients").doc(createdAuthUid).delete(),
+      ]);
+    }
     console.error("Booking creation error:", error);
     const message = error instanceof Error ? error.message : "";
     return {

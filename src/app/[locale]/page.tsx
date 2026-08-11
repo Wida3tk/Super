@@ -327,10 +327,10 @@ export default async function HomePage({ params }: HomePageProps) {
           </p>
           <div className="hero-actions">
             <a href="#supervisors" className="hero-cta">
-              احجز مقابلتك الأولية ←
+              احجز مقابلة أولية ←
             </a>
             <a href="#supervisors" className="hero-cta secondary">
-              احجز استشارة مهنية
+              احجز استشارة
             </a>
           </div>
           <div className="hero-stats">
@@ -360,26 +360,26 @@ export default async function HomePage({ params }: HomePageProps) {
             <article className="service-card">
               <div className="service-icon">↗</div>
               <div>
-                <h2>المقابلة الأولية</h2>
+                <h2>احجز مقابلة أولية</h2>
                 <p>
-                  لقاء تعارفي لاختيار مسار QASP-S أو QBA، فهم متطلبات الإشراف،
-                  والتأكد من ملاءمة البرنامج قبل بدء التعاقد.
+                  لقاء مع حساب مشرف لاختيار مسار QASP-S أو QBA وفهم متطلبات
+                  برنامج الإشراف قبل بدء التعاقد.
                 </p>
                 <a href="#supervisors" className="service-link">
-                  اختيار المشرف وموعد المقابلة ←
+                  اختيار المشرف ←
                 </a>
               </div>
             </article>
             <article className="service-card consult">
               <div className="service-icon">✦</div>
               <div>
-                <h2>الاستشارة المهنية</h2>
+                <h2>احجز استشارة</h2>
                 <p>
-                  جلسة فردية عن بُعد لمناقشة حالة أو خطة أو تحدٍ مهني في تحليل
-                  السلوك التطبيقي دون الالتحاق ببرنامج إشراف كامل.
+                  جلسة فردية عن بُعد مع حساب مستشار لمناقشة حالة أو خطة أو تحدٍ
+                  مهني في تحليل السلوك التطبيقي.
                 </p>
                 <a href="#supervisors" className="service-link">
-                  اختيار مستشار وحجز الموعد ←
+                  اختيار المستشار ←
                 </a>
               </div>
             </article>
@@ -392,9 +392,11 @@ export default async function HomePage({ params }: HomePageProps) {
             <div className="section-title-wrap">
               <div className="section-line" />
               <div>
-                <div className="section-title">المشرفون المتاحون</div>
+                <div className="section-title">
+                  المشرفون والمستشارون المتاحون
+                </div>
                 <div className="section-sub">
-                  اختر المشرف ثم حدد مقابلة أولية أو استشارة مهنية
+                  كل حساب يظهر فقط ضمن الخدمة المخصصة له
                 </div>
               </div>
             </div>
@@ -429,7 +431,11 @@ export default async function HomePage({ params }: HomePageProps) {
                       </div>
                       <div className="sup-card-name-area">
                         <div className="sup-name">{sup.name}</div>
-                        <span className="sup-spec">مشرف أكاديمي معتمد</span>
+                        <span className="sup-spec">
+                          {sup.accountType === "consultant"
+                            ? "مستشار تحليل سلوك"
+                            : "مشرف أكاديمي"}
+                        </span>
                       </div>
                     </div>
 
@@ -466,19 +472,25 @@ export default async function HomePage({ params }: HomePageProps) {
                         </div>
                       </div>
 
-                      <div className="sup-actions">
-                        <Link
-                          href={`/${locale}/supervisor/${sup.id}?type=initial_interview`}
-                          className="sup-btn"
-                        >
-                          مقابلة أولية
-                        </Link>
-                        <Link
-                          href={`/${locale}/supervisor/${sup.id}?type=consultation`}
-                          className="sup-btn consult"
-                        >
-                          استشارة مهنية
-                        </Link>
+                      <div
+                        className="sup-actions"
+                        style={{ gridTemplateColumns: "1fr" }}
+                      >
+                        {sup.accountType === "consultant" ? (
+                          <Link
+                            href={`/${locale}/supervisor/${sup.id}?type=consultation`}
+                            className="sup-btn consult"
+                          >
+                            احجز استشارة
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/${locale}/supervisor/${sup.id}?type=initial_interview`}
+                            className="sup-btn"
+                          >
+                            احجز مقابلة أولية
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>

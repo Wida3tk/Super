@@ -1,84 +1,106 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase/client';
+import { useState } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase/client";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [step, setStep] = useState('');
+  const [step, setStep] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setStep('جارٍ التحقق من البيانات...');
+    setError("");
+    setStep("جارٍ التحقق من البيانات...");
 
     try {
       // Step 1: Firebase Auth
-      setStep('جارٍ تسجيل الدخول...');
+      setStep("جارٍ تسجيل الدخول...");
       let userCredential;
       try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        userCredential = await signInWithEmailAndPassword(
+          auth,
+          email,
+          password,
+        );
       } catch (firebaseErr: any) {
-        console.error('Firebase auth error:', firebaseErr.code, firebaseErr.message);
-        const code = firebaseErr?.code || '';
-        if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('invalid-email')) {
-          setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-        } else if (code.includes('too-many-requests')) {
-          setError('تم تجاوز عدد المحاولات، حاول لاحقاً');
+        console.error(
+          "Firebase auth error:",
+          firebaseErr.code,
+          firebaseErr.message,
+        );
+        const code = firebaseErr?.code || "";
+        if (
+          code.includes("user-not-found") ||
+          code.includes("wrong-password") ||
+          code.includes("invalid-credential") ||
+          code.includes("invalid-email")
+        ) {
+          setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        } else if (code.includes("too-many-requests")) {
+          setError("تم تجاوز عدد المحاولات، حاول لاحقاً");
         } else {
           setError(`خطأ Firebase: ${firebaseErr.code}`);
         }
         setLoading(false);
-        setStep('');
+        setStep("");
         return;
       }
 
       // Step 2: Get token
-      setStep('جارٍ إنشاء الجلسة...');
+      setStep("جارٍ إنشاء الجلسة...");
       const token = await userCredential.user.getIdToken();
 
       // Step 3: Create session
       let res;
       try {
-        res = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        res = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
       } catch (fetchErr: any) {
-        setError('خطأ في الاتصال بالسيرفر');
+        setError("خطأ في الاتصال بالسيرفر");
         setLoading(false);
-        setStep('');
+        setStep("");
         return;
       }
 
       const sessionData = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(`فشل إنشاء الجلسة: ${sessionData.error || res.status} - ${sessionData.detail || ''}`);
+        setError(
+          `فشل إنشاء الجلسة: ${sessionData.error || res.status} - ${sessionData.detail || ""}`,
+        );
         setLoading(false);
-        setStep('');
+        setStep("");
         return;
       }
 
       // Step 4: Redirect
-      setStep('تم! جارٍ التوجيه...');
-      const role = sessionData.role || (sessionData.isAdmin ? 'admin' : 'supervisor');
-      const dest = role === 'admin' ? '/ar/admin' : role === 'trainee' ? '/ar/trainee-dashboard' : '/ar/supervisor-dashboard';
+      setStep("تم! جارٍ التوجيه...");
+      const role =
+        sessionData.role || (sessionData.isAdmin ? "admin" : "supervisor");
+      const dest =
+        role === "admin"
+          ? "/ar/admin"
+          : role === "trainee"
+            ? "/ar/trainee-dashboard"
+            : role === "client"
+              ? "/ar/client-dashboard"
+              : "/ar/supervisor-dashboard";
       // انتظر ثانية عشان الـ cookie ينحفظ
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 800));
       window.location.href = dest;
-
     } catch (err: any) {
       setError(`خطأ غير متوقع: ${err.message || err}`);
       setLoading(false);
-      setStep('');
+      setStep("");
     }
   };
 
@@ -132,9 +154,13 @@ export default function LoginPage() {
           <div className="brand-logo">سلوكيرا</div>
           <div className="brand-en">Sulukera</div>
           <div className="brand-tagline">منصة الإشراف الأكاديمي</div>
-          <div className="brand-sub">بوابة المشرفين الأكاديميين لإدارة الجلسات والمواعيد مع الطلاب</div>
+          <div className="brand-sub">
+            بوابة المشرفين الأكاديميين لإدارة الجلسات والمواعيد مع الطلاب
+          </div>
           <div className="brand-dots">
-            <div className="brand-dot active" /><div className="brand-dot" /><div className="brand-dot" />
+            <div className="brand-dot active" />
+            <div className="brand-dot" />
+            <div className="brand-dot" />
           </div>
         </div>
 
@@ -148,22 +174,33 @@ export default function LoginPage() {
             <form onSubmit={handleLogin}>
               <div className="field">
                 <label>البريد الإلكتروني</label>
-                <input type="email" placeholder="example@sulukera.com"
-                  value={email} onChange={e => setEmail(e.target.value)}
-                  required autoComplete="email" />
+                <input
+                  type="email"
+                  placeholder="example@sulukera.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
               </div>
               <div className="field">
                 <label>كلمة المرور</label>
                 <div className="input-wrap">
                   <input
-                    type={showPass ? 'text' : 'password'}
+                    type={showPass ? "text" : "password"}
                     placeholder="••••••••"
-                    value={password} onChange={e => setPassword(e.target.value)}
-                    required autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
                     style={{ paddingLeft: 44 }}
                   />
-                  <button type="button" className="pass-toggle" onClick={() => setShowPass(p => !p)}>
-                    {showPass ? '🙈' : '👁'}
+                  <button
+                    type="button"
+                    className="pass-toggle"
+                    onClick={() => setShowPass((p) => !p)}
+                  >
+                    {showPass ? "🙈" : "👁"}
                   </button>
                 </div>
               </div>
@@ -172,12 +209,15 @@ export default function LoginPage() {
               {error && <div className="error-box">⚠️ {error}</div>}
 
               <button type="submit" disabled={loading} className="submit-btn">
-                {loading ? step || 'جارٍ الدخول...' : 'تسجيل الدخول →'}
+                {loading ? step || "جارٍ الدخول..." : "تسجيل الدخول →"}
               </button>
             </form>
 
             <div className="login-footer">
-              منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a>
+              منصة الإشراف الأكاديمي ·{" "}
+              <a href="https://sulukera.com" target="_blank">
+                سلوكيرا
+              </a>
             </div>
           </div>
         </div>

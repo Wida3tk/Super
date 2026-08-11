@@ -104,6 +104,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     fieldworkSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
   ).filter((a) => a.status === "submitted");
   const unreadCount = notifications.filter((n: any) => !n.read).length;
+  const isConsultant = supervisor.accountType === "consultant";
 
   const upcomingCount = allBookings.filter(
     (b: any) =>
@@ -152,7 +153,9 @@ export default async function SupervisorDashboardPage({ params }: Props) {
               />
             </div>
             <div className="nav-div" />
-            <span className="nav-title">لوحة المشرف</span>
+            <span className="nav-title">
+              {isConsultant ? "لوحة المستشار" : "لوحة المشرف"}
+            </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link href={`/${locale}`} className="nav-back">
@@ -165,7 +168,12 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         <div className="hero">
           <div>
             <h1>مرحباً، {supervisor.name} 👋</h1>
-            <p>{supervisor.bio || "مشرف أكاديمي في منصة سلوكيرا"}</p>
+            <p>
+              {supervisor.bio ||
+                (isConsultant
+                  ? "مستشار تحليل سلوك في الواجهة الموحّدة للإشراف"
+                  : "مشرف أكاديمي في الواجهة الموحّدة للإشراف")}
+            </p>
           </div>
           <div className="hero-date">
             {new Date().toLocaleDateString("ar-SA", {
@@ -245,12 +253,14 @@ export default async function SupervisorDashboardPage({ params }: Props) {
           <div style={{ marginBottom: 20 }}>
             <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
           </div>
-          <div style={{ marginBottom: 24 }}>
-            <SeatsManager
-              supervisorId={supervisor.id}
-              currentSeats={supervisor.availableSeats ?? 0}
-            />
-          </div>
+          {!isConsultant && (
+            <div style={{ marginBottom: 24 }}>
+              <SeatsManager
+                supervisorId={supervisor.id}
+                currentSeats={supervisor.availableSeats ?? 0}
+              />
+            </div>
+          )}
 
           {/* إشعارات الإدارة */}
           {notifications.length > 0 && (

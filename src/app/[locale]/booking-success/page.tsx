@@ -1,22 +1,36 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 interface Props {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ token?: string; ref?: string; date?: string; time?: string; supervisor?: string; meetLink?: string; }>;
+  searchParams: Promise<{
+    token?: string;
+    ref?: string;
+    date?: string;
+    time?: string;
+    supervisor?: string;
+    meetLink?: string;
+  }>;
 }
 
-export default async function BookingSuccessPage({ params, searchParams }: Props) {
+export default async function BookingSuccessPage({
+  params,
+  searchParams,
+}: Props) {
   const { locale } = await params;
-  const { token, ref, date, time, supervisor, meetLink } = await searchParams;
-  const manageUrl = `/${locale}/manage-booking/${token}`;
+  const { date, time, supervisor, meetLink } = await searchParams;
 
   const formatDate = (d?: string) => {
-    if (!d) return '—';
+    if (!d) return "—";
     try {
-      return new Date(d + 'T12:00:00').toLocaleDateString('ar-SA', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      return new Date(d + "T12:00:00").toLocaleDateString("ar-SA", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
-    } catch { return d; }
+    } catch {
+      return d;
+    }
   };
 
   return (
@@ -74,39 +88,37 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
       `}</style>
 
       <div className="wrap" dir="rtl">
-
         <div className="top-celebration">
           <span className="celebration-emoji">🎉</span>
           <div className="celebration-title">تم تأكيد حجزك!</div>
-          <div className="celebration-sub">ستصلك تفاصيل الجلسة على بريدك الإلكتروني</div>
+          <div className="celebration-sub">
+            ستصلك تفاصيل الجلسة على بريدك الإلكتروني
+          </div>
         </div>
 
         <div className="card">
-
           {/* DETAILS */}
           <div className="details-head">
             <div className="details-icon">📋</div>
             <div>
               <div className="details-title">تفاصيل الجلسة</div>
-              <div className="details-sub">احتفظ بهذه المعلومات</div>
+              <div className="details-sub">
+                تم إنشاء حسابك وحفظ الموعد داخله
+              </div>
             </div>
-          </div>
-
-          {/* REFERENCE NUMBER */}
-          <div style={{margin:'0 0 0 0',background:'linear-gradient(135deg,rgba(13,64,252,0.05),rgba(85,215,255,0.05))',borderBottom:'1px solid #EEF2F7',padding:'16px 28px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <span style={{fontSize:12,color:'#8898AA',fontWeight:600}}>رقم الحجز المرجعي</span>
-            <span style={{fontSize:18,fontWeight:900,color:'#0D40FC',letterSpacing:'0.08em',fontFamily:'monospace'}}>{ref || '—'}</span>
           </div>
 
           <div className="details-body">
             {[
-              { icon: '👨‍🏫', label: 'المشرف', value: supervisor || '—' },
-              { icon: '📅', label: 'التاريخ', value: formatDate(date) },
-              { icon: '🕐', label: 'الوقت', value: time || '—' },
-              { icon: '⏱️', label: 'المدة', value: '30 دقيقة' },
-            ].map(row => (
+              { icon: "👨‍🏫", label: "المشرف", value: supervisor || "—" },
+              { icon: "📅", label: "التاريخ", value: formatDate(date) },
+              { icon: "🕐", label: "الوقت", value: time || "—" },
+              { icon: "⏱️", label: "المدة", value: "30 دقيقة" },
+            ].map((row) => (
               <div key={row.label} className="detail-row">
-                <span className="detail-label">{row.icon} {row.label}</span>
+                <span className="detail-label">
+                  {row.icon} {row.label}
+                </span>
                 <span className="detail-value">{row.value}</span>
               </div>
             ))}
@@ -114,7 +126,12 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
 
           {/* MEET LINK */}
           {meetLink && (
-            <a href={meetLink} target="_blank" rel="noopener noreferrer" className="meet-btn">
+            <a
+              href={meetLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="meet-btn"
+            >
               🎥 انضم للجلسة عبر Google Meet
             </a>
           )}
@@ -123,10 +140,10 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
           <div className="protocol">
             <div className="protocol-title">📌 تعليمات قبل الجلسة</div>
             {[
-              'تأكد من استقرار اتصال الإنترنت قبل 5 دقائق',
-              'احضر ورقة وقلم لتدوين الملاحظات',
-              'كن في مكان هادئ خالٍ من الإزعاج',
-              'افتح رابط Google Meet قبل دقيقتين من الموعد',
+              "تأكد من استقرار اتصال الإنترنت قبل 5 دقائق",
+              "احضر ورقة وقلم لتدوين الملاحظات",
+              "كن في مكان هادئ خالٍ من الإزعاج",
+              "افتح رابط Google Meet قبل دقيقتين من الموعد",
             ].map((item, i) => (
               <div key={i} className="protocol-item">
                 <span className="protocol-dot">•</span>
@@ -137,21 +154,17 @@ export default async function BookingSuccessPage({ params, searchParams }: Props
 
           {/* ACTIONS */}
           <div className="actions">
-            <Link href={manageUrl} className="btn-manage">
-              ⚙️ إدارة الحجز أو الإلغاء
-            </Link>
-            <Link href={`/${locale}/booking-lookup`} className="btn-manage" style={{background:'rgba(13,64,252,0.07)',color:'#0D40FC',boxShadow:'none',border:'1.5px solid rgba(13,64,252,0.15)'}}>
-              🔍 تتبع الحجز بالرقم المرجعي
-            </Link>
-            <Link href={`/${locale}`} className="btn-home">
-              🏠 العودة للرئيسية
+            <Link href={`/${locale}/login`} className="btn-home">
+              الدخول إلى حسابي ومتابعة الموعد
             </Link>
           </div>
-
         </div>
 
         <div className="footer-note">
-          منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a>
+          منصة الإشراف الأكاديمي ·{" "}
+          <a href="https://sulukera.com" target="_blank">
+            سلوكيرا
+          </a>
         </div>
       </div>
     </>
