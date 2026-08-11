@@ -84,7 +84,8 @@ export default async function HomePage({ params }: HomePageProps) {
           transition: all 0.15s;
         }
         .nav-lang:hover { background: rgba(13,64,252,0.08); }
-        .nav-login { color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 16px;border-radius:9px;background:var(--primary);box-shadow:0 3px 10px rgba(13,64,252,.2); }
+        .nav-login { color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:8px 13px;border-radius:9px;background:var(--primary);box-shadow:0 3px 10px rgba(13,64,252,.2);white-space:nowrap }
+        .nav-login.trainee{background:#fff;color:var(--primary);border:1px solid rgba(13,64,252,.25);box-shadow:none}.nav-login.signup{background:var(--deep)}
         .portal-note{max-width:760px;margin:18px auto 0;padding:12px 16px;border-radius:12px;background:#ffffffb8;border:1px solid var(--gray-200);font-size:12px;color:var(--gray-600)}
 
         /* ── HERO ── */
@@ -288,7 +289,8 @@ export default async function HomePage({ params }: HomePageProps) {
         @media(max-width:768px){
           .nav { padding: 0 20px; }
           .nav-lookup { display:none; }
-          .nav-login { padding:7px 10px;font-size:11px; }
+          .nav-login { padding:7px 9px;font-size:10px; }
+          .nav-lang{display:none}.nav{height:auto;min-height:68px;padding-top:8px;padding-bottom:8px}.nav-right{flex-wrap:wrap;justify-content:flex-start}
           .hero { padding: 56px 24px 48px; }
           .hero-stats { flex-direction: column; }
           .section { padding: 40px 20px; }
@@ -303,11 +305,20 @@ export default async function HomePage({ params }: HomePageProps) {
         <nav className="nav">
           <img src="/logo.svg" alt="سلوكيرا" className="nav-logo" />
           <div className="nav-right">
-            <Link href={`/${locale}/login`} className="nav-login">
-              دخول المشرف أو المتدرب
+            <Link href={`/${locale}#services`} className="nav-login signup">
+              تسجيل جديد
             </Link>
-            <Link href={`/${locale}/booking-lookup`} className="nav-lookup">
-              🔍 تتبع الحجز
+            <Link
+              href={`/${locale}/login?portal=provider`}
+              className="nav-login"
+            >
+              دخول المشرف | المستشار
+            </Link>
+            <Link
+              href={`/${locale}/login?portal=trainee`}
+              className="nav-login trainee"
+            >
+              دخول المتدرب
             </Link>
             <Link
               href={`/${locale === "ar" ? "en" : "ar"}`}
@@ -372,8 +383,8 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <h2>احجز مقابلة أولية</h2>
                 <p>
-                  لقاء مع حساب مشرف لاختيار مسار QASP-S أو QBA وفهم متطلبات
-                  برنامج الإشراف قبل بدء التعاقد.
+                  لقاء تعارفي مع مشرف لمناقشة أهدافك المهنية، توضيح آلية الإشراف
+                  ومتطلباته، والإجابة عن أسئلتك قبل اتخاذ قرار البدء.
                 </p>
                 <a href="#supervisors" className="service-link">
                   اختيار المشرف ←
