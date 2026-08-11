@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 
 const labels: Record<FieldworkActivityType, string> = {
@@ -41,14 +42,22 @@ export default function TraineeFieldworkDashboard({
   initialActivities: FieldworkActivity[];
   supervisionFile?: any;
 }) {
+  const router = useRouter();
   const [activities, setActivities] = useState(initialActivities);
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "hours" | "plan" | "competency" | "meetings" | "documents"
+  >("overview");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [monthlyApproval, setMonthlyApproval] = useState(
     supervisionFile?.monthlyApproval || null,
   );
   const [approvalMessage, setApprovalMessage] = useState("");
+  const [meetings, setMeetings] = useState(supervisionFile?.meetings || []);
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     startTime: "",
@@ -109,6 +118,52 @@ export default function TraineeFieldworkDashboard({
     ? (latestAssessment.totalScore / latestAssessment.maxScore) * 100
     : 0;
   const goals = supervisionFile?.plan?.goals || [];
+  const filteredActivities = activities.filter(
+    (a) =>
+      (statusFilter === "all" || a.status === statusFilter) &&
+      (monthFilter === "all" || a.month === monthFilter),
+  );
+  const activityMonths = [...new Set(activities.map((a) => a.month))]
+    .sort()
+    .reverse();
+  const monthApproved = approved.filter((a) => a.month === currentMonth);
+  const monthFieldwork = monthApproved
+    .filter((a) => !a.activityType.startsWith("supervision_"))
+    .reduce((n, a) => n + a.duration, 0);
+  const monthSupervision = monthApproved
+    .filter((a) => a.activityType.startsWith("supervision_"))
+    .reduce((n, a) => n + a.duration, 0);
+  const monthGroup = monthApproved
+    .filter(
+      (a) => a.activityType.startsWith("supervision_") && a.format === "group",
+    )
+    .reduce((n, a) => n + a.duration, 0);
+  const monthSupervisionPct = monthFieldwork
+    ? (monthSupervision / monthFieldwork) * 100
+    : 0;
+  const monthGroupPct = monthSupervision
+    ? (monthGroup / monthSupervision) * 100
+    : 0;
+  const editActivity = (activity: FieldworkActivity) => {
+    setEditingId(activity.id);
+    setForm({
+      ...form,
+      date: activity.date,
+      startTime: activity.startTime,
+      endTime: activity.endTime,
+      activityType: activity.activityType,
+      activityCategory: activity.activityCategory || "service_delivery",
+      centerName: activity.centerName || "",
+      clientCode: activity.clientCode || "",
+      planGoalId: activity.planGoalId || "",
+      evidenceNote: activity.evidenceNote || "",
+      setting: activity.setting || "video",
+      format: activity.format || "individual",
+      observedWithClient: Boolean(activity.observedWithClient),
+      description: activity.description,
+    });
+    setOpen(true);
+  };
   const acknowledgeMonth = async () => {
     setApprovalMessage("جارٍ الإقرار...");
     const response = await fetch("/api/trainee/monthly-approval", {
@@ -135,9 +190,13 @@ export default function TraineeFieldworkDashboard({
     setSaving(true);
     setError("");
     const res = await fetch("/api/trainee/activities", {
-      method: "POST",
+      method: editingId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, saveAsDraft }),
+      body: JSON.stringify(
+        editingId
+          ? { ...form, id: editingId, action: "update" }
+          : { ...form, saveAsDraft },
+      ),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -159,8 +218,59 @@ export default function TraineeFieldworkDashboard({
     );
     setActivities(refreshed.activities || []);
     setOpen(false);
+    setEditingId(null);
     setSaving(false);
     setForm({ ...form, startTime: "", endTime: "", description: "" });
+  };
+  const submitExisting = async (id: string) => {
+    setSaving(true);
+    const r = await fetch("/api/trainee/activities", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "submit" }),
+    });
+    if (r.ok) {
+      const refreshed = await fetch("/api/trainee/activities").then((x) =>
+        x.json(),
+      );
+      setActivities(refreshed.activities || []);
+    }
+    setSaving(false);
+  };
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/ar/login");
+    router.refresh();
+  };
+  const updateMeeting = async (
+    id: string,
+    action: "acknowledge" | "complete_task",
+    taskId?: string,
+  ) => {
+    const response = await fetch("/api/trainee/supervision-file", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity: "meeting", id, action, taskId }),
+    });
+    if (!response.ok) return;
+    setMeetings((current: any[]) =>
+      current.map((meeting) =>
+        meeting.id !== id
+          ? meeting
+          : action === "acknowledge"
+            ? {
+                ...meeting,
+                acknowledgedByTrainee: true,
+                acknowledgedAt: new Date().toISOString(),
+              }
+            : {
+                ...meeting,
+                tasks: (meeting.tasks || []).map((task: any) =>
+                  task.id === taskId ? { ...task, status: "completed" } : task,
+                ),
+              },
+      ),
+    );
   };
 
   return (
@@ -176,10 +286,16 @@ export default function TraineeFieldworkDashboard({
       .fw-head{display:none!important}.cards{gap:14px!important}.card,.panel{border-radius:18px!important;box-shadow:0 9px 28px #0014420b!important;background:#ffffffeb!important}.card{border-top:3px solid #dce6ff!important;transition:.2s}.card:hover{transform:translateY(-3px);box-shadow:0 14px 30px #0d40fc14!important}.card:nth-child(2){border-top-color:#7668ff!important}.card:nth-child(3){border-top-color:#43bedb!important}.card:nth-child(4){border-top-color:#10b981!important}.card:nth-child(5){border-top-color:#f59e0b!important}.panel h3{font-size:16px;margin-bottom:4px}.bar{border-radius:10px 10px 4px 4px!important}.status{font-weight:600}.motivation-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#ecfdf5,#effaff);border:1px solid #c8f2e2;border-radius:14px;padding:13px 17px;margin-bottom:16px}.motivation-strip b{color:#047857;font-size:13px}.motivation-strip span{font-size:12px;color:#4b6472}
       @media(max-width:850px){.welcome-hero{grid-template-columns:1fr;padding:25px}.welcome-hero h1{font-size:25px}.quote-card{display:none}.top-nav{height:58px}.fw-page{padding-top:0!important}}
     `}</style>
+      <style>{`.trainee-tabs{display:flex;gap:6px;background:#e9eef6;padding:6px;border-radius:14px;margin-bottom:16px;overflow:auto}.trainee-tabs button{border:0;background:transparent;color:#64748b;padding:10px 14px;border-radius:9px;font:inherit;white-space:nowrap;cursor:pointer}.trainee-tabs button.active{background:#fff;color:#0d40fc;font-weight:700;box-shadow:0 2px 8px #00144212}.logout-mini{border:1px solid #d9e1ed;background:#fff;color:#64748b;border-radius:9px;padding:7px 10px;cursor:pointer}.nav-user{display:flex;gap:8px;align-items:center}.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters select{border:1px solid #d9e1ed;border-radius:8px;padding:7px;background:#fff;font:inherit}.row-actions{display:flex;gap:5px}.row-actions button{border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:11px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.detail-card h4{margin:0 0 8px}.detail-card p{font-size:12px;color:#64748b}.action-btn{border:0;border-radius:8px;padding:7px 10px;background:#eef4ff;color:#0d40fc;cursor:pointer}.action-btn.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.detail-grid{grid-template-columns:1fr}.nav-user .role-pill{display:none}}`}</style>
       <div className="fw-wrap">
         <nav className="top-nav">
           <div className="brand">سلوكيرا</div>
-          <div className="role-pill">بوابة المتدرب · {trainee.license}</div>
+          <div className="nav-user">
+            <div className="role-pill">بوابة المتدرب · {trainee.license}</div>
+            <button className="logout-mini" onClick={logout}>
+              تسجيل الخروج
+            </button>
+          </div>
         </nav>
         <section className="welcome-hero">
           <div className="hero-main">
@@ -215,203 +331,330 @@ export default function TraineeFieldworkDashboard({
             </div>
           </aside>
         </section>
-        <div className="motivation-strip">
-          <b>✨ {motivation}</b>
-          <span>
-            {monthHours.toFixed(1)} ساعة هذا الشهر · {pendingCount} بانتظار
-            الاعتماد
-          </span>
+        <div className="trainee-tabs">
+          {(
+            [
+              ["overview", "نظرة عامة"],
+              ["hours", "الساعات"],
+              ["plan", "خطة الإشراف"],
+              ["competency", "تقييم الكفاءة"],
+              ["meetings", "الاجتماعات والمهام"],
+              ["documents", "المستندات"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              className={activeTab === key ? "active" : ""}
+              onClick={() => setActiveTab(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="fw-head">
-          <div>
-            <h1>مرحبًا، {trainee.name}</h1>
-            <div className="muted">
-              المشرف: {supervisorName || "—"} · {trainee.license}
+        {activeTab === "overview" && (
+          <>
+            <div className="motivation-strip">
+              <b>✨ {motivation}</b>
+              <span>
+                {monthHours.toFixed(1)} ساعة هذا الشهر · {pendingCount} بانتظار
+                الاعتماد
+              </span>
             </div>
-          </div>
-          <button className="primary" onClick={() => setOpen(true)}>
-            + إضافة ساعات
-          </button>
-        </div>
-        <section className="cards">
-          <div className="card">
-            <span className="muted">إجمالي المعتمد</span>
-            <b>{total.toFixed(2)}</b>
-          </div>
-          <div className="card">
-            <span className="muted">مباشرة</span>
-            <b>{direct.toFixed(2)}</b>
-          </div>
-          <div className="card">
-            <span className="muted">غير مباشرة</span>
-            <b>{indirect.toFixed(2)}</b>
-          </div>
-          <div className="card">
-            <span className="muted">إشراف</span>
-            <b>{supervision.toFixed(2)}</b>
-          </div>
-          <div className="card">
-            <span className="muted">نسبة الإشراف</span>
-            <b style={{ color: supervisionPct >= 5 ? "#059669" : "#dc2626" }}>
-              {supervisionPct.toFixed(1)}%
-            </b>
-          </div>
-        </section>
-        <div className="grid">
-          <section className="panel">
-            <h3>توزيع الساعات</h3>
-            <div className="bars">
-              {[
-                [direct, "#0d40fc", "مباشرة"],
-                [indirect, "#55b7d7", "غير مباشرة"],
-                [supervision, "#10b981", "إشراف"],
-              ].map(([v, c, l]) => (
-                <div className="bar-col" key={String(l)}>
-                  <div
-                    className="bar"
-                    style={{
-                      height: `${(Number(v) / maxBar) * 150}px`,
-                      background: String(c),
-                    }}
-                  />
-                  <b>{Number(v).toFixed(1)}</b>
-                  <div>{l}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-          <section className="panel">
-            <h3>سجل الأنشطة</h3>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>التاريخ</th>
-                    <th>النوع</th>
-                    <th>الوقت</th>
-                    <th>المدة</th>
-                    <th>الوصف</th>
-                    <th>الحالة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activities.map((a) => (
-                    <tr key={a.id}>
-                      <td>{a.date}</td>
-                      <td>{labels[a.activityType]}</td>
-                      <td dir="ltr">
-                        {a.startTime}–{a.endTime}
-                      </td>
-                      <td>{a.duration}</td>
-                      <td>{a.description || "—"}</td>
-                      <td>
-                        <span className="status">{statusLabels[a.status]}</span>
-                        {a.reviewerNote && (
-                          <div className="muted">{a.reviewerNote}</div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {!activities.length && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        style={{ textAlign: "center", padding: 30 }}
-                      >
-                        لم تُضف ساعات بعد
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-        <section className="panel" style={{ marginTop: 16 }}>
-          <h3>ملف الإشراف والتطور المهني</h3>
-          <div className="cards" style={{ marginTop: 14, marginBottom: 14 }}>
-            <div className="card">
-              <span className="muted">آخر تقييم كفاءة</span>
-              <b>{assessmentPct.toFixed(0)}%</b>
-            </div>
-            <div className="card">
-              <span className="muted">أهداف الخطة</span>
-              <b>{goals.length}</b>
-            </div>
-            <div className="card">
-              <span className="muted">أهداف متحققة</span>
-              <b>{goals.filter((g: any) => g.status === "achieved").length}</b>
-            </div>
-            <div className="card">
-              <span className="muted">محاضر الاجتماعات</span>
-              <b>{supervisionFile?.meetings?.length || 0}</b>
-            </div>
-            <div className="card">
-              <span className="muted">المستندات والموافقات</span>
-              <b>{supervisionFile?.documents?.length || 0}</b>
-            </div>
-          </div>
-          {monthlyApproval?.supervisorApprovedAt && (
-            <div className="motivation-strip" style={{ marginBottom: 14 }}>
+            <div className="fw-head">
               <div>
-                <b>اعتماد سجل {supervisionFile?.currentMonth}</b>
-                <span style={{ display: "block", marginTop: 4 }}>
-                  أقر بأن الساعات والأنشطة المسجلة صحيحة وتمت مراجعتها مع
-                  المشرف.
-                </span>
+                <h1>مرحبًا، {trainee.name}</h1>
+                <div className="muted">
+                  المشرف: {supervisorName || "—"} · {trainee.license}
+                </div>
               </div>
-              <button
-                className="primary"
-                disabled={monthlyApproval?.traineeAcknowledgedAt}
-                onClick={acknowledgeMonth}
-              >
-                {monthlyApproval?.traineeAcknowledgedAt
-                  ? "✓ تم الإقرار وإغلاق الشهر"
-                  : "إقرار السجل الشهري"}
+              <button className="primary" onClick={() => setOpen(true)}>
+                + إضافة ساعات
               </button>
             </div>
-          )}
-          {approvalMessage && (
-            <p className="muted" style={{ textAlign: "right" }}>
-              {approvalMessage}
-            </p>
-          )}
-          {goals.length > 0 && (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>المجال</th>
-                    <th>الهدف</th>
-                    <th>معيار الإتقان</th>
-                    <th>الموعد</th>
-                    <th>الحالة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {goals.map((g: any) => (
-                    <tr key={g.id}>
-                      <td>{g.domain}</td>
-                      <td>{g.title}</td>
-                      <td>{g.masteryCriterion || "—"}</td>
-                      <td>{g.dueDate || "—"}</td>
-                      <td>
-                        <span className="status">
-                          {{
-                            not_started: "لم يبدأ",
-                            in_progress: "قيد التنفيذ",
-                            achieved: "متحقق",
-                            retrain: "يحتاج إعادة تدريب",
-                          }[g.status as "not_started"] || g.status}
-                        </span>
-                      </td>
-                    </tr>
+            <section className="cards">
+              <div className="card">
+                <span className="muted">إجمالي المعتمد</span>
+                <b>{total.toFixed(2)}</b>
+              </div>
+              <div className="card">
+                <span className="muted">مباشرة</span>
+                <b>{direct.toFixed(2)}</b>
+              </div>
+              <div className="card">
+                <span className="muted">غير مباشرة</span>
+                <b>{indirect.toFixed(2)}</b>
+              </div>
+              <div className="card">
+                <span className="muted">إشراف</span>
+                <b>{supervision.toFixed(2)}</b>
+              </div>
+              <div className="card">
+                <span className="muted">نسبة الإشراف</span>
+                <b
+                  style={{ color: supervisionPct >= 5 ? "#059669" : "#dc2626" }}
+                >
+                  {supervisionPct.toFixed(1)}%
+                </b>
+              </div>
+            </section>
+            <section className="panel" style={{ marginTop: 16 }}>
+              <h3>مؤشرات الالتزام للشهر الحالي</h3>
+              <div className="detail-grid" style={{ marginTop: 14 }}>
+                <ComplianceItem
+                  ok={monthFieldwork >= 20 && monthFieldwork <= 140}
+                  title="نطاق ساعات الخبرة"
+                  value={`${monthFieldwork.toFixed(1)} من 20–140 ساعة`}
+                />
+                <ComplianceItem
+                  ok={monthSupervisionPct >= 5}
+                  title="نسبة الإشراف"
+                  value={`${monthSupervisionPct.toFixed(1)}% (الحد الأدنى 5%)`}
+                />
+                <ComplianceItem
+                  ok={monthGroupPct <= 50}
+                  title="الإشراف الجماعي"
+                  value={`${monthGroupPct.toFixed(1)}% (الحد الأعلى 50%)`}
+                />
+                <ComplianceItem
+                  ok={Boolean(latestAssessment)}
+                  title="تقييم الكفاءة"
+                  value={
+                    latestAssessment
+                      ? `آخر تقييم ${latestAssessment.date || "مسجل"}`
+                      : "لم يسجل تقييم بعد"
+                  }
+                />
+              </div>
+            </section>
+          </>
+        )}
+        {activeTab === "hours" && (
+          <div className="grid">
+            <section className="panel">
+              <h3>توزيع الساعات</h3>
+              <div className="bars">
+                {[
+                  [direct, "#0d40fc", "مباشرة"],
+                  [indirect, "#55b7d7", "غير مباشرة"],
+                  [supervision, "#10b981", "إشراف"],
+                ].map(([v, c, l]) => (
+                  <div className="bar-col" key={String(l)}>
+                    <div
+                      className="bar"
+                      style={{
+                        height: `${(Number(v) / maxBar) * 150}px`,
+                        background: String(c),
+                      }}
+                    />
+                    <b>{Number(v).toFixed(1)}</b>
+                    <div>{l}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="panel">
+              <h3>سجل الأنشطة</h3>
+              <div className="filters">
+                <select
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                >
+                  <option value="all">كل الأشهر</option>
+                  {activityMonths.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">كل الحالات</option>
+                  {Object.entries(statusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <a className="action-btn" href="/api/trainee/export">
+                  تصدير مسودة Excel
+                </a>
+                {monthlyApproval?.locked && (
+                  <a
+                    className="action-btn done"
+                    href={`/api/trainee/export?month=${supervisionFile?.currentMonth || currentMonth}`}
+                  >
+                    تصدير السجل المعتمد
+                  </a>
+                )}
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>التاريخ</th>
+                      <th>النوع</th>
+                      <th>الوقت</th>
+                      <th>المدة</th>
+                      <th>الوصف</th>
+                      <th>الحالة</th>
+                      <th>الإجراء</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredActivities.map((a) => (
+                      <tr key={a.id}>
+                        <td>{a.date}</td>
+                        <td>{labels[a.activityType]}</td>
+                        <td dir="ltr">
+                          {a.startTime}–{a.endTime}
+                        </td>
+                        <td>{a.duration}</td>
+                        <td>{a.description || "—"}</td>
+                        <td>
+                          <span className="status">
+                            {statusLabels[a.status]}
+                          </span>
+                          {a.reviewerNote && (
+                            <div className="muted">{a.reviewerNote}</div>
+                          )}
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            {["draft", "revision_requested"].includes(
+                              a.status,
+                            ) && (
+                              <button onClick={() => editActivity(a)}>
+                                تعديل
+                              </button>
+                            )}
+                            {a.status === "draft" && (
+                              <button
+                                onClick={() => submitExisting(a.id)}
+                                disabled={saving}
+                              >
+                                إرسال
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {!filteredActivities.length && (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          style={{ textAlign: "center", padding: 30 }}
+                        >
+                          لم تُضف ساعات بعد
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+        {activeTab === "plan" && (
+          <section className="panel" style={{ marginTop: 16 }}>
+            <h3>ملف الإشراف والتطور المهني</h3>
+            <div className="cards" style={{ marginTop: 14, marginBottom: 14 }}>
+              <div className="card">
+                <span className="muted">آخر تقييم كفاءة</span>
+                <b>{assessmentPct.toFixed(0)}%</b>
+              </div>
+              <div className="card">
+                <span className="muted">أهداف الخطة</span>
+                <b>{goals.length}</b>
+              </div>
+              <div className="card">
+                <span className="muted">أهداف متحققة</span>
+                <b>
+                  {goals.filter((g: any) => g.status === "achieved").length}
+                </b>
+              </div>
+              <div className="card">
+                <span className="muted">محاضر الاجتماعات</span>
+                <b>{supervisionFile?.meetings?.length || 0}</b>
+              </div>
+              <div className="card">
+                <span className="muted">المستندات والموافقات</span>
+                <b>{supervisionFile?.documents?.length || 0}</b>
+              </div>
             </div>
-          )}
-        </section>
+            {monthlyApproval?.supervisorApprovedAt && (
+              <div className="motivation-strip" style={{ marginBottom: 14 }}>
+                <div>
+                  <b>اعتماد سجل {supervisionFile?.currentMonth}</b>
+                  <span style={{ display: "block", marginTop: 4 }}>
+                    أقر بأن الساعات والأنشطة المسجلة صحيحة وتمت مراجعتها مع
+                    المشرف.
+                  </span>
+                </div>
+                <button
+                  className="primary"
+                  disabled={monthlyApproval?.traineeAcknowledgedAt}
+                  onClick={acknowledgeMonth}
+                >
+                  {monthlyApproval?.traineeAcknowledgedAt
+                    ? "✓ تم الإقرار وإغلاق الشهر"
+                    : "إقرار السجل الشهري"}
+                </button>
+              </div>
+            )}
+            {approvalMessage && (
+              <p className="muted" style={{ textAlign: "right" }}>
+                {approvalMessage}
+              </p>
+            )}
+            {goals.length > 0 && (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>المجال</th>
+                      <th>الهدف</th>
+                      <th>معيار الإتقان</th>
+                      <th>الموعد</th>
+                      <th>الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {goals.map((g: any) => (
+                      <tr key={g.id}>
+                        <td>{g.domain}</td>
+                        <td>{g.title}</td>
+                        <td>{g.masteryCriterion || "—"}</td>
+                        <td>{g.dueDate || "—"}</td>
+                        <td>
+                          <span className="status">
+                            {{
+                              not_started: "لم يبدأ",
+                              in_progress: "قيد التنفيذ",
+                              achieved: "متحقق",
+                              retrain: "يحتاج إعادة تدريب",
+                            }[g.status as "not_started"] || g.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+        {activeTab === "competency" && (
+          <CompetencyDetails assessments={supervisionFile?.assessments || []} />
+        )}
+        {activeTab === "meetings" && (
+          <MeetingDetails meetings={meetings} onUpdate={updateMeeting} />
+        )}
+        {activeTab === "documents" && (
+          <DocumentDetails documents={supervisionFile?.documents || []} />
+        )}
       </div>
       {open && (
         <div
@@ -419,7 +662,9 @@ export default function TraineeFieldworkDashboard({
           onClick={(e) => e.target === e.currentTarget && setOpen(false)}
         >
           <div className="modal">
-            <h2>إضافة نشاط ميداني</h2>
+            <h2>
+              {editingId ? "تعديل النشاط وإعادة إرساله" : "إضافة نشاط ميداني"}
+            </h2>
             <div className="fields">
               <div className="field">
                 <label>التاريخ</label>
@@ -577,16 +822,24 @@ export default function TraineeFieldworkDashboard({
                 disabled={saving}
                 onClick={() => submit(false)}
               >
-                إرسال للمشرف
+                {editingId ? "حفظ وإعادة الإرسال" : "إرسال للمشرف"}
               </button>
+              {!editingId && (
+                <button
+                  className="secondary"
+                  disabled={saving}
+                  onClick={() => submit(true)}
+                >
+                  حفظ كمسودة
+                </button>
+              )}
               <button
                 className="secondary"
-                disabled={saving}
-                onClick={() => submit(true)}
+                onClick={() => {
+                  setOpen(false);
+                  setEditingId(null);
+                }}
               >
-                حفظ كمسودة
-              </button>
-              <button className="secondary" onClick={() => setOpen(false)}>
                 إلغاء
               </button>
             </div>
@@ -594,5 +847,226 @@ export default function TraineeFieldworkDashboard({
         </div>
       )}
     </main>
+  );
+}
+
+function ComplianceItem({
+  ok,
+  title,
+  value,
+}: {
+  ok: boolean;
+  title: string;
+  value: string;
+}) {
+  return (
+    <div className="detail-card">
+      <h4>
+        {ok ? "✓" : "!"} {title}
+      </h4>
+      <p>{value}</p>
+      <span className={`status ${ok ? "" : "warning"}`}>
+        {ok ? "مستوفى" : "يحتاج متابعة"}
+      </span>
+    </div>
+  );
+}
+
+function CompetencyDetails({ assessments }: { assessments: any[] }) {
+  const latest = assessments[0];
+  if (!latest)
+    return (
+      <section className="panel">
+        <h3>تقييم الكفاءة</h3>
+        <p className="muted">لم يضف المشرف تقييم الكفاءة الأول بعد.</p>
+      </section>
+    );
+  return (
+    <section className="panel">
+      <h3>تقييم الكفاءة والتطور</h3>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        <div className="detail-card">
+          <h4>النتيجة الحالية</h4>
+          <b style={{ fontSize: 28 }}>
+            {latest.maxScore
+              ? ((latest.totalScore / latest.maxScore) * 100).toFixed(0)
+              : 0}
+            %
+          </b>
+          <p>تاريخ التقييم: {latest.date || "—"}</p>
+          <p>
+            التقييم القادم:{" "}
+            {latest.nextDueDate || "بعد ثلاثة أشهر من آخر تقييم"}
+          </p>
+        </div>
+        <div className="detail-card">
+          <h4>نقاط القوة</h4>
+          <p>{latest.strengths || "لم تسجل ملاحظات"}</p>
+          <h4>أولويات التطوير</h4>
+          <p>{latest.developmentPriorities || "لم تسجل ملاحظات"}</p>
+          <h4>توصية المشرف</h4>
+          <p>{latest.recommendation || "—"}</p>
+        </div>
+      </div>
+      <h3 style={{ marginTop: 22 }}>سجل التقييمات</h3>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>النتيجة</th>
+              <th>عدد البنود</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assessments.map((item) => (
+              <tr key={item.id}>
+                <td>{item.date}</td>
+                <td>
+                  {item.maxScore
+                    ? ((item.totalScore / item.maxScore) * 100).toFixed(0)
+                    : 0}
+                  %
+                </td>
+                <td>{item.scores?.length || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function MeetingDetails({
+  meetings,
+  onUpdate,
+}: {
+  meetings: any[];
+  onUpdate: (
+    id: string,
+    action: "acknowledge" | "complete_task",
+    taskId?: string,
+  ) => void;
+}) {
+  if (!meetings.length)
+    return (
+      <section className="panel">
+        <h3>الاجتماعات والمهام</h3>
+        <p className="muted">لا توجد محاضر اجتماعات مسجلة بعد.</p>
+      </section>
+    );
+  return (
+    <section className="panel">
+      <h3>محاضر الاجتماعات والمهام</h3>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        {meetings.map((meeting) => (
+          <article className="detail-card" key={meeting.id}>
+            <h4>
+              {meeting.date} · {meeting.format === "group" ? "جماعي" : "فردي"}
+            </h4>
+            <p>
+              <b>الموضوعات:</b> {meeting.agenda || "—"}
+            </p>
+            <p>
+              <b>ملخص النقاش:</b> {meeting.discussion || meeting.notes || "—"}
+            </p>
+            <p>
+              <b>القرارات:</b> {meeting.decisions || "—"}
+            </p>
+            {(meeting.tasks || []).map((task: any) => (
+              <div
+                key={task.id}
+                style={{
+                  borderTop: "1px solid #edf0f5",
+                  paddingTop: 8,
+                  marginTop: 8,
+                }}
+              >
+                <p>
+                  <b>مهمة:</b> {task.title || task.description}{" "}
+                  {task.dueDate ? `· ${task.dueDate}` : ""}
+                </p>
+                <button
+                  className={`action-btn ${task.status === "completed" ? "done" : ""}`}
+                  disabled={task.status === "completed"}
+                  onClick={() => onUpdate(meeting.id, "complete_task", task.id)}
+                >
+                  {task.status === "completed" ? "✓ مكتملة" : "تحديد كمكتملة"}
+                </button>
+              </div>
+            ))}
+            <button
+              className={`action-btn ${meeting.acknowledgedByTrainee ? "done" : ""}`}
+              style={{ marginTop: 12 }}
+              disabled={meeting.acknowledgedByTrainee}
+              onClick={() => onUpdate(meeting.id, "acknowledge")}
+            >
+              {meeting.acknowledgedByTrainee
+                ? "✓ تم الاطلاع"
+                : "إقرار الاطلاع على المحضر"}
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const documentLabels: Record<string, string> = {
+  contract: "عقد الإشراف",
+  guardian_consent: "موافقة ولي الأمر",
+  center_approval: "موافقة المركز",
+  observation_consent: "موافقة الملاحظة",
+  video_consent: "موافقة الاتصال المرئي",
+  data_consent: "موافقة الاطلاع على البيانات",
+  supervisor_credential: "اعتماد المشرف",
+  coursework: "إثبات المقررات",
+  background_check: "فحص الخلفية",
+  recommendation: "التوصية المهنية",
+  final_verification: "التحقق النهائي",
+  other: "مستند آخر",
+};
+function DocumentDetails({ documents }: { documents: any[] }) {
+  if (!documents.length)
+    return (
+      <section className="panel">
+        <h3>المستندات والموافقات</h3>
+        <p className="muted">لا توجد مستندات مرفوعة في ملفك بعد.</p>
+      </section>
+    );
+  return (
+    <section className="panel">
+      <h3>المستندات والموافقات</h3>
+      <p className="muted">
+        تراجع سلوكيرا الموافقات الورقية يدويًا، ولا يوجد لها تاريخ انتهاء.
+      </p>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        {documents.map((document) => (
+          <article className="detail-card" key={document.id}>
+            <h4>{documentLabels[document.type] || document.title}</h4>
+            <p>
+              {document.title} · {document.issuedAt || "—"}
+            </p>
+            <span className="status">
+              {document.status === "reviewed"
+                ? "تمت المراجعة"
+                : document.status === "replace_required"
+                  ? "يحتاج استبدال"
+                  : "مرفوع"}
+            </span>
+            {document.fileUrl && (
+              <a
+                className="action-btn"
+                style={{ display: "inline-block", marginRight: 8 }}
+                href={`/api/supervisor/document-upload?path=${encodeURIComponent(document.fileUrl)}`}
+              >
+                تنزيل
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }

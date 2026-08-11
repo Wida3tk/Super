@@ -76,6 +76,8 @@ export default async function TraineeDashboardPage({
         issuedAt: x.issuedAt,
         expiresAt: x.expiresAt,
         status: x.status,
+        fileUrl: x.fileUrl,
+        fileName: x.fileName,
       };
     }),
     meetings: meetingsSnap.docs
