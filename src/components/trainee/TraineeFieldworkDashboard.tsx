@@ -301,10 +301,10 @@ export default function TraineeFieldworkDashboard({
       .welcome-hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#001442 0%,#0935ce 62%,#0d70fc 100%);border-radius:24px;padding:32px 34px;color:#fff;display:grid;grid-template-columns:1.5fr .8fr;gap:24px;align-items:center;box-shadow:0 20px 50px #0d40fc25;margin-bottom:18px}.welcome-hero:after{content:'';position:absolute;width:310px;height:310px;border-radius:50%;background:#55d7ff18;left:-80px;top:-155px}.hero-main{position:relative;z-index:1}.eyebrow{font-size:12px;color:#73e3ff;font-weight:700;margin-bottom:7px}.welcome-hero h1{font-size:30px;margin:0 0 8px}.hero-sub{font-size:14px;color:#d5e1ff;line-height:1.8;max-width:620px}.welcome-hero .primary{background:#fff;color:#0d40fc;box-shadow:none;margin-top:18px}.welcome-hero .primary:hover{transform:translateY(-2px)}
       .quote-card{position:relative;z-index:1;background:#ffffff13;border:1px solid #ffffff24;border-radius:18px;padding:20px;backdrop-filter:blur(8px)}.quote-icon{font-size:27px;margin-bottom:8px}.quote{font-size:14px;line-height:1.8;font-weight:600}.supervisor-line{font-size:11px;color:#a9c4ff;margin-top:12px}.progress-wrap{margin-top:18px}.progress-label{display:flex;justify-content:space-between;font-size:11px;color:#c9d8ff;margin-bottom:7px}.progress-track{height:8px;background:#ffffff20;border-radius:99px;overflow:hidden}.progress-fill{height:100%;background:linear-gradient(90deg,#55d7ff,#6fffc2);border-radius:99px}
       .fw-head{display:none!important}.cards{gap:14px!important}.card,.panel{border-radius:18px!important;box-shadow:0 9px 28px #0014420b!important;background:#ffffffeb!important}.card{border-top:3px solid #dce6ff!important;transition:.2s}.card:hover{transform:translateY(-3px);box-shadow:0 14px 30px #0d40fc14!important}.card:nth-child(2){border-top-color:#7668ff!important}.card:nth-child(3){border-top-color:#43bedb!important}.card:nth-child(4){border-top-color:#10b981!important}.card:nth-child(5){border-top-color:#f59e0b!important}.panel h3{font-size:16px;margin-bottom:4px}.bar{border-radius:10px 10px 4px 4px!important}.status{font-weight:600}.motivation-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#ecfdf5,#effaff);border:1px solid #c8f2e2;border-radius:14px;padding:13px 17px;margin-bottom:16px}.motivation-strip b{color:#047857;font-size:13px}.motivation-strip span{font-size:12px;color:#4b6472}
-      .compliance-card{position:relative;padding-right:54px}.compliance-icon{position:absolute;right:16px;top:16px;width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:900}.compliance-icon.ok{background:#dcfce7;color:#15803d}.compliance-icon.follow{background:#fff7ed;color:#c2410c}.account-panel{max-width:760px;margin:auto}.account-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f5;padding-bottom:15px}.account-lock{width:28px;height:28px;border-radius:50%;background:#ecfdf5;color:#10b981;display:grid;place-items:center;font-size:9px}.account-form{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.account-form label{font-size:12px;color:#64748b;font-weight:700}.account-form small{font-weight:400}.account-form input{display:block;width:100%;padding:11px;margin-top:6px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.account-message{grid-column:1/-1;padding:10px;border-radius:9px;font-size:12px}.account-message.success{background:#ecfdf5;color:#047857}.account-message.error{background:#fef2f2;color:#b91c1c}.account-save{grid-column:1/-1;justify-self:start}.account-save:disabled{opacity:.6}
+      .compliance-card{padding:16px}.compliance-title{display:flex;align-items:center;gap:10px;margin-bottom:8px}.compliance-title h4{margin:0!important;min-width:0}.compliance-icon{width:29px;height:29px;flex:0 0 29px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:900}.compliance-icon.ok{background:#dcfce7;color:#15803d}.compliance-icon.follow{background:#fff7ed;color:#c2410c}.account-panel{max-width:760px;margin:auto}.account-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f5;padding-bottom:15px}.account-lock{width:28px;height:28px;border-radius:50%;background:#ecfdf5;color:#10b981;display:grid;place-items:center;font-size:9px}.account-form{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.account-form label{font-size:12px;color:#64748b;font-weight:700}.account-form small{font-weight:400}.account-form input{display:block;width:100%;padding:11px;margin-top:6px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.account-message{grid-column:1/-1;padding:10px;border-radius:9px;font-size:12px}.account-message.success{background:#ecfdf5;color:#047857}.account-message.error{background:#fef2f2;color:#b91c1c}.account-save{grid-column:1/-1;justify-self:start}.account-save:disabled{opacity:.6}
       @media(max-width:850px){.welcome-hero{grid-template-columns:1fr;padding:25px}.welcome-hero h1{font-size:25px}.quote-card{display:none}.top-nav{height:58px}.fw-page{padding-top:0!important}}
     `}</style>
-      <style>{`.trainee-tabs{display:flex;gap:6px;background:#e9eef6;padding:6px;border-radius:14px;margin-bottom:16px;overflow:auto}.trainee-tabs button{border:0;background:transparent;color:#64748b;padding:10px 14px;border-radius:9px;font:inherit;white-space:nowrap;cursor:pointer}.trainee-tabs button.active{background:#fff;color:#0d40fc;font-weight:700;box-shadow:0 2px 8px #00144212}.logout-mini{border:1px solid #d9e1ed;background:#fff;color:#64748b;border-radius:9px;padding:7px 10px;cursor:pointer}.nav-user{display:flex;gap:8px;align-items:center}.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters select{border:1px solid #d9e1ed;border-radius:8px;padding:7px;background:#fff;font:inherit}.row-actions{display:flex;gap:5px}.row-actions button{border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:11px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.detail-card h4{margin:0 0 8px}.detail-card p{font-size:12px;color:#64748b}.action-btn{border:0;border-radius:8px;padding:7px 10px;background:#eef4ff;color:#0d40fc;cursor:pointer}.action-btn.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.detail-grid{grid-template-columns:1fr}.nav-user .role-pill{display:none}}`}</style>
+      <style>{`.trainee-tabs{display:flex;gap:5px;background:linear-gradient(120deg,#001442,#082b83);padding:7px;border-radius:16px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none;box-shadow:0 10px 26px #00144218;border:1px solid #ffffff12}.trainee-tabs::-webkit-scrollbar{display:none}.trainee-tabs button{border:0;background:transparent;color:#b9c7e8;padding:10px 13px;border-radius:10px;font:inherit;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.18s}.trainee-tabs button:hover{background:#ffffff0d;color:#fff}.trainee-tabs button.active{background:#fff;color:#0d40fc;font-weight:700;box-shadow:0 5px 14px #00000024}.tab-icon{width:17px;height:17px;flex:0 0 17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.logout-mini{border:1px solid #d9e1ed;background:#fff;color:#64748b;border-radius:9px;padding:7px 10px;cursor:pointer}.nav-user{display:flex;gap:8px;align-items:center}.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters select{border:1px solid #d9e1ed;border-radius:8px;padding:7px;background:#fff;font:inherit}.row-actions{display:flex;gap:5px}.row-actions button{border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:11px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.detail-card h4{margin:0 0 8px}.detail-card p{font-size:12px;color:#64748b}.action-btn{border:0;border-radius:8px;padding:7px 10px;background:#eef4ff;color:#0d40fc;cursor:pointer}.action-btn.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.detail-grid{grid-template-columns:1fr}.nav-user .role-pill{display:none}.trainee-tabs button{padding:9px 11px}}`}</style>
       <div className="fw-wrap">
         <nav className="top-nav">
           <div className="brand">سلوكيرا</div>
@@ -370,6 +370,7 @@ export default function TraineeFieldworkDashboard({
               className={activeTab === key ? "active" : ""}
               onClick={() => setActiveTab(key)}
             >
+              <TabIcon name={key} />
               {label}
             </button>
           ))}
@@ -886,6 +887,83 @@ export default function TraineeFieldworkDashboard({
   );
 }
 
+function TabIcon({ name }: { name: string }) {
+  const paths: Record<string, React.ReactNode> = {
+    overview: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    hours: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </>
+    ),
+    plan: (
+      <>
+        <path d="M9 5h6M9 3v4M15 3v4" />
+        <rect x="4" y="5" width="16" height="16" rx="2" />
+        <path d="m8 13 2 2 5-5" />
+      </>
+    ),
+    competency: (
+      <>
+        <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+      </>
+    ),
+    meetings: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <circle cx="17" cy="9" r="2" />
+        <path d="M3 20c0-4 2-6 6-6s6 2 6 6M15 15c3 0 5 1.7 5 5" />
+      </>
+    ),
+    documents: (
+      <>
+        <path d="M6 3h8l4 4v14H6z" />
+        <path d="M14 3v5h5M9 13h6M9 17h6" />
+      </>
+    ),
+    attendance: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v6M12 17h.01" />
+      </>
+    ),
+    requests: (
+      <>
+        <path d="M4 5h16v14H4zM4 13h5l2 3h2l2-3h5" />
+      </>
+    ),
+    finance: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 10h18M7 15h3" />
+      </>
+    ),
+    policies: (
+      <>
+        <path d="M4 4h6a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-4a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4z" />
+      </>
+    ),
+    account: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-5 3-7 8-7s8 2 8 7" />
+      </>
+    ),
+  };
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
 function ComplianceItem({
   ok,
   title,
@@ -897,13 +975,15 @@ function ComplianceItem({
 }) {
   return (
     <div className="detail-card compliance-card">
-      <span
-        className={`compliance-icon ${ok ? "ok" : "follow"}`}
-        aria-hidden="true"
-      >
-        {ok ? "✓" : "○"}
-      </span>
-      <h4>{title}</h4>
+      <div className="compliance-title">
+        <span
+          className={`compliance-icon ${ok ? "ok" : "follow"}`}
+          aria-hidden="true"
+        >
+          {ok ? "✓" : "○"}
+        </span>
+        <h4>{title}</h4>
+      </div>
       <p>{value}</p>
       <span className={`status ${ok ? "" : "warning"}`}>
         {ok ? "مستوفى" : "يحتاج متابعة"}
