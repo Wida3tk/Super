@@ -1,6 +1,6 @@
-import Link from 'next/link';
+import Link from "next/link";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface HomePageProps {
   params: Promise<{ locale: string }>;
@@ -13,21 +13,21 @@ export default async function HomePage({ params }: HomePageProps) {
   let cms: any = {};
 
   try {
-    const { adminDb } = await import('@/lib/firebase/admin');
+    const { adminDb } = await import("@/lib/firebase/admin");
     const [supervisorsSnap, cmsSnap] = await Promise.all([
-      adminDb.collection('supervisors').get(),
-      adminDb.collection('settings').doc('cms').get(),
+      adminDb.collection("supervisors").get(),
+      adminDb.collection("settings").doc("cms").get(),
     ]);
     supervisors = supervisorsSnap.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((s: any) => s.isActive === true);
     cms = cmsSnap.exists ? cmsSnap.data() : {};
   } catch (error) {
     supervisors = [];
   }
 
-  const siteName = cms.siteName || 'سلوكيرا';
-  const siteNameEn = cms.siteNameEn || 'Sulukera';
+  const siteName = cms.siteName || "سلوكيرا";
+  const siteNameEn = cms.siteNameEn || "Sulukera";
 
   return (
     <>
@@ -78,6 +78,8 @@ export default async function HomePage({ params }: HomePageProps) {
           transition: all 0.15s;
         }
         .nav-lang:hover { background: rgba(13,64,252,0.08); }
+        .nav-login { color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 16px;border-radius:9px;background:var(--primary);box-shadow:0 3px 10px rgba(13,64,252,.2); }
+        .portal-note{max-width:760px;margin:18px auto 0;padding:12px 16px;border-radius:12px;background:#ffffffb8;border:1px solid var(--gray-200);font-size:12px;color:var(--gray-600)}
 
         /* ── HERO ── */
         .hero {
@@ -277,6 +279,8 @@ export default async function HomePage({ params }: HomePageProps) {
 
         @media(max-width:768px){
           .nav { padding: 0 20px; }
+          .nav-lookup { display:none; }
+          .nav-login { padding:7px 10px;font-size:11px; }
           .hero { padding: 56px 24px 48px; }
           .hero-stats { flex-direction: column; }
           .section { padding: 40px 20px; }
@@ -286,16 +290,21 @@ export default async function HomePage({ params }: HomePageProps) {
       `}</style>
 
       <div dir="rtl">
-
         {/* NAV */}
         <nav className="nav">
           <img src="/logo.svg" alt="سلوكيرا" className="nav-logo" />
           <div className="nav-right">
+            <Link href={`/${locale}/login`} className="nav-login">
+              دخول المشرف أو المتدرب
+            </Link>
             <Link href={`/${locale}/booking-lookup`} className="nav-lookup">
               🔍 تتبع الحجز
             </Link>
-            <Link href={`/${locale === 'ar' ? 'en' : 'ar'}`} className="nav-lang">
-              {locale === 'ar' ? 'English' : 'عربي'}
+            <Link
+              href={`/${locale === "ar" ? "en" : "ar"}`}
+              className="nav-lang"
+            >
+              {locale === "ar" ? "English" : "عربي"}
             </Link>
           </div>
         </nav>
@@ -309,13 +318,17 @@ export default async function HomePage({ params }: HomePageProps) {
           <h1>
             ابدأ إشرافك مع <span>سلوكيرا</span>
           </h1>
-          <p className="hero-sub">بوابتك للحصول على الاعتماد المهني في تحليل السلوك التطبيقي</p>
+          <p className="hero-sub">
+            بوابتك للحصول على الاعتماد المهني في تحليل السلوك التطبيقي
+          </p>
           <a href="#supervisors" className="hero-cta">
             احجز مقابلتك الأولية ←
           </a>
           <div className="hero-stats">
             <div className="hero-stat">
-              <div className="hero-stat-num">{supervisors.length > 0 ? `+${supervisors.length}` : '٣+'}</div>
+              <div className="hero-stat-num">
+                {supervisors.length > 0 ? `+${supervisors.length}` : "٣+"}
+              </div>
               <div className="hero-stat-lbl">مشرف معتمد</div>
             </div>
             <div className="hero-stat">
@@ -327,6 +340,10 @@ export default async function HomePage({ params }: HomePageProps) {
               <div className="hero-stat-lbl">وقت الحجز</div>
             </div>
           </div>
+          <div className="portal-note">
+            لديك حساب قائم؟ ادخل إلى بوابتك لمتابعة الساعات، خطط الإشراف،
+            التقييمات ومحاضر الاجتماعات.
+          </div>
         </section>
 
         {/* SUPERVISORS */}
@@ -336,7 +353,9 @@ export default async function HomePage({ params }: HomePageProps) {
               <div className="section-line" />
               <div>
                 <div className="section-title">المشرفون المتاحون</div>
-                <div className="section-sub">اختر مشرفك المعتمد وابدأ رحلتك</div>
+                <div className="section-sub">
+                  اختر مشرفك المعتمد وابدأ رحلتك
+                </div>
               </div>
             </div>
             {supervisors.length > 0 && (
@@ -347,23 +366,26 @@ export default async function HomePage({ params }: HomePageProps) {
           {supervisors.length === 0 ? (
             <div className="empty-state">
               <div className="empty-ico">👨‍🏫</div>
-              <div className="empty-txt">لا يوجد مشرفون متاحون حالياً، يرجى المحاولة لاحقاً</div>
+              <div className="empty-txt">
+                لا يوجد مشرفون متاحون حالياً، يرجى المحاولة لاحقاً
+              </div>
             </div>
           ) : (
             <div className="supervisors-grid">
               {supervisors.map((sup) => {
                 const rating = sup.ratingAverage || 0;
                 const fullStars = Math.floor(rating);
-                const initials = (sup.name || 'م')[0];
+                const initials = (sup.name || "م")[0];
 
                 return (
                   <div key={sup.id} className="sup-card">
                     <div className="sup-card-top">
                       <div className="sup-avatar-wrap">
-                        {sup.photo
-                          ? <img src={sup.photo} alt={sup.name} />
-                          : initials
-                        }
+                        {sup.photo ? (
+                          <img src={sup.photo} alt={sup.name} />
+                        ) : (
+                          initials
+                        )}
                       </div>
                       <div className="sup-card-name-area">
                         <div className="sup-name">{sup.name}</div>
@@ -372,28 +394,42 @@ export default async function HomePage({ params }: HomePageProps) {
                     </div>
 
                     <div className="sup-card-body">
-                      <p className="sup-bio">{sup.bio || 'مشرف أكاديمي متخصص في تحليل السلوك التطبيقي.'}</p>
+                      <p className="sup-bio">
+                        {sup.bio ||
+                          "مشرف أكاديمي متخصص في تحليل السلوك التطبيقي."}
+                      </p>
 
                       <div className="sup-stats">
                         <div className="sup-stat">
-                          <div className="sup-stat-v">{sup.totalSessions ?? 0}</div>
+                          <div className="sup-stat-v">
+                            {sup.totalSessions ?? 0}
+                          </div>
                           <div className="sup-stat-l">الجلسات</div>
                         </div>
                         <div className="sup-stat">
-                          <div className="sup-stat-v" style={{ color: '#FBBF24' }}>
-                            {rating > 0 ? rating.toFixed(1) : '—'}
+                          <div
+                            className="sup-stat-v"
+                            style={{ color: "#FBBF24" }}
+                          >
+                            {rating > 0 ? rating.toFixed(1) : "—"}
                           </div>
                           <div className="sup-stat-l">التقييم</div>
                         </div>
                         <div className="sup-stat">
-                          <div className="sup-stat-v" style={{ color: '#10B981' }}>
-                            {sup.availableSeats ?? '—'}
+                          <div
+                            className="sup-stat-v"
+                            style={{ color: "#10B981" }}
+                          >
+                            {sup.availableSeats ?? "—"}
                           </div>
                           <div className="sup-stat-l">المقاعد</div>
                         </div>
                       </div>
 
-                      <Link href={`/${locale}/supervisor/${sup.id}`} className="sup-btn">
+                      <Link
+                        href={`/${locale}/supervisor/${sup.id}`}
+                        className="sup-btn"
+                      >
                         احجز مقابلة أولية ←
                       </Link>
                     </div>
@@ -410,10 +446,22 @@ export default async function HomePage({ params }: HomePageProps) {
           <div className="how-sub">ثلاث خطوات بسيطة نحو الاعتماد المهني</div>
           <div className="how-steps">
             {[
-              { n: '١', t: 'اختر مشرفك', d: 'تصفح قائمة المشرفين المعتمدين واختر الأنسب لمسيرتك المهنية' },
-              { n: '٢', t: 'احجز مقابلتك الأولية', d: 'اختر التاريخ والوقت المناسب من المواعيد المتاحة في دقيقتين' },
-              { n: '٣', t: 'ابدأ ساعات الإشراف', d: 'أكمل ساعاتك المعتمدة واحصل على شهادة QASP-S أو QBA' },
-            ].map(s => (
+              {
+                n: "١",
+                t: "اختر مشرفك",
+                d: "تصفح قائمة المشرفين المعتمدين واختر الأنسب لمسيرتك المهنية",
+              },
+              {
+                n: "٢",
+                t: "احجز مقابلتك الأولية",
+                d: "اختر التاريخ والوقت المناسب من المواعيد المتاحة في دقيقتين",
+              },
+              {
+                n: "٣",
+                t: "ابدأ ساعات الإشراف",
+                d: "أكمل ساعاتك المعتمدة واحصل على شهادة QASP-S أو QBA",
+              },
+            ].map((s) => (
               <div key={s.n} className="how-step">
                 <div className="how-num">{s.n}</div>
                 <div className="how-step-title">{s.t}</div>
@@ -425,10 +473,19 @@ export default async function HomePage({ params }: HomePageProps) {
 
         {/* FOOTER */}
         <footer className="footer">
-          <img src="/logo.svg" alt="سلوكيرا" style={{ height: '28px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
-          <div className="footer-copy">© {new Date().getFullYear()} سلوكيرا — جميع الحقوق محفوظة</div>
+          <img
+            src="/logo.svg"
+            alt="سلوكيرا"
+            style={{
+              height: "28px",
+              width: "auto",
+              filter: "brightness(0) invert(1)",
+            }}
+          />
+          <div className="footer-copy">
+            © {new Date().getFullYear()} سلوكيرا — جميع الحقوق محفوظة
+          </div>
         </footer>
-
       </div>
     </>
   );

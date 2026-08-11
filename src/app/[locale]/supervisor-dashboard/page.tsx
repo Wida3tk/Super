@@ -130,7 +130,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         .hero-date{font-size:12px;color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.08);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);}
         .main{max-width:1400px;margin:0 auto;padding:28px 32px 64px;}
         @media(max-width:768px){.main{padding:20px 16px 48px;}}
-        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
         @media(max-width:700px){.stats{grid-template-columns:1fr 1fr;}}
         .stat-card{background:#fff;border-radius:14px;padding:20px 16px;border:1px solid var(--gray-200);box-shadow:0 1px 4px rgba(1,20,66,0.06);display:flex;align-items:center;gap:14px;transition:box-shadow .18s,transform .18s;}
         .stat-card:hover{box-shadow:0 6px 20px rgba(13,64,252,0.1);transform:translateY(-2px);}
@@ -190,6 +190,25 @@ export default async function SupervisorDashboardPage({ params }: Props) {
               <div>
                 <div className="stat-val">{supervisor.totalSessions ?? 0}</div>
                 <div className="stat-lbl">إجمالي الجلسات</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div
+                className="stat-icon"
+                style={{ background: "rgba(239,68,68,0.08)" }}
+              >
+                ✓
+              </div>
+              <div>
+                <div
+                  className="stat-val"
+                  style={{
+                    color: fieldworkActivities.length ? "#dc2626" : "#059669",
+                  }}
+                >
+                  {fieldworkActivities.length}
+                </div>
+                <div className="stat-lbl">ساعات تنتظر المراجعة</div>
               </div>
             </div>
             <div className="stat-card">
