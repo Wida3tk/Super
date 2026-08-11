@@ -171,7 +171,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             <p>
               {supervisor.bio ||
                 (isConsultant
-                  ? "مستشار تحليل سلوك في الواجهة الموحّدة للإشراف"
+                  ? "مستشار إدارة السلوك التنظيمي في الواجهة الموحّدة للإشراف"
                   : "مشرف أكاديمي في الواجهة الموحّدة للإشراف")}
             </p>
           </div>

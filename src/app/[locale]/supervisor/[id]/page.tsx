@@ -66,7 +66,11 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
   const rating = supervisor?.ratingAverage || 0;
   const initials = (supervisor?.name || "م")[0];
   const seats = supervisor?.availableSeats ?? 0;
-  const specialization = supervisor?.specialization || "مشرف أكاديمي";
+  const specialization =
+    supervisor?.specialization ||
+    (supervisor?.accountType === "consultant"
+      ? "مستشار إدارة السلوك التنظيمي"
+      : "مشرف أكاديمي");
 
   return (
     <>

@@ -322,7 +322,7 @@ export default async function HomePage({ params }: HomePageProps) {
         <section className="hero">
           <div className="hero-badge">
             <div className="hero-badge-dot"></div>
-            إشراف واستشارات تحليل السلوك التطبيقي عن بُعد
+            إشراف تحليل السلوك التطبيقي واستشارات إدارة السلوك التنظيمي عن بُعد
           </div>
           <h1>
             الواجهة الموحّدة <span>للإشراف</span>
@@ -385,14 +385,47 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <h2>احجز استشارة</h2>
                 <p>
-                  جلسة فردية عن بُعد مع حساب مستشار لمناقشة حالة أو خطة أو تحدٍ
-                  مهني في تحليل السلوك التطبيقي.
+                  جلسة مهنية مع مستشار في إدارة السلوك التنظيمي لتحسين الأداء،
+                  تطوير أنظمة العمل، معالجة تحديات الفرق، ودعم التغيير المؤسسي.
                 </p>
                 <a href="#consultants" className="service-link">
                   اختيار المستشار ←
                 </a>
               </div>
             </article>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section className="how-section">
+          <div className="how-title">كيف تبدأ؟</div>
+          <div className="how-sub">
+            ثلاث خطوات واضحة للوصول إلى الخدمة المناسبة
+          </div>
+          <div className="how-steps">
+            {[
+              {
+                n: "١",
+                t: "اختر نوع الخدمة",
+                d: "حدد مقابلة أولية لبدء الإشراف أو استشارة في إدارة السلوك التنظيمي.",
+              },
+              {
+                n: "٢",
+                t: "اختر مقدم الخدمة",
+                d: "تصفح قائمة المشرفين أو المستشارين واختر الخبرة الأنسب لاحتياجك.",
+              },
+              {
+                n: "٣",
+                t: "أنشئ حسابك واحجز",
+                d: "اختر الموعد، أنشئ حسابك مرة واحدة، ثم تابع مواعيدك من لوحة واحدة.",
+              },
+            ].map((s) => (
+              <div key={s.n} className="how-step">
+                <div className="how-num">{s.n}</div>
+                <div className="how-step-title">{s.t}</div>
+                <div className="how-step-desc">{s.d}</div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -517,7 +550,8 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <div className="section-title">المستشارون المتاحون</div>
                 <div className="section-sub">
-                  اختر مستشار تحليل السلوك المناسب لموضوع الاستشارة
+                  اختر مستشار إدارة السلوك التنظيمي المناسب لاحتياج المؤسسة أو
+                  الفريق
                 </div>
               </div>
             </div>
@@ -553,13 +587,15 @@ export default async function HomePage({ params }: HomePageProps) {
                     </div>
                     <div className="sup-card-name-area">
                       <div className="sup-name">{consultant.name}</div>
-                      <span className="sup-spec">مستشار تحليل سلوك</span>
+                      <span className="sup-spec">
+                        مستشار إدارة السلوك التنظيمي
+                      </span>
                     </div>
                   </div>
                   <div className="sup-card-body">
                     <p className="sup-bio">
                       {consultant.bio ||
-                        "مستشار متخصص في تحليل السلوك التطبيقي والاستشارات المهنية عن بُعد."}
+                        "مستشار متخصص في إدارة السلوك التنظيمي وتحسين الأداء وتصميم أنظمة العمل ودعم التغيير المؤسسي."}
                     </p>
                     <div className="sup-stats">
                       <div className="sup-stat">
@@ -591,37 +627,6 @@ export default async function HomePage({ params }: HomePageProps) {
               ))}
             </div>
           )}
-        </section>
-
-        {/* HOW IT WORKS */}
-        <section className="how-section">
-          <div className="how-title">كيف تبدأ؟</div>
-          <div className="how-sub">ثلاث خطوات بسيطة نحو الاعتماد المهني</div>
-          <div className="how-steps">
-            {[
-              {
-                n: "١",
-                t: "اختر مشرفك",
-                d: "تصفح قائمة المشرفين المعتمدين واختر الأنسب لمسيرتك المهنية",
-              },
-              {
-                n: "٢",
-                t: "احجز مقابلتك الأولية",
-                d: "اختر التاريخ والوقت المناسب من المواعيد المتاحة في دقيقتين",
-              },
-              {
-                n: "٣",
-                t: "ابدأ ساعات الإشراف",
-                d: "أكمل ساعاتك المعتمدة واحصل على شهادة QASP-S أو QBA",
-              },
-            ].map((s) => (
-              <div key={s.n} className="how-step">
-                <div className="how-num">{s.n}</div>
-                <div className="how-step-title">{s.t}</div>
-                <div className="how-step-desc">{s.d}</div>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* FOOTER */}

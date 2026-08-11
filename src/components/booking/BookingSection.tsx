@@ -290,7 +290,7 @@ export default function BookingSection({
           }}
         >
           {bookingType === "consultation"
-            ? "استشارة مهنية فردية عن بُعد"
+            ? "استشارة في إدارة السلوك التنظيمي عن بُعد"
             : "مقابلة أولية لبدء برنامج الإشراف"}
         </div>
 
