@@ -454,18 +454,47 @@ function Documents({ traineeId, items, onSave }: any) {
     fileUrl: "",
   });
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const upload = async (file: File) => {
     setBusy(true);
-    const fd = new FormData();
-    fd.append("traineeId", traineeId);
-    fd.append("file", file);
-    const r = await fetch("/api/supervisor/document-upload", {
-      method: "POST",
-      body: fd,
-    });
-    const j = await r.json();
-    setBusy(false);
-    if (r.ok) setForm({ ...form, fileName: j.fileName, fileUrl: j.fileUrl });
+    setUploadError("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 55000);
+    try {
+      const fd = new FormData();
+      fd.append("traineeId", traineeId);
+      fd.append("file", file);
+      const r = await fetch("/api/supervisor/document-upload", {
+        method: "POST",
+        body: fd,
+        signal: controller.signal,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const messages: Record<string, string> = {
+          INVALID_FILE: "الملف غير مدعوم أو يتجاوز 10MB.",
+          FORBIDDEN: "لا تملك صلاحية الرفع إلى ملف هذا المتدرب.",
+          UPLOAD_FAILED: "تعذر رفع الملف إلى التخزين السحابي. حاول مرة أخرى.",
+        };
+        throw new Error(messages[j.error] || "تعذر رفع الملف.");
+      }
+      setForm((current: any) => ({
+        ...current,
+        fileName: j.fileName,
+        fileUrl: j.fileUrl,
+      }));
+    } catch (error) {
+      setUploadError(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "استغرق الرفع وقتًا أطول من المتوقع. تحقق من الاتصال وحاول مجددًا."
+          : error instanceof Error
+            ? error.message
+            : "تعذر رفع الملف.",
+      );
+    } finally {
+      window.clearTimeout(timeout);
+      setBusy(false);
+    }
   };
   return (
     <div className="split">
@@ -530,6 +559,11 @@ function Documents({ traineeId, items, onSave }: any) {
                 ? "جارٍ الرفع..."
                 : form.fileName || "PDF أو صورة أو Word، حتى 10MB"}
             </small>
+            {uploadError && (
+              <small style={{ color: "#b91c1c", display: "block" }}>
+                {uploadError}
+              </small>
+            )}
           </Field>
           <Field label="ملاحظات">
             <textarea
@@ -540,7 +574,7 @@ function Documents({ traineeId, items, onSave }: any) {
         </div>
         <button
           className="save"
-          disabled={busy || !form.title}
+          disabled={busy || !form.title || !form.fileUrl}
           onClick={async () => {
             if (await onSave({ entity: "document", ...form }))
               setForm({
