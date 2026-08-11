@@ -6,6 +6,7 @@ import type { App } from 'firebase-admin/app';
 const { initializeApp, getApps, cert, applicationDefault } = require('firebase-admin/app') as typeof import('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore') as typeof import('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth') as typeof import('firebase-admin/auth');
+const { getStorage } = require('firebase-admin/storage') as typeof import('firebase-admin/storage');
 
 function getAdminApp(): App {
   if (getApps().length > 0) {
@@ -27,6 +28,7 @@ function getAdminApp(): App {
   return initializeApp({
     credential,
     projectId,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET?.trim() || (projectId ? `${projectId}.firebasestorage.app` : undefined),
   });
 }
 
@@ -34,4 +36,5 @@ const adminApp = getAdminApp();
 
 export const adminDb = getFirestore(adminApp, 'default');
 export const adminAuth = getAuth(adminApp);
+export const adminStorage = getStorage(adminApp);
 export { adminApp };

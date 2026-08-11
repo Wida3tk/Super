@@ -9,7 +9,7 @@ const labels: Record<FieldworkActivityType, string> = {
 };
 const statusLabels: Record<string, string> = { draft: 'مسودة', submitted: 'بانتظار الاعتماد', approved: 'معتمد', revision_requested: 'يحتاج تعديل', rejected: 'مرفوض' };
 
-export default function TraineeFieldworkDashboard({ trainee, supervisorName, initialActivities }: { trainee: any; supervisorName: string; initialActivities: FieldworkActivity[] }) {
+export default function TraineeFieldworkDashboard({ trainee, supervisorName, initialActivities, supervisionFile }: { trainee: any; supervisorName: string; initialActivities: FieldworkActivity[]; supervisionFile?: any }) {
   const [activities, setActivities] = useState(initialActivities);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,21 +25,24 @@ export default function TraineeFieldworkDashboard({ trainee, supervisorName, ini
   const sum = (types: FieldworkActivityType[]) => approved.filter(a => types.includes(a.activityType)).reduce((n, a) => n + a.duration, 0);
   const direct = sum(['direct']), indirect = sum(['indirect']);
   const supervision = sum(['supervision_direct', 'supervision_indirect']);
-  const total = direct + indirect + supervision;
+  const total = direct + indirect;
   const supervisionPct = total ? supervision / total * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
-  const requiredHours = Number(trainee.requiredHours || 100);
+  const requiredHours = Number(trainee.requiredHours || (trainee.license === 'QBA' ? 2000 : 1000));
   const progress = Math.min(100, total / requiredHours * 100);
   const pendingCount = activities.filter(a => a.status === 'submitted').length;
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthHours = approved.filter(a => a.month === currentMonth).reduce((n, a) => n + a.duration, 0);
   const motivation = progress >= 100
-    ? 'إنجاز رائع! وصلت إلى هدفك، وثمار التزامك أصبحت واضحة.'
+    ? 'اكتمل هدف الساعات؛ راجع التوثيق ونسب الساعات وسجلات الإشراف قبل التقديم.'
     : progress >= 60
-      ? 'أنت في المرحلة الأخيرة — استمر، فكل ساعة تقرّبك من هدفك.'
+      ? 'أصبحت أقرب للجاهزية المهنية؛ واصل تطوير مهارات التقييم وتصميم التدخل والتعاون مع أصحاب المصلحة.'
       : progress >= 25
-        ? 'تقدّم جميل وثابت. الاستمرارية الصغيرة تصنع خبرة كبيرة.'
-        : 'كل خبير كان يومًا متدربًا. ابدأ بخطوة، وسنحتفل بكل تقدم.';
+        ? 'تقدمك لا يقاس بعدد الساعات فقط، بل بجودة جمع البيانات والتحليل والتطبيق الأخلاقي.'
+        : 'كل ملاحظة دقيقة وقرار قائم على البيانات يبني كفاءتك في تحليل السلوك التطبيقي.';
+  const latestAssessment = supervisionFile?.assessments?.[0];
+  const assessmentPct = latestAssessment?.maxScore ? latestAssessment.totalScore / latestAssessment.maxScore * 100 : 0;
+  const goals = supervisionFile?.plan?.goals || [];
 
   const submit = async (saveAsDraft: boolean) => {
     setSaving(true); setError('');
@@ -65,7 +68,7 @@ export default function TraineeFieldworkDashboard({ trainee, supervisorName, ini
     `}</style>
     <div className="fw-wrap">
       <nav className="top-nav"><div className="brand">سلوكيرا</div><div className="role-pill">بوابة المتدرب · {trainee.license}</div></nav>
-      <section className="welcome-hero"><div className="hero-main"><div className="eyebrow">رحلتك المهنية تبدأ من هنا ✦</div><h1>أهلًا {trainee.name} 👋</h1><div className="hero-sub">سجّل خبراتك، تابع تقدمك، واصنع سجلًا يعكس التزامك ونموّك كل يوم.</div><button className="primary" onClick={() => setOpen(true)}>＋ إضافة ساعات جديدة</button><div className="progress-wrap"><div className="progress-label"><span>التقدم نحو {requiredHours} ساعة</span><b>{progress.toFixed(0)}%</b></div><div className="progress-track"><div className="progress-fill" style={{width:`${progress}%`}}/></div></div></div><aside className="quote-card"><div className="quote-icon">🌱</div><div className="quote">{motivation}</div><div className="supervisor-line">معك في الرحلة: {supervisorName || 'فريق الإشراف'}</div></aside></section>
+      <section className="welcome-hero"><div className="hero-main"><div className="eyebrow">رحلتك نحو ممارسة تحليل السلوك القائمة على الدليل ✦</div><h1>أهلًا {trainee.name} 👋</h1><div className="hero-sub">وثّق خبراتك، راقب توازن الساعات، واستفد من التغذية الراجعة الإشرافية لتطوير كفاءتك المهنية.</div><button className="primary" onClick={() => setOpen(true)}>＋ إضافة ساعات جديدة</button><div className="progress-wrap"><div className="progress-label"><span>التقدم نحو {requiredHours} ساعة</span><b>{progress.toFixed(0)}%</b></div><div className="progress-track"><div className="progress-fill" style={{width:`${progress}%`}}/></div></div></div><aside className="quote-card"><div className="quote-icon">🌱</div><div className="quote">{motivation}</div><div className="supervisor-line">معك في الرحلة: {supervisorName || 'فريق الإشراف'}</div></aside></section>
       <div className="motivation-strip"><b>✨ {motivation}</b><span>{monthHours.toFixed(1)} ساعة هذا الشهر · {pendingCount} بانتظار الاعتماد</span></div>
       <div className="fw-head"><div><h1>مرحبًا، {trainee.name}</h1><div className="muted">المشرف: {supervisorName || '—'} · {trainee.license}</div></div><button className="primary" onClick={() => setOpen(true)}>+ إضافة ساعات</button></div>
       <section className="cards">
@@ -79,6 +82,7 @@ export default function TraineeFieldworkDashboard({ trainee, supervisorName, ini
         <section className="panel"><h3>توزيع الساعات</h3><div className="bars">{[[direct,'#0d40fc','مباشرة'],[indirect,'#55b7d7','غير مباشرة'],[supervision,'#10b981','إشراف']].map(([v,c,l])=><div className="bar-col" key={String(l)}><div className="bar" style={{height:`${Number(v)/maxBar*150}px`,background:String(c)}}/><b>{Number(v).toFixed(1)}</b><div>{l}</div></div>)}</div></section>
         <section className="panel"><h3>سجل الأنشطة</h3><div className="table-wrap"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الوقت</th><th>المدة</th><th>الوصف</th><th>الحالة</th></tr></thead><tbody>{activities.map(a=><tr key={a.id}><td>{a.date}</td><td>{labels[a.activityType]}</td><td dir="ltr">{a.startTime}–{a.endTime}</td><td>{a.duration}</td><td>{a.description || '—'}</td><td><span className="status">{statusLabels[a.status]}</span>{a.reviewerNote&&<div className="muted">{a.reviewerNote}</div>}</td></tr>)}{!activities.length&&<tr><td colSpan={6} style={{textAlign:'center',padding:30}}>لم تُضف ساعات بعد</td></tr>}</tbody></table></div></section>
       </div>
+      <section className="panel" style={{marginTop:16}}><h3>ملف الإشراف والتطور المهني</h3><div className="cards" style={{marginTop:14,marginBottom:14}}><div className="card"><span className="muted">آخر تقييم كفاءة</span><b>{assessmentPct.toFixed(0)}%</b></div><div className="card"><span className="muted">أهداف الخطة</span><b>{goals.length}</b></div><div className="card"><span className="muted">أهداف متحققة</span><b>{goals.filter((g:any)=>g.status==='achieved').length}</b></div><div className="card"><span className="muted">محاضر الاجتماعات</span><b>{supervisionFile?.meetings?.length||0}</b></div><div className="card"><span className="muted">المستندات والموافقات</span><b>{supervisionFile?.documents?.length||0}</b></div></div>{goals.length>0&&<div className="table-wrap"><table><thead><tr><th>المجال</th><th>الهدف</th><th>معيار الإتقان</th><th>الموعد</th><th>الحالة</th></tr></thead><tbody>{goals.map((g:any)=><tr key={g.id}><td>{g.domain}</td><td>{g.title}</td><td>{g.masteryCriterion||'—'}</td><td>{g.dueDate||'—'}</td><td><span className="status">{{not_started:'لم يبدأ',in_progress:'قيد التنفيذ',achieved:'متحقق',retrain:'يحتاج إعادة تدريب'}[g.status as 'not_started']||g.status}</span></td></tr>)}</tbody></table></div>}</section>
     </div>
     {open&&<div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setOpen(false)}><div className="modal"><h2>إضافة نشاط ميداني</h2><div className="fields">
       <div className="field"><label>التاريخ</label><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div>
