@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
+import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
 
 const labels: Record<FieldworkActivityType, string> = {
   direct: "مباشرة مع العميل",
@@ -46,7 +47,13 @@ export default function TraineeFieldworkDashboard({
   const [activities, setActivities] = useState(initialActivities);
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "hours" | "plan" | "competency" | "meetings" | "documents"
+    | "overview"
+    | "hours"
+    | "plan"
+    | "competency"
+    | "meetings"
+    | "documents"
+    | "account"
   >("overview");
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
@@ -284,6 +291,7 @@ export default function TraineeFieldworkDashboard({
       .welcome-hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#001442 0%,#0935ce 62%,#0d70fc 100%);border-radius:24px;padding:32px 34px;color:#fff;display:grid;grid-template-columns:1.5fr .8fr;gap:24px;align-items:center;box-shadow:0 20px 50px #0d40fc25;margin-bottom:18px}.welcome-hero:after{content:'';position:absolute;width:310px;height:310px;border-radius:50%;background:#55d7ff18;left:-80px;top:-155px}.hero-main{position:relative;z-index:1}.eyebrow{font-size:12px;color:#73e3ff;font-weight:700;margin-bottom:7px}.welcome-hero h1{font-size:30px;margin:0 0 8px}.hero-sub{font-size:14px;color:#d5e1ff;line-height:1.8;max-width:620px}.welcome-hero .primary{background:#fff;color:#0d40fc;box-shadow:none;margin-top:18px}.welcome-hero .primary:hover{transform:translateY(-2px)}
       .quote-card{position:relative;z-index:1;background:#ffffff13;border:1px solid #ffffff24;border-radius:18px;padding:20px;backdrop-filter:blur(8px)}.quote-icon{font-size:27px;margin-bottom:8px}.quote{font-size:14px;line-height:1.8;font-weight:600}.supervisor-line{font-size:11px;color:#a9c4ff;margin-top:12px}.progress-wrap{margin-top:18px}.progress-label{display:flex;justify-content:space-between;font-size:11px;color:#c9d8ff;margin-bottom:7px}.progress-track{height:8px;background:#ffffff20;border-radius:99px;overflow:hidden}.progress-fill{height:100%;background:linear-gradient(90deg,#55d7ff,#6fffc2);border-radius:99px}
       .fw-head{display:none!important}.cards{gap:14px!important}.card,.panel{border-radius:18px!important;box-shadow:0 9px 28px #0014420b!important;background:#ffffffeb!important}.card{border-top:3px solid #dce6ff!important;transition:.2s}.card:hover{transform:translateY(-3px);box-shadow:0 14px 30px #0d40fc14!important}.card:nth-child(2){border-top-color:#7668ff!important}.card:nth-child(3){border-top-color:#43bedb!important}.card:nth-child(4){border-top-color:#10b981!important}.card:nth-child(5){border-top-color:#f59e0b!important}.panel h3{font-size:16px;margin-bottom:4px}.bar{border-radius:10px 10px 4px 4px!important}.status{font-weight:600}.motivation-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#ecfdf5,#effaff);border:1px solid #c8f2e2;border-radius:14px;padding:13px 17px;margin-bottom:16px}.motivation-strip b{color:#047857;font-size:13px}.motivation-strip span{font-size:12px;color:#4b6472}
+      .compliance-card{position:relative;padding-right:54px}.compliance-icon{position:absolute;right:16px;top:16px;width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:900}.compliance-icon.ok{background:#dcfce7;color:#15803d}.compliance-icon.follow{background:#fff7ed;color:#c2410c}.account-panel{max-width:760px;margin:auto}.account-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f5;padding-bottom:15px}.account-lock{width:28px;height:28px;border-radius:50%;background:#ecfdf5;color:#10b981;display:grid;place-items:center;font-size:9px}.account-form{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.account-form label{font-size:12px;color:#64748b;font-weight:700}.account-form small{font-weight:400}.account-form input{display:block;width:100%;padding:11px;margin-top:6px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.account-message{grid-column:1/-1;padding:10px;border-radius:9px;font-size:12px}.account-message.success{background:#ecfdf5;color:#047857}.account-message.error{background:#fef2f2;color:#b91c1c}.account-save{grid-column:1/-1;justify-self:start}.account-save:disabled{opacity:.6}
       @media(max-width:850px){.welcome-hero{grid-template-columns:1fr;padding:25px}.welcome-hero h1{font-size:25px}.quote-card{display:none}.top-nav{height:58px}.fw-page{padding-top:0!important}}
     `}</style>
       <style>{`.trainee-tabs{display:flex;gap:6px;background:#e9eef6;padding:6px;border-radius:14px;margin-bottom:16px;overflow:auto}.trainee-tabs button{border:0;background:transparent;color:#64748b;padding:10px 14px;border-radius:9px;font:inherit;white-space:nowrap;cursor:pointer}.trainee-tabs button.active{background:#fff;color:#0d40fc;font-weight:700;box-shadow:0 2px 8px #00144212}.logout-mini{border:1px solid #d9e1ed;background:#fff;color:#64748b;border-radius:9px;padding:7px 10px;cursor:pointer}.nav-user{display:flex;gap:8px;align-items:center}.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters select{border:1px solid #d9e1ed;border-radius:8px;padding:7px;background:#fff;font:inherit}.row-actions{display:flex;gap:5px}.row-actions button{border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:11px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.detail-card h4{margin:0 0 8px}.detail-card p{font-size:12px;color:#64748b}.action-btn{border:0;border-radius:8px;padding:7px 10px;background:#eef4ff;color:#0d40fc;cursor:pointer}.action-btn.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.detail-grid{grid-template-columns:1fr}.nav-user .role-pill{display:none}}`}</style>
@@ -340,6 +348,7 @@ export default function TraineeFieldworkDashboard({
               ["competency", "تقييم الكفاءة"],
               ["meetings", "الاجتماعات والمهام"],
               ["documents", "المستندات"],
+              ["account", "إعدادات الحساب"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -402,8 +411,8 @@ export default function TraineeFieldworkDashboard({
               <div className="detail-grid" style={{ marginTop: 14 }}>
                 <ComplianceItem
                   ok={monthFieldwork >= 20 && monthFieldwork <= 140}
-                  title="نطاق ساعات الخبرة"
-                  value={`${monthFieldwork.toFixed(1)} من 20–140 ساعة`}
+                  title="ساعات التطبيق الميداني"
+                  value={`${monthFieldwork.toFixed(1)} ساعة مسجلة من النطاق الشهري 20–140 ساعة`}
                 />
                 <ComplianceItem
                   ok={monthSupervisionPct >= 5}
@@ -655,6 +664,9 @@ export default function TraineeFieldworkDashboard({
         {activeTab === "documents" && (
           <DocumentDetails documents={supervisionFile?.documents || []} />
         )}
+        {activeTab === "account" && (
+          <TraineeAccountSettings trainee={trainee} />
+        )}
       </div>
       {open && (
         <div
@@ -860,10 +872,14 @@ function ComplianceItem({
   value: string;
 }) {
   return (
-    <div className="detail-card">
-      <h4>
-        {ok ? "✓" : "!"} {title}
-      </h4>
+    <div className="detail-card compliance-card">
+      <span
+        className={`compliance-icon ${ok ? "ok" : "follow"}`}
+        aria-hidden="true"
+      >
+        {ok ? "✓" : "○"}
+      </span>
+      <h4>{title}</h4>
       <p>{value}</p>
       <span className={`status ${ok ? "" : "warning"}`}>
         {ok ? "مستوفى" : "يحتاج متابعة"}
