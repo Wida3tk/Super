@@ -5,6 +5,7 @@ import BookingsManager from "./BookingsManager";
 import SupervisionHours from "./SupervisionHours";
 import FieldworkReview from "./FieldworkReview";
 import TraineeSupervisionWorkspace from "./TraineeSupervisionWorkspace";
+import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -37,7 +38,7 @@ export default function SupervisorTabs({
   supervisor,
 }: Props) {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "bookings" | "hours" | "fieldwork" | "workspace"
+    "overview" | "bookings" | "hours" | "fieldwork" | "workspace" | "policies"
   >("overview");
 
   const isConsultant = supervisor?.accountType === "consultant";
@@ -60,6 +61,8 @@ export default function SupervisorTabs({
       icon: "📁",
       count: traineesCount,
     });
+  if (!isConsultant)
+    tabs.push({ key: "policies", label: "السياسات", icon: "▤", count: 0 });
 
   return (
     <div>
@@ -153,6 +156,9 @@ export default function SupervisorTabs({
           trainees={initialTrainees}
           supervisor={supervisor}
         />
+      )}
+      {activeTab === "policies" && (
+        <SupervisionPolicies audience="supervisor" />
       )}
     </div>
   );

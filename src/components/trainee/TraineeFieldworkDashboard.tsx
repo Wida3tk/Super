@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
+import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 
 const labels: Record<FieldworkActivityType, string> = {
   direct: "مباشرة مع العميل",
@@ -53,6 +54,7 @@ export default function TraineeFieldworkDashboard({
     | "competency"
     | "meetings"
     | "documents"
+    | "policies"
     | "account"
   >("overview");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -348,6 +350,7 @@ export default function TraineeFieldworkDashboard({
               ["competency", "تقييم الكفاءة"],
               ["meetings", "الاجتماعات والمهام"],
               ["documents", "المستندات"],
+              ["policies", "السياسات"],
               ["account", "إعدادات الحساب"],
             ] as const
           ).map(([key, label]) => (
@@ -664,6 +667,7 @@ export default function TraineeFieldworkDashboard({
         {activeTab === "documents" && (
           <DocumentDetails documents={supervisionFile?.documents || []} />
         )}
+        {activeTab === "policies" && <SupervisionPolicies audience="trainee" />}
         {activeTab === "account" && (
           <TraineeAccountSettings trainee={trainee} />
         )}
