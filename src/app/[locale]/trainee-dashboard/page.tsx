@@ -21,6 +21,9 @@ export default async function TraineeDashboardPage({
     documentsSnap,
     meetingsSnap,
     monthlyApprovalSnap,
+    attendanceSnap,
+    requestsSnap,
+    financialPlanSnap,
   ] = await Promise.all([
     adminDb
       .collection("fieldworkActivities")
@@ -50,6 +53,17 @@ export default async function TraineeDashboardPage({
       .collection("monthlyApprovals")
       .doc(`${trainee.id}_${currentMonth}`)
       .get(),
+    adminDb
+      .collection("sessions")
+      .where("traineeIds", "array-contains", trainee.id)
+      .limit(100)
+      .get(),
+    adminDb
+      .collection("traineeRequests")
+      .where("traineeId", "==", trainee.id)
+      .limit(50)
+      .get(),
+    adminDb.collection("financialPlans").doc(trainee.id).get(),
   ]);
   const activities = (
     activitySnap.docs.map((d) => ({
@@ -87,6 +101,18 @@ export default async function TraineeDashboardPage({
       ? { id: monthlyApprovalSnap.id, ...monthlyApprovalSnap.data() }
       : null,
     currentMonth,
+    attendance: attendanceSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((item: any) => item.type === "absence" || item.type === "warning")
+      .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),
+    requests: requestsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a: any, b: any) =>
+        String(b.createdAt).localeCompare(String(a.createdAt)),
+      ),
+    financialPlan: financialPlanSnap.exists
+      ? { id: financialPlanSnap.id, ...financialPlanSnap.data() }
+      : null,
   };
   return (
     <TraineeFieldworkDashboard

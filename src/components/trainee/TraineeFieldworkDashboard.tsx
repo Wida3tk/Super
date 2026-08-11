@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
+import {
+  AttendanceRecord,
+  FinancialPlan,
+  TraineeRequests,
+} from "@/components/trainee/TraineeOperations";
 
 const labels: Record<FieldworkActivityType, string> = {
   direct: "مباشرة مع العميل",
@@ -55,6 +60,9 @@ export default function TraineeFieldworkDashboard({
     | "meetings"
     | "documents"
     | "policies"
+    | "attendance"
+    | "requests"
+    | "finance"
     | "account"
   >("overview");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -350,6 +358,9 @@ export default function TraineeFieldworkDashboard({
               ["competency", "تقييم الكفاءة"],
               ["meetings", "الاجتماعات والمهام"],
               ["documents", "المستندات"],
+              ["attendance", "الغياب والإنذارات"],
+              ["requests", "طلباتي"],
+              ["finance", "الخطة المالية"],
               ["policies", "السياسات"],
               ["account", "إعدادات الحساب"],
             ] as const
@@ -668,6 +679,15 @@ export default function TraineeFieldworkDashboard({
           <DocumentDetails documents={supervisionFile?.documents || []} />
         )}
         {activeTab === "policies" && <SupervisionPolicies audience="trainee" />}
+        {activeTab === "attendance" && (
+          <AttendanceRecord sessions={supervisionFile?.attendance || []} />
+        )}
+        {activeTab === "requests" && (
+          <TraineeRequests initialRequests={supervisionFile?.requests || []} />
+        )}
+        {activeTab === "finance" && (
+          <FinancialPlan plan={supervisionFile?.financialPlan || null} />
+        )}
         {activeTab === "account" && (
           <TraineeAccountSettings trainee={trainee} />
         )}

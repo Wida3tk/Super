@@ -84,6 +84,12 @@ export default function AdminSidebar({
           emoji: "👤",
         },
         {
+          href: `${base}/trainee-requests`,
+          icon: "ti-file-description",
+          label: "طلبات المتدربين",
+          emoji: "📨",
+        },
+        {
           href: `${base}/bookings`,
           icon: "ti-calendar",
           label: "الحجوزات",
