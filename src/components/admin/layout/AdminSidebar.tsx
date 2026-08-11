@@ -16,7 +16,13 @@ interface NavSection {
   items: NavItem[];
 }
 
-export default function AdminSidebar({ locale, notifCount = 0 }: { locale: string; notifCount?: number }) {
+export default function AdminSidebar({
+  locale,
+  notifCount = 0,
+}: {
+  locale: string;
+  notifCount?: number;
+}) {
   const pathname = usePathname();
   const base = `/${locale}/admin`;
 
@@ -24,25 +30,77 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
     {
       title: "الرئيسية",
       items: [
-        { href: `${base}`, icon: "ti-layout-dashboard", label: "الداشبورد", emoji: "🏠" },
-        { href: `${base}/notifications`, icon: "ti-bell", label: "الإشعارات", badge: notifCount, emoji: "🔔" },
+        {
+          href: `${base}`,
+          icon: "ti-layout-dashboard",
+          label: "الداشبورد",
+          emoji: "🏠",
+        },
+        {
+          href: `${base}/notifications`,
+          icon: "ti-bell",
+          label: "الإشعارات",
+          badge: notifCount,
+          emoji: "🔔",
+        },
       ],
     },
     {
       title: "الإشراف",
       items: [
-        { href: `${base}/trainees`, icon: "ti-users", label: "المتدربون", emoji: "👥" },
-        { href: `${base}/supervisors`, icon: "ti-chart-bar", label: "إنتاجية المشرفين", emoji: "📊" },
-        { href: `${base}/onboarding`, icon: "ti-user-check", label: "البوردنق والإسناد", emoji: "🎯" },
-        { href: `${base}/months`, icon: "ti-calendar-stats", label: "إدارة الأشهر", emoji: "📅" },
+        {
+          href: `${base}/trainees`,
+          icon: "ti-users",
+          label: "المتدربون",
+          emoji: "👥",
+        },
+        {
+          href: `${base}/supervisors`,
+          icon: "ti-chart-bar",
+          label: "إنتاجية المشرفين",
+          emoji: "📊",
+        },
+        {
+          href: `${base}/onboarding`,
+          icon: "ti-user-check",
+          label: "البوردنق والإسناد",
+          emoji: "🎯",
+        },
+        {
+          href: `${base}/months`,
+          icon: "ti-calendar-stats",
+          label: "إدارة الأشهر",
+          emoji: "📅",
+        },
       ],
     },
     {
       title: "النظام",
       items: [
-        { href: `${base}/bookings`, icon: "ti-calendar", label: "الحجوزات", emoji: "📋" },
-        { href: `${base}/export`, icon: "ti-file-export", label: "التصدير", emoji: "📤" },
-        { href: `${base}/cms`, icon: "ti-settings", label: "الإعدادات", emoji: "⚙️" },
+        {
+          href: `${base}/accounts`,
+          icon: "ti-user-cog",
+          label: "حسابات المسجلين",
+          emoji: "👤",
+        },
+        {
+          href: `${base}/bookings`,
+          icon: "ti-calendar",
+          label: "الحجوزات",
+          emoji: "📋",
+        },
+        {
+          href: `${base}/export`,
+          icon: "ti-file-export",
+          label: "التصدير",
+          emoji: "📤",
+        },
+        {
+          href: `${base}/cms`,
+          icon: "ti-settings",
+          label: "الإعدادات",
+          emoji: "⚙️",
+        },
       ],
     },
   ];
@@ -53,65 +111,115 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
   };
 
   return (
-    <aside style={{
-      width: 220, flexShrink: 0,
-      background: "#fff",
-      borderLeft: "1px solid #E2E8F0",
-      display: "flex", flexDirection: "column",
-      height: "100vh", position: "sticky", top: 0,
-      overflowY: "auto",
-      boxShadow: "2px 0 8px rgba(0,0,0,0.03)",
-    }}>
+    <aside
+      style={{
+        width: 220,
+        flexShrink: 0,
+        background: "#fff",
+        borderLeft: "1px solid #E2E8F0",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+        overflowY: "auto",
+        boxShadow: "2px 0 8px rgba(0,0,0,0.03)",
+      }}
+    >
       {/* Logo */}
-      <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid #F1F5F9" }}>
-        <img src="/logo.svg" alt="سلوكيرا" style={{ height: 28, width: "auto" }} />
-        <div style={{
-          fontSize: 10, color: "#94A3B8", marginTop: 6,
-          background: "#F8FAFC", border: "1px solid #E2E8F0",
-          padding: "2px 8px", borderRadius: 99, display: "inline-block",
-          fontWeight: 500, letterSpacing: "0.04em",
-        }}>
+      <div
+        style={{ padding: "18px 16px 14px", borderBottom: "1px solid #F1F5F9" }}
+      >
+        <img
+          src="/logo.svg"
+          alt="سلوكيرا"
+          style={{ height: 28, width: "auto" }}
+        />
+        <div
+          style={{
+            fontSize: 10,
+            color: "#94A3B8",
+            marginTop: 6,
+            background: "#F8FAFC",
+            border: "1px solid #E2E8F0",
+            padding: "2px 8px",
+            borderRadius: 99,
+            display: "inline-block",
+            fontWeight: 500,
+            letterSpacing: "0.04em",
+          }}
+        >
           لوحة الإدارة
         </div>
       </div>
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "10px 10px" }}>
-        {sections.map(section => (
+        {sections.map((section) => (
           <div key={section.title} style={{ marginBottom: "4px" }}>
-            <div style={{
-              fontSize: 10, color: "#CBD5E1", padding: "8px 8px 4px",
-              letterSpacing: "0.08em", fontWeight: 600, textTransform: "uppercase",
-            }}>
+            <div
+              style={{
+                fontSize: 10,
+                color: "#CBD5E1",
+                padding: "8px 8px 4px",
+                letterSpacing: "0.08em",
+                fontWeight: 600,
+                textTransform: "uppercase",
+              }}
+            >
               {section.title}
             </div>
-            {section.items.map(item => {
+            {section.items.map((item) => {
               const active = isActive(item.href);
               return (
-                <Link key={item.href} href={item.href}
+                <Link
+                  key={item.href}
+                  href={item.href}
                   style={{
-                    display: "flex", alignItems: "center", gap: 9,
-                    padding: "9px 10px", borderRadius: 10,
-                    fontSize: 13, textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "9px 10px",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    textDecoration: "none",
                     color: active ? "#0D40FC" : "#64748B",
                     background: active ? "#EEF2FF" : "transparent",
                     fontWeight: active ? 600 : 400,
                     marginBottom: 2,
                     transition: "all 0.15s",
-                    border: active ? "1px solid #C7D2FE" : "1px solid transparent",
+                    border: active
+                      ? "1px solid #C7D2FE"
+                      : "1px solid transparent",
                   }}
-                  onMouseOver={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
-                  onMouseOut={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  onMouseOver={(e) => {
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background =
+                        "#F8FAFC";
+                  }}
+                  onMouseOut={(e) => {
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background =
+                        "transparent";
+                  }}
                 >
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{item.emoji}</span>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>
+                    {item.emoji}
+                  </span>
                   <span style={{ flex: 1 }}>{item.label}</span>
                   {item.badge !== undefined && item.badge > 0 && (
-                    <span style={{
-                      background: "#EF4444", color: "#fff",
-                      fontSize: 10, fontWeight: 700,
-                      padding: "1px 6px", borderRadius: 99,
-                      minWidth: 18, textAlign: "center",
-                    }}>
+                    <span
+                      style={{
+                        background: "#EF4444",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 99,
+                        minWidth: 18,
+                        textAlign: "center",
+                      }}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -124,15 +232,25 @@ export default function AdminSidebar({ locale, notifCount = 0 }: { locale: strin
 
       {/* Bottom */}
       <div style={{ padding: "10px", borderTop: "1px solid #F1F5F9" }}>
-        <Link href={`/${locale}`}
+        <Link
+          href={`/${locale}`}
           style={{
-            display: "flex", alignItems: "center", gap: 9,
-            padding: "9px 10px", borderRadius: 10,
-            fontSize: 13, color: "#94A3B8", textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            padding: "9px 10px",
+            borderRadius: 10,
+            fontSize: 13,
+            color: "#94A3B8",
+            textDecoration: "none",
             transition: "all 0.15s",
           }}
-          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
-          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          onMouseOver={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "#F8FAFC";
+          }}
+          onMouseOut={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+          }}
         >
           <span style={{ fontSize: 16 }}>🌐</span>
           <span>الموقع الرئيسي</span>

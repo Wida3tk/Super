@@ -305,7 +305,7 @@ export default async function HomePage({ params }: HomePageProps) {
         <nav className="nav">
           <img src="/logo.svg" alt="سلوكيرا" className="nav-logo" />
           <div className="nav-right">
-            <Link href={`/${locale}#services`} className="nav-login signup">
+            <Link href={`/${locale}/register`} className="nav-login signup">
               تسجيل جديد
             </Link>
             <Link
