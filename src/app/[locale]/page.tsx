@@ -28,6 +28,12 @@ export default async function HomePage({ params }: HomePageProps) {
 
   const siteName = cms.siteName || "سلوكيرا";
   const siteNameEn = cms.siteNameEn || "Sulukera";
+  const supervisorProviders = supervisors.filter(
+    (provider) => provider.accountType !== "consultant",
+  );
+  const consultantProviders = supervisors.filter(
+    (provider) => provider.accountType === "consultant",
+  );
 
   return (
     <>
@@ -329,7 +335,7 @@ export default async function HomePage({ params }: HomePageProps) {
             <a href="#supervisors" className="hero-cta">
               احجز مقابلة أولية ←
             </a>
-            <a href="#supervisors" className="hero-cta secondary">
+            <a href="#consultants" className="hero-cta secondary">
               احجز استشارة
             </a>
           </div>
@@ -355,7 +361,11 @@ export default async function HomePage({ params }: HomePageProps) {
           </div>
         </section>
 
-        <section className="services" aria-label="خدمات الواجهة الموحدة">
+        <section
+          className="services"
+          id="services"
+          aria-label="خدمات الواجهة الموحدة"
+        >
           <div className="services-grid">
             <article className="service-card">
               <div className="service-icon">↗</div>
@@ -378,7 +388,7 @@ export default async function HomePage({ params }: HomePageProps) {
                   جلسة فردية عن بُعد مع حساب مستشار لمناقشة حالة أو خطة أو تحدٍ
                   مهني في تحليل السلوك التطبيقي.
                 </p>
-                <a href="#supervisors" className="service-link">
+                <a href="#consultants" className="service-link">
                   اختيار المستشار ←
                 </a>
               </div>
@@ -392,20 +402,20 @@ export default async function HomePage({ params }: HomePageProps) {
             <div className="section-title-wrap">
               <div className="section-line" />
               <div>
-                <div className="section-title">
-                  المشرفون والمستشارون المتاحون
-                </div>
+                <div className="section-title">المشرفون المتاحون</div>
                 <div className="section-sub">
-                  كل حساب يظهر فقط ضمن الخدمة المخصصة له
+                  اختر مشرفًا لحجز المقابلة الأولية وبدء مسار الإشراف
                 </div>
               </div>
             </div>
-            {supervisors.length > 0 && (
-              <span className="section-count">{supervisors.length} مشرف</span>
+            {supervisorProviders.length > 0 && (
+              <span className="section-count">
+                {supervisorProviders.length} مشرف
+              </span>
             )}
           </div>
 
-          {supervisors.length === 0 ? (
+          {supervisorProviders.length === 0 ? (
             <div className="empty-state">
               <div className="empty-ico">👨‍🏫</div>
               <div className="empty-txt">
@@ -414,7 +424,7 @@ export default async function HomePage({ params }: HomePageProps) {
             </div>
           ) : (
             <div className="supervisors-grid">
-              {supervisors.map((sup) => {
+              {supervisorProviders.map((sup) => {
                 const rating = sup.ratingAverage || 0;
                 const fullStars = Math.floor(rating);
                 const initials = (sup.name || "م")[0];
@@ -496,6 +506,89 @@ export default async function HomePage({ params }: HomePageProps) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        <section className="section" id="consultants" style={{ paddingTop: 0 }}>
+          <div className="section-header">
+            <div className="section-title-wrap">
+              <div className="section-line" style={{ background: "#047857" }} />
+              <div>
+                <div className="section-title">المستشارون المتاحون</div>
+                <div className="section-sub">
+                  اختر مستشار تحليل السلوك المناسب لموضوع الاستشارة
+                </div>
+              </div>
+            </div>
+            {consultantProviders.length > 0 && (
+              <span
+                className="section-count"
+                style={{
+                  color: "#047857",
+                  background: "#ECFDF5",
+                  borderColor: "#A7F3D0",
+                }}
+              >
+                {consultantProviders.length} مستشار
+              </span>
+            )}
+          </div>
+          {consultantProviders.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-ico">✦</div>
+              <div className="empty-txt">لا يوجد مستشارون متاحون حاليًا</div>
+            </div>
+          ) : (
+            <div className="supervisors-grid">
+              {consultantProviders.map((consultant) => (
+                <div key={consultant.id} className="sup-card">
+                  <div className="sup-card-top">
+                    <div className="sup-avatar-wrap">
+                      {consultant.photo ? (
+                        <img src={consultant.photo} alt={consultant.name} />
+                      ) : (
+                        (consultant.name || "م")[0]
+                      )}
+                    </div>
+                    <div className="sup-card-name-area">
+                      <div className="sup-name">{consultant.name}</div>
+                      <span className="sup-spec">مستشار تحليل سلوك</span>
+                    </div>
+                  </div>
+                  <div className="sup-card-body">
+                    <p className="sup-bio">
+                      {consultant.bio ||
+                        "مستشار متخصص في تحليل السلوك التطبيقي والاستشارات المهنية عن بُعد."}
+                    </p>
+                    <div className="sup-stats">
+                      <div className="sup-stat">
+                        <div className="sup-stat-v">
+                          {consultant.totalSessions ?? 0}
+                        </div>
+                        <div className="sup-stat-l">الاستشارات</div>
+                      </div>
+                      <div className="sup-stat">
+                        <div
+                          className="sup-stat-v"
+                          style={{ color: "#FBBF24" }}
+                        >
+                          {consultant.ratingAverage
+                            ? consultant.ratingAverage.toFixed(1)
+                            : "—"}
+                        </div>
+                        <div className="sup-stat-l">التقييم</div>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
+                      className="sup-btn consult"
+                    >
+                      احجز استشارة
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

@@ -52,6 +52,15 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
   const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
   const [previewError, setPreviewError] = useState(false);
+  const [providerFilter, setProviderFilter] = useState<
+    "supervisor" | "consultant"
+  >("supervisor");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const displayedProviders = supervisors.filter(
+    (provider) =>
+      (provider.accountType === "consultant" ? "consultant" : "supervisor") ===
+      providerFilter,
+  );
 
   const openEdit = (s: Supervisor) => {
     setSelected(s);
@@ -98,6 +107,32 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
       setMsg("❌ خطأ في الاتصال");
     }
     setLoading(false);
+  };
+  const uploadPhoto = async (file?: File) => {
+    if (!selected || !file) return;
+    setPhotoUploading(true);
+    setMsg("");
+    const data = new FormData();
+    data.set("providerId", selected.id);
+    data.set("file", file);
+    const response = await fetch("/api/provider-photo", {
+      method: "POST",
+      body: data,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setPreviewError(false);
+      setForm((current) => ({
+        ...current,
+        photo: `${result.photo}&v=${Date.now()}`,
+      }));
+      setMsg("تم رفع الصورة وحفظها بنجاح");
+      setIsError(false);
+    } else {
+      setMsg("تعذر رفع الصورة. استخدم JPG أو PNG أو WebP بحجم أقل من 5MB.");
+      setIsError(true);
+    }
+    setPhotoUploading(false);
   };
 
   return (
@@ -291,8 +326,42 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
         .ep-profile-link:hover { background: rgba(13,64,252,0.12); }
       `}</style>
 
-      {/* SUPERVISOR CARDS */}
-      {supervisors.length === 0 ? (
+      <div style={{ display: "flex", gap: 8, padding: "18px 24px 0" }}>
+        <button
+          type="button"
+          onClick={() => setProviderFilter("supervisor")}
+          className="ep-btn-cancel"
+          style={{
+            background: providerFilter === "supervisor" ? "#0D40FC" : "#F1F5F9",
+            color: providerFilter === "supervisor" ? "#fff" : "#475569",
+          }}
+        >
+          المشرفون (
+          {
+            supervisors.filter((item) => item.accountType !== "consultant")
+              .length
+          }
+          )
+        </button>
+        <button
+          type="button"
+          onClick={() => setProviderFilter("consultant")}
+          className="ep-btn-cancel"
+          style={{
+            background: providerFilter === "consultant" ? "#047857" : "#F1F5F9",
+            color: providerFilter === "consultant" ? "#fff" : "#475569",
+          }}
+        >
+          المستشارون (
+          {
+            supervisors.filter((item) => item.accountType === "consultant")
+              .length
+          }
+          )
+        </button>
+      </div>
+      {/* PROVIDER CARDS */}
+      {displayedProviders.length === 0 ? (
         <div
           style={{
             padding: "48px 24px",
@@ -302,11 +371,12 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
           }}
         >
           <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.3 }}>👤</div>
-          لا يوجد مشرفون — أضف أول مشرف الآن
+          لا يوجد {providerFilter === "consultant" ? "مستشارون" : "مشرفون"} في
+          هذه القائمة
         </div>
       ) : (
         <div className="ep-grid">
-          {supervisors.map((s) => (
+          {displayedProviders.map((s) => (
             <div key={s.id} className="ep-card" onClick={() => openEdit(s)}>
               <div className="ep-avatar">
                 {s.photo ? (
@@ -487,19 +557,18 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                 </div>
 
                 <div className="ep-field">
-                  <label className="ep-label">رابط الصورة الشخصية</label>
+                  <label className="ep-label">الصورة الشخصية</label>
                   <input
                     className="ep-input"
-                    type="url"
-                    placeholder="https://..."
-                    value={form.photo}
-                    onChange={(e) => {
-                      setPreviewError(false);
-                      setForm((p) => ({ ...p, photo: e.target.value }));
-                    }}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={photoUploading}
+                    onChange={(e) => uploadPhoto(e.target.files?.[0])}
                   />
                   <div className="ep-photo-hint">
-                    💡 يمكن استخدام رابط من Google Drive أو LinkedIn أو أي موقع
+                    {photoUploading
+                      ? "جاري رفع الصورة..."
+                      : "ارفع JPG أو PNG أو WebP — الحد الأعلى 5MB"}
                   </div>
                 </div>
 
