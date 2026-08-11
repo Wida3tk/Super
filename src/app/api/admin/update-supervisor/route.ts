@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id, name, bio, specialization, photo, isActive } = await request.json();
+    const { id, name, bio, specialization, photo, isActive, credentialType, credentialNumber, credentialExpiresAt, supervisionTrainingCompleted } = await request.json();
     if (!id) return NextResponse.json({ error: 'MISSING_ID' }, { status: 400 });
 
     const updateData: any = { updatedAt: new Date().toISOString() };
@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
     if (bio !== undefined) updateData.bio = bio;
     if (specialization !== undefined) updateData.specialization = specialization;
     if (photo !== undefined) updateData.photo = photo;
+    if (credentialType !== undefined) updateData.credentialType = String(credentialType).slice(0, 50);
+    if (credentialNumber !== undefined) updateData.credentialNumber = String(credentialNumber).slice(0, 100);
+    if (credentialExpiresAt !== undefined) updateData.credentialExpiresAt = String(credentialExpiresAt).slice(0, 10);
+    if (supervisionTrainingCompleted !== undefined) updateData.supervisionTrainingCompleted = Boolean(supervisionTrainingCompleted);
     if (isActive !== undefined) updateData.isActive = isActive;
 
     await adminDb.collection('supervisors').doc(id).update(updateData);

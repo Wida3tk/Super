@@ -160,6 +160,11 @@ export interface FieldworkActivity {
   format?: "individual" | "group";
   observedWithClient?: boolean;
   description: string;
+  activityCategory?: "service_delivery" | "data_collection" | "data_analysis" | "assessment" | "program_development" | "reporting_graphing" | "stakeholder_training" | "fidelity_monitoring" | "person_centered_meeting" | "research_programming" | "other_aba";
+  centerName?: string;
+  clientCode?: string;
+  planGoalId?: string;
+  evidenceNote?: string;
   status: FieldworkActivityStatus;
   reviewerNote?: string;
   reviewedAt?: string;
@@ -168,7 +173,7 @@ export interface FieldworkActivity {
 }
 
 export type SupervisionDocumentType = 'contract' | 'guardian_consent' | 'center_approval' | 'observation_consent' | 'video_consent' | 'data_consent' | 'supervisor_credential' | 'coursework' | 'background_check' | 'recommendation' | 'final_verification' | 'other';
-export interface SupervisionDocument { id:string; traineeId:string; supervisorId:string; type:SupervisionDocumentType; title:string; centerName?:string; clientCode?:string; issuedAt:string; expiresAt?:string; status:'valid'|'expired'|'revoked'; fileName?:string; fileUrl?:string; notes?:string; createdAt:string; }
+export interface SupervisionDocument { id:string; traineeId:string; supervisorId:string; type:SupervisionDocumentType; title:string; centerName?:string; clientCode?:string; issuedAt:string; expiresAt?:string; status:'uploaded'|'reviewed'|'replace_required'|'valid'|'expired'|'revoked'; fileName?:string; fileUrl?:string; notes?:string; createdAt:string; }
 export interface MeetingMinute { id:string; traineeId:string; supervisorId:string; date:string; startTime:string; endTime:string; format:'individual'|'group'; setting:'in_person'|'video'; observedWithClient:boolean; agenda:string; discussion:string; decisions:string; actionItems:string; competencyIds:string[]; planGoalIds:string[]; acknowledgedByTrainee?:boolean; createdAt:string; updatedAt:string; }
 export interface CompetencyScore { competencyId:string; score:number; observationMethod:'live'|'role_play'|'discussion'|'work_product'; note?:string; }
 export interface CompetencyAssessment { id:string; traineeId:string; supervisorId:string; date:string; period:'initial'|'quarterly'; scores:CompetencyScore[]; strengths?:string; developmentPriorities?:string; recommendation?:string; totalScore:number; maxScore:number; createdAt:string; }

@@ -1,27 +1,33 @@
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
-import { redirect } from 'next/navigation';
-import AvailabilityManager from '@/components/supervisor/AvailabilityManager';
-import { cookies } from 'next/headers';
-import Link from 'next/link';
-import LogoutButton from '@/components/LogoutButton';
-import SeatsManager from '@/components/supervisor/SeatsManager';
-import SupervisorTabs from '@/components/supervisor/SupervisorTabs';
-import SupervisorNotifications from '@/components/supervisor/SupervisorNotifications';
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { redirect } from "next/navigation";
+import AvailabilityManager from "@/components/supervisor/AvailabilityManager";
+import { cookies } from "next/headers";
+import Link from "next/link";
+import LogoutButton from "@/components/LogoutButton";
+import SeatsManager from "@/components/supervisor/SeatsManager";
+import SupervisorTabs from "@/components/supervisor/SupervisorTabs";
+import SupervisorNotifications from "@/components/supervisor/SupervisorNotifications";
 
-interface Props { params: Promise<{ locale: string }>; }
+interface Props {
+  params: Promise<{ locale: string }>;
+}
 
 async function getAuthenticatedSupervisor() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
+  const sessionCookie = cookieStore.get("__session")?.value;
   if (!sessionCookie) return null;
   try {
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const email = decoded.email?.toLowerCase() || '';
-    const allSnap = await adminDb.collection('supervisors').get();
-    const match = allSnap.docs.find(d => (d.data().email || '').toLowerCase() === email);
+    const email = decoded.email?.toLowerCase() || "";
+    const allSnap = await adminDb.collection("supervisors").get();
+    const match = allSnap.docs.find(
+      (d) => (d.data().email || "").toLowerCase() === email,
+    );
     if (!match) return null;
     return { id: match.id, ...match.data() } as any;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export default async function SupervisorDashboardPage({ params }: Props) {
@@ -30,26 +36,79 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   if (!supervisor) redirect(`/${locale}/login`);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
-  const [bookingsSnap, traineesSnap, sessionsSnap, snapshotsSnap, notifsSnap, fieldworkSnap] = await Promise.all([
-    adminDb.collection('bookings').where('supervisorId', '==', supervisor.id).where('status', '==', 'confirmed').orderBy('date', 'asc').get(),
-    adminDb.collection('trainees').where('currentSupervisorId', '==', supervisor.id).where('status', '==', 'active').get(),
-    adminDb.collection('sessions').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
-    adminDb.collection('monthlySnapshots').where('supervisorId', '==', supervisor.id).where('month', '==', currentMonth).get(),
-    adminDb.collection('notifications').where('supervisorId', '==', supervisor.id).orderBy('createdAt', 'desc').limit(20).get(),
-    adminDb.collection('fieldworkActivities').where('supervisorId', '==', supervisor.id).limit(300).get(),
+  const [
+    bookingsSnap,
+    traineesSnap,
+    sessionsSnap,
+    snapshotsSnap,
+    notifsSnap,
+    fieldworkSnap,
+  ] = await Promise.all([
+    adminDb
+      .collection("bookings")
+      .where("supervisorId", "==", supervisor.id)
+      .where("status", "==", "confirmed")
+      .orderBy("date", "asc")
+      .get(),
+    adminDb
+      .collection("trainees")
+      .where("currentSupervisorId", "==", supervisor.id)
+      .where("status", "==", "active")
+      .get(),
+    adminDb
+      .collection("sessions")
+      .where("supervisorId", "==", supervisor.id)
+      .where("month", "==", currentMonth)
+      .get(),
+    adminDb
+      .collection("monthlySnapshots")
+      .where("supervisorId", "==", supervisor.id)
+      .where("month", "==", currentMonth)
+      .get(),
+    adminDb
+      .collection("notifications")
+      .where("supervisorId", "==", supervisor.id)
+      .orderBy("createdAt", "desc")
+      .limit(20)
+      .get(),
+    adminDb
+      .collection("fieldworkActivities")
+      .where("supervisorId", "==", supervisor.id)
+      .limit(300)
+      .get(),
   ]);
 
-  const allBookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const initialTrainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const initialSessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const initialSnapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const notifications = notifsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const fieldworkActivities = (fieldworkSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[]).filter(a => a.status === 'submitted');
+  const allBookings = bookingsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const initialTrainees = traineesSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const initialSessions = sessionsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const initialSnapshots = snapshotsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const notifications = notifsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const fieldworkActivities = (
+    fieldworkSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
+  ).filter((a) => a.status === "submitted");
   const unreadCount = notifications.filter((n: any) => !n.read).length;
 
-  const upcomingCount = allBookings.filter((b: any) => b.date >= today && (!b.meetingStatus || b.meetingStatus === 'pending')).length;
+  const upcomingCount = allBookings.filter(
+    (b: any) =>
+      b.date >= today && (!b.meetingStatus || b.meetingStatus === "pending"),
+  ).length;
 
   return (
     <>
@@ -84,15 +143,21 @@ export default async function SupervisorDashboardPage({ params }: Props) {
 
       <div dir="rtl">
         <nav className="nav">
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div>
-              <img src="/logo.svg" alt="سلوكيرا" style={{height:'32px',width:'auto'}} />
+              <img
+                src="/logo.svg"
+                alt="سلوكيرا"
+                style={{ height: "32px", width: "auto" }}
+              />
             </div>
-            <div className="nav-div"/>
+            <div className="nav-div" />
             <span className="nav-title">لوحة المشرف</span>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <Link href={`/${locale}`} className="nav-back">← الرئيسية</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link href={`/${locale}`} className="nav-back">
+              ← الرئيسية
+            </Link>
             <LogoutButton locale={locale} />
           </div>
         </nav>
@@ -100,10 +165,15 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         <div className="hero">
           <div>
             <h1>مرحباً، {supervisor.name} 👋</h1>
-            <p>{supervisor.bio || 'مشرف أكاديمي في منصة سلوكيرا'}</p>
+            <p>{supervisor.bio || "مشرف أكاديمي في منصة سلوكيرا"}</p>
           </div>
           <div className="hero-date">
-            {new Date().toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+            {new Date().toLocaleDateString("ar-SA", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
           </div>
         </div>
 
@@ -111,48 +181,108 @@ export default async function SupervisorDashboardPage({ params }: Props) {
           {/* Stats */}
           <div className="stats">
             <div className="stat-card">
-              <div className="stat-icon" style={{background:'rgba(13,64,252,0.08)'}}>📋</div>
+              <div
+                className="stat-icon"
+                style={{ background: "rgba(13,64,252,0.08)" }}
+              >
+                📋
+              </div>
               <div>
                 <div className="stat-val">{supervisor.totalSessions ?? 0}</div>
                 <div className="stat-lbl">إجمالي الجلسات</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon" style={{background:'rgba(245,158,11,0.08)'}}>⭐</div>
+              <div
+                className="stat-icon"
+                style={{ background: "rgba(245,158,11,0.08)" }}
+              >
+                ⭐
+              </div>
               <div>
-                <div className="stat-val" style={{color:'#d97706'}}>{(supervisor.ratingAverage??0).toFixed(1)}</div>
+                <div className="stat-val" style={{ color: "#d97706" }}>
+                  {(supervisor.ratingAverage ?? 0).toFixed(1)}
+                </div>
                 <div className="stat-lbl">متوسط التقييم</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon" style={{background:'rgba(16,185,129,0.08)'}}>🗓️</div>
+              <div
+                className="stat-icon"
+                style={{ background: "rgba(16,185,129,0.08)" }}
+              >
+                🗓️
+              </div>
               <div>
-                <div className="stat-val" style={{color:'#059669'}}>{upcomingCount}</div>
+                <div className="stat-val" style={{ color: "#059669" }}>
+                  {upcomingCount}
+                </div>
                 <div className="stat-lbl">مقابلات قادمة</div>
               </div>
             </div>
           </div>
 
           {/* Availability + Seats */}
-          <div style={{marginBottom:20}}>
+          <div style={{ marginBottom: 20 }}>
             <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
           </div>
-          <div style={{marginBottom:24}}>
-            <SeatsManager supervisorId={supervisor.id} currentSeats={supervisor.availableSeats ?? 0} />
+          <div style={{ marginBottom: 24 }}>
+            <SeatsManager
+              supervisorId={supervisor.id}
+              currentSeats={supervisor.availableSeats ?? 0}
+            />
           </div>
 
           {/* إشعارات الإدارة */}
           {notifications.length > 0 && (
-            <div style={{background:'#fff',borderRadius:16,border:'1px solid #E2E8F0',overflow:'hidden',marginBottom:20,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
-              <div style={{padding:'12px 20px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#FAFAFA'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontSize:18}}>🔔</span>
-                  <span style={{fontSize:13,fontWeight:600,color:'#0F172A'}}>رسائل الإدارة</span>
-                  {unreadCount > 0 && <span style={{background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:99}}>{unreadCount}</span>}
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: 16,
+                border: "1px solid #E2E8F0",
+                overflow: "hidden",
+                marginBottom: 20,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              }}
+            >
+              <div
+                style={{
+                  padding: "12px 20px",
+                  borderBottom: "1px solid #F1F5F9",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "#FAFAFA",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>🔔</span>
+                  <span
+                    style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}
+                  >
+                    رسائل الإدارة
+                  </span>
+                  {unreadCount > 0 && (
+                    <span
+                      style={{
+                        background: "#EF4444",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 7px",
+                        borderRadius: 99,
+                      }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div style={{padding:'12px 16px'}}>
-                <SupervisorNotifications notifications={notifications} supervisorId={supervisor.id} />
+              <div style={{ padding: "12px 16px" }}>
+                <SupervisorNotifications
+                  notifications={notifications}
+                  supervisorId={supervisor.id}
+                />
               </div>
             </div>
           )}
@@ -167,11 +297,16 @@ export default async function SupervisorDashboardPage({ params }: Props) {
             upcomingCount={upcomingCount}
             traineesCount={initialTrainees.length}
             fieldworkActivities={fieldworkActivities}
+            supervisor={supervisor}
           />
         </div>
 
         <div className="footer">
-          منصة الإشراف الأكاديمي · <a href="https://sulukera.com" target="_blank">سلوكيرا</a> © {new Date().getFullYear()}
+          منصة الإشراف الأكاديمي ·{" "}
+          <a href="https://sulukera.com" target="_blank">
+            سلوكيرا
+          </a>{" "}
+          © {new Date().getFullYear()}
         </div>
       </div>
     </>

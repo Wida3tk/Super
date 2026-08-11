@@ -23,6 +23,8 @@ export async function PATCH(req: NextRequest) {
   if (!snap.exists || snap.data()?.supervisorId !== supervisor.id || snap.data()?.status !== 'submitted') {
     return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   }
+  const lockSnap=await adminDb.collection('monthlyApprovals').doc(`${snap.data()?.traineeId}_${snap.data()?.month}`).get();
+  if(lockSnap.exists&&lockSnap.data()?.locked)return NextResponse.json({error:'MONTH_LOCKED'},{status:409});
   await ref.update({
     status: statuses[action], reviewerNote: String(note || '').trim().slice(0, 1000),
     reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), reviewedBy: supervisor.id,

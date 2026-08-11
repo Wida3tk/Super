@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 interface Supervisor {
   id: string;
@@ -11,6 +11,10 @@ interface Supervisor {
   photo?: string;
   isActive: boolean;
   totalSessions?: number;
+  credentialType?: string;
+  credentialNumber?: string;
+  credentialExpiresAt?: string;
+  supervisionTrainingCompleted?: boolean;
 }
 
 interface Props {
@@ -31,46 +35,64 @@ function convertDriveUrl(url: string): string {
 
 export default function EditSupervisorPanel({ supervisors }: Props) {
   const [selected, setSelected] = useState<Supervisor | null>(null);
-  const [form, setForm] = useState({ name: '', bio: '', specialization: '', photo: '', isActive: true });
+  const [form, setForm] = useState({
+    name: "",
+    bio: "",
+    specialization: "",
+    photo: "",
+    credentialType: "QBA",
+    credentialNumber: "",
+    credentialExpiresAt: "",
+    supervisionTrainingCompleted: false,
+    isActive: true,
+  });
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState("");
   const [isError, setIsError] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
   const openEdit = (s: Supervisor) => {
     setSelected(s);
     setForm({
-      name: s.name || '',
-      bio: s.bio || '',
-      specialization: s.specialization || '',
-      photo: s.photo || '',
+      name: s.name || "",
+      bio: s.bio || "",
+      specialization: s.specialization || "",
+      photo: s.photo || "",
+      credentialType: s.credentialType || "QBA",
+      credentialNumber: s.credentialNumber || "",
+      credentialExpiresAt: s.credentialExpiresAt || "",
+      supervisionTrainingCompleted: Boolean(s.supervisionTrainingCompleted),
       isActive: s.isActive ?? true,
     });
-    setMsg(''); setIsError(false); setPreviewError(false);
+    setMsg("");
+    setIsError(false);
+    setPreviewError(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    setLoading(true); setMsg(''); setIsError(false);
+    setLoading(true);
+    setMsg("");
+    setIsError(false);
 
     try {
-      const res = await fetch('/api/admin/update-supervisor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/update-supervisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: selected.id, ...form }),
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('✅ تم حفظ التغييرات بنجاح');
+        setMsg("✅ تم حفظ التغييرات بنجاح");
         setTimeout(() => window.location.reload(), 1400);
       } else {
         setIsError(true);
-        setMsg('❌ حدث خطأ، حاولي مرة أخرى');
+        setMsg("❌ حدث خطأ، حاولي مرة أخرى");
       }
     } catch {
       setIsError(true);
-      setMsg('❌ خطأ في الاتصال');
+      setMsg("❌ خطأ في الاتصال");
     }
     setLoading(false);
   };
@@ -268,26 +290,40 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
 
       {/* SUPERVISOR CARDS */}
       {supervisors.length === 0 ? (
-        <div style={{ padding: '48px 24px', textAlign: 'center', color: '#8898AA', fontSize: 14 }}>
+        <div
+          style={{
+            padding: "48px 24px",
+            textAlign: "center",
+            color: "#8898AA",
+            fontSize: 14,
+          }}
+        >
           <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.3 }}>👤</div>
           لا يوجد مشرفون — أضف أول مشرف الآن
         </div>
       ) : (
         <div className="ep-grid">
-          {supervisors.map(s => (
+          {supervisors.map((s) => (
             <div key={s.id} className="ep-card" onClick={() => openEdit(s)}>
               <div className="ep-avatar">
-                {s.photo
-                  ? <img src={convertDriveUrl(s.photo)} alt={s.name} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                  : (s.name || 'م')[0]
-                }
+                {s.photo ? (
+                  <img
+                    src={convertDriveUrl(s.photo)}
+                    alt={s.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  (s.name || "م")[0]
+                )}
               </div>
               <div className="ep-info">
                 <div className="ep-name">{s.name}</div>
                 <div className="ep-email">{s.email}</div>
                 <div className="ep-status">
-                  <span className={`ep-badge ${s.isActive ? 'on' : 'off'}`}>
-                    {s.isActive ? '● نشط' : '○ موقوف'}
+                  <span className={`ep-badge ${s.isActive ? "on" : "off"}`}>
+                    {s.isActive ? "● نشط" : "○ موقوف"}
                   </span>
                 </div>
               </div>
@@ -299,27 +335,40 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
 
       {/* EDIT MODAL */}
       {selected && (
-        <div className="ep-overlay" onClick={e => { if (e.target === e.currentTarget) setSelected(null); }}>
+        <div
+          className="ep-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelected(null);
+          }}
+        >
           <div className="ep-modal" dir="rtl">
-
             <div className="ep-modal-head">
               <div>
                 <div className="ep-modal-title">تعديل بيانات المشرف</div>
                 <div className="ep-modal-sub">{selected.email}</div>
               </div>
-              <button className="ep-close" onClick={() => setSelected(null)}>✕</button>
+              <button className="ep-close" onClick={() => setSelected(null)}>
+                ✕
+              </button>
             </div>
 
             {/* PHOTO PREVIEW */}
             <div className="ep-photo-preview">
               <div className="ep-preview-img">
-                {form.photo && !previewError
-                  ? <img src={form.photo} alt="preview" onError={() => setPreviewError(true)} />
-                  : (form.name || selected.name || 'م')[0]
-                }
+                {form.photo && !previewError ? (
+                  <img
+                    src={form.photo}
+                    alt="preview"
+                    onError={() => setPreviewError(true)}
+                  />
+                ) : (
+                  (form.name || selected.name || "م")[0]
+                )}
               </div>
               <div className="ep-preview-info">
-                <div className="ep-preview-name">{form.name || selected.name}</div>
+                <div className="ep-preview-name">
+                  {form.name || selected.name}
+                </div>
                 <div className="ep-preview-hint">معاينة الصورة الشخصية</div>
                 <a
                   href={`/ar/supervisor/${selected.id}`}
@@ -334,7 +383,6 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
 
             <form onSubmit={handleSubmit}>
               <div className="ep-body">
-
                 <div className="ep-field">
                   <label className="ep-label">الاسم الكامل</label>
                   <input
@@ -342,9 +390,69 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                     type="text"
                     placeholder="د. أحمد المنصوري"
                     value={form.name}
-                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, name: e.target.value }))
+                    }
                     required
                   />
+                </div>
+
+                <div className="ep-field">
+                  <label className="ep-label">نوع اعتماد المشرف</label>
+                  <select
+                    className="ep-input"
+                    value={form.credentialType}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, credentialType: e.target.value }))
+                    }
+                  >
+                    <option value="QBA">QBA</option>
+                    <option value="BCBA">BCBA / BCBA-D</option>
+                    <option value="LBA">LBA</option>
+                    <option value="LP">Licensed Psychologist</option>
+                  </select>
+                </div>
+                <div className="ep-field">
+                  <label className="ep-label">رقم الاعتماد</label>
+                  <input
+                    className="ep-input"
+                    value={form.credentialNumber}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        credentialNumber: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="ep-field">
+                  <label className="ep-label">انتهاء اعتماد المشرف</label>
+                  <input
+                    className="ep-input"
+                    type="date"
+                    value={form.credentialExpiresAt}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        credentialExpiresAt: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="ep-field">
+                  <label className="ep-toggle-row">
+                    <span>أكمل تدريب الإشراف المطلوب</span>
+                    <input
+                      type="checkbox"
+                      checked={form.supervisionTrainingCompleted}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          supervisionTrainingCompleted: e.target.checked,
+                        }))
+                      }
+                    />
+                  </label>
                 </div>
 
                 <div className="ep-field">
@@ -354,7 +462,9 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                     type="text"
                     placeholder="تحليل السلوك التطبيقي · ABA"
                     value={form.specialization}
-                    onChange={e => setForm(p => ({ ...p, specialization: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, specialization: e.target.value }))
+                    }
                   />
                 </div>
 
@@ -365,7 +475,10 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                     type="url"
                     placeholder="https://..."
                     value={form.photo}
-                    onChange={e => { setPreviewError(false); setForm(p => ({ ...p, photo: e.target.value })); }}
+                    onChange={(e) => {
+                      setPreviewError(false);
+                      setForm((p) => ({ ...p, photo: e.target.value }));
+                    }}
                   />
                   <div className="ep-photo-hint">
                     💡 يمكن استخدام رابط من Google Drive أو LinkedIn أو أي موقع
@@ -378,7 +491,9 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                     className="ep-textarea"
                     placeholder="اكتب نبذة مفصلة عن المشرف — خبراته، شهاداته، مجالات تخصصه..."
                     value={form.bio}
-                    onChange={e => setForm(p => ({ ...p, bio: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, bio: e.target.value }))
+                    }
                     rows={4}
                   />
                 </div>
@@ -388,28 +503,43 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                     <div>
                       <div className="ep-toggle-label">حالة الحساب</div>
                       <div className="ep-toggle-sub">
-                        {form.isActive ? 'المشرف نشط ويظهر للطلاب' : 'الحساب موقوف ولا يظهر للطلاب'}
+                        {form.isActive
+                          ? "المشرف نشط ويظهر للطلاب"
+                          : "الحساب موقوف ولا يظهر للطلاب"}
                       </div>
                     </div>
                     <label className="ep-switch">
                       <input
                         type="checkbox"
                         checked={form.isActive}
-                        onChange={e => setForm(p => ({ ...p, isActive: e.target.checked }))}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, isActive: e.target.checked }))
+                        }
                       />
                       <span className="ep-slider" />
                     </label>
                   </div>
                 </div>
-
               </div>
 
-              {msg && <div className={`ep-msg ${isError ? 'err' : 'ok'}`}>{msg}</div>}
+              {msg && (
+                <div className={`ep-msg ${isError ? "err" : "ok"}`}>{msg}</div>
+              )}
 
               <div className="ep-footer">
-                <button type="button" className="ep-btn-cancel" onClick={() => setSelected(null)}>إلغاء</button>
-                <button type="submit" className="ep-btn-save" disabled={loading}>
-                  {loading ? '⏳ جارٍ الحفظ...' : '💾 حفظ التغييرات'}
+                <button
+                  type="button"
+                  className="ep-btn-cancel"
+                  onClick={() => setSelected(null)}
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="ep-btn-save"
+                  disabled={loading}
+                >
+                  {loading ? "⏳ جارٍ الحفظ..." : "💾 حفظ التغييرات"}
                 </button>
               </div>
             </form>
