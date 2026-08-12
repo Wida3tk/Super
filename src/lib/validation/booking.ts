@@ -5,6 +5,7 @@ export type BookingValidationError =
   | "INVALID_EMAIL"
   | "INVALID_PHONE"
   | "INVALID_PASSWORD"
+  | "INVALID_CONSULTATION_TYPE"
   | "INVALID_SLOT";
 
 export function validateBookingPayload(
@@ -17,6 +18,13 @@ export function validateBookingPayload(
     return "INVALID_PHONE";
   if (!payload.password || payload.password.length < 8)
     return "INVALID_PASSWORD";
+  if (
+    payload.bookingType === "consultation" &&
+    !["behavior_analysis", "organizational_behavior"].includes(
+      payload.consultationType || "",
+    )
+  )
+    return "INVALID_CONSULTATION_TYPE";
   if (!payload.supervisorId?.trim() || !payload.availabilitySlotId?.trim())
     return "INVALID_SLOT";
   if (

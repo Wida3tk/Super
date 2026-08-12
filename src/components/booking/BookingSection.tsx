@@ -27,6 +27,9 @@ export default function BookingSection({
   const [studentEmail, setStudentEmail] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [consultationType, setConsultationType] = useState<
+    "behavior_analysis" | "organizational_behavior"
+  >("behavior_analysis");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
@@ -71,6 +74,8 @@ export default function BookingSection({
         date: selectedSlot.date,
         time: selectedSlot.time,
         bookingType,
+        consultationType:
+          bookingType === "consultation" ? consultationType : undefined,
         password,
       },
       locale as "ar" | "en",
@@ -290,7 +295,7 @@ export default function BookingSection({
           }}
         >
           {bookingType === "consultation"
-            ? "استشارة في إدارة السلوك التنظيمي عن بُعد"
+            ? "استشارة مهنية عن بُعد في تحليل السلوك أو إدارة السلوك التنظيمي"
             : "مقابلة أولية لبدء برنامج الإشراف"}
         </div>
 
@@ -401,6 +406,28 @@ export default function BookingSection({
                 )}
 
                 <form onSubmit={handleSubmit}>
+                  {bookingType === "consultation" && (
+                    <div className="bk-field">
+                      <label className="bk-label">نوع الاستشارة</label>
+                      <select
+                        className="bk-select"
+                        value={consultationType}
+                        onChange={(e) =>
+                          setConsultationType(
+                            e.target.value as typeof consultationType,
+                          )
+                        }
+                        required
+                      >
+                        <option value="behavior_analysis">
+                          استشارة تحليل سلوك
+                        </option>
+                        <option value="organizational_behavior">
+                          استشارة إدارة سلوك تنظيمي
+                        </option>
+                      </select>
+                    </div>
+                  )}
                   <div className="bk-field">
                     <label className="bk-label">👤 الاسم الكامل</label>
                     <input

@@ -44,6 +44,8 @@ export async function createBooking(
     payload.bookingType === "consultation"
       ? "consultation"
       : "initial_interview";
+  const consultationType =
+    bookingType === "consultation" ? payload.consultationType : undefined;
   const managementToken = randomBytes(32).toString("hex");
   const referenceNumber =
     `SUL-${Math.random().toString(36).substring(2, 6).toUpperCase()}-` +
@@ -76,6 +78,7 @@ export async function createBooking(
     availabilitySlotId: payload.availabilitySlotId,
     createdAt: new Date().toISOString(),
     bookingType,
+    ...(consultationType ? { consultationType } : {}),
   };
   let createdAuthUid = "";
 
@@ -97,15 +100,12 @@ export async function createBooking(
         displayName: bookingData.studentName,
       });
       createdAuthUid = account.uid;
-      await adminDb
-        .collection("clients")
-        .doc(account.uid)
-        .set({
-          name: bookingData.studentName,
-          email: normalizedEmail,
-          phone: bookingData.studentPhone,
-          createdAt: new Date().toISOString(),
-        });
+      await adminDb.collection("clients").doc(account.uid).set({
+        name: bookingData.studentName,
+        email: normalizedEmail,
+        phone: bookingData.studentPhone,
+        createdAt: new Date().toISOString(),
+      });
     }
     const supervisor = await adminDb.runTransaction(async (transaction) => {
       const [existingBookings, supervisorSnap, slotSnap] = await Promise.all([

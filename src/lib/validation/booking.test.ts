@@ -33,6 +33,22 @@ describe("booking validation", () => {
     ).toBe("INVALID_PHONE");
   });
 
+  it("requires a supported consultation type for consultant bookings", () => {
+    expect(
+      validateBookingPayload({
+        ...validPayload,
+        bookingType: "consultation",
+      }),
+    ).toBe("INVALID_CONSULTATION_TYPE");
+    expect(
+      validateBookingPayload({
+        ...validPayload,
+        bookingType: "consultation",
+        consultationType: "behavior_analysis",
+      }),
+    ).toBeNull();
+  });
+
   it("only accepts 256-bit lowercase hexadecimal management tokens", () => {
     expect(isManagementToken("a".repeat(64))).toBe(true);
     expect(isManagementToken("A".repeat(64))).toBe(false);

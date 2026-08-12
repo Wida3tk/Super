@@ -14,6 +14,7 @@ interface Booking {
   meetLink?: string;
   meetingStatus?: MeetingStatus;
   bookingType?: "initial_interview" | "consultation";
+  consultationType?: "behavior_analysis" | "organizational_behavior";
 }
 
 const COLORS = {
@@ -142,7 +143,9 @@ export default function BookingsManager({
               }}
             >
               {b.bookingType === "consultation"
-                ? "استشارة مهنية"
+                ? b.consultationType === "behavior_analysis"
+                  ? "استشارة تحليل سلوك"
+                  : "استشارة إدارة سلوك تنظيمي"
                 : "مقابلة أولية"}
             </span>
             <div style={{ fontSize: 11, color: COLORS.gray500 }}>

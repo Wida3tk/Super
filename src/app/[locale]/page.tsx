@@ -13,7 +13,7 @@ export default async function HomePage({ params }: HomePageProps) {
   let cms: any = {};
 
   try {
-    const { adminDb } = await import("@/lib/firebase/admin");
+    const { adminDb, adminStorage } = await import("@/lib/firebase/admin");
     const [supervisorsSnap, cmsSnap] = await Promise.all([
       adminDb.collection("supervisors").get(),
       adminDb.collection("settings").doc("cms").get(),
@@ -21,6 +21,23 @@ export default async function HomePage({ params }: HomePageProps) {
     supervisors = supervisorsSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((s: any) => s.isActive === true);
+    supervisors = await Promise.all(
+      supervisors.map(async (provider: any) => {
+        if (!provider.photoPath) return provider;
+        try {
+          const [signedPhoto] = await adminStorage
+            .bucket()
+            .file(provider.photoPath)
+            .getSignedUrl({
+              action: "read",
+              expires: Date.now() + 60 * 60 * 1000,
+            });
+          return { ...provider, photo: signedPhoto };
+        } catch {
+          return provider;
+        }
+      }),
+    );
     cms = cmsSnap.exists ? cmsSnap.data() : {};
   } catch (error) {
     supervisors = [];
@@ -333,7 +350,7 @@ export default async function HomePage({ params }: HomePageProps) {
         <section className="hero">
           <div className="hero-badge">
             <div className="hero-badge-dot"></div>
-            إشراف تحليل السلوك التطبيقي واستشارات إدارة السلوك التنظيمي عن بُعد
+            إشراف واستشارات مهنية في تحليل السلوك وإدارة السلوك التنظيمي عن بُعد
           </div>
           <h1>
             الواجهة الموحّدة <span>للإشراف</span>
@@ -396,8 +413,8 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <h2>احجز استشارة</h2>
                 <p>
-                  جلسة مهنية مع مستشار في إدارة السلوك التنظيمي لتحسين الأداء،
-                  تطوير أنظمة العمل، معالجة تحديات الفرق، ودعم التغيير المؤسسي.
+                  جلسة مهنية متخصصة في تحليل السلوك أو إدارة السلوك التنظيمي،
+                  مصممة وفق احتياج الفرد أو المؤسسة.
                 </p>
                 <a href="#consultants" className="service-link">
                   اختيار المستشار ←
@@ -418,7 +435,7 @@ export default async function HomePage({ params }: HomePageProps) {
               {
                 n: "١",
                 t: "اختر نوع الخدمة",
-                d: "حدد مقابلة أولية لبدء الإشراف أو استشارة في إدارة السلوك التنظيمي.",
+                d: "حدد مقابلة أولية لبدء الإشراف أو استشارة مهنية في المجال المناسب.",
               },
               {
                 n: "٢",
@@ -561,8 +578,8 @@ export default async function HomePage({ params }: HomePageProps) {
               <div>
                 <div className="section-title">المستشارون المتاحون</div>
                 <div className="section-sub">
-                  اختر مستشار إدارة السلوك التنظيمي المناسب لاحتياج المؤسسة أو
-                  الفريق
+                  اختر المستشار المناسب لاحتياجك في تحليل السلوك أو إدارة السلوك
+                  التنظيمي
                 </div>
               </div>
             </div>
@@ -598,15 +615,13 @@ export default async function HomePage({ params }: HomePageProps) {
                     </div>
                     <div className="sup-card-name-area">
                       <div className="sup-name">{consultant.name}</div>
-                      <span className="sup-spec">
-                        مستشار إدارة السلوك التنظيمي
-                      </span>
+                      <span className="sup-spec">مستشار مهني</span>
                     </div>
                   </div>
                   <div className="sup-card-body">
                     <p className="sup-bio">
                       {consultant.bio ||
-                        "مستشار متخصص في إدارة السلوك التنظيمي وتحسين الأداء وتصميم أنظمة العمل ودعم التغيير المؤسسي."}
+                        "مستشار متخصص يقدم استشارات مهنية في تحليل السلوك وإدارة السلوك التنظيمي وفق طبيعة الاحتياج."}
                     </p>
                     <div className="sup-stats">
                       <div className="sup-stat">

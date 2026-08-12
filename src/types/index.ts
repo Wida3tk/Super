@@ -1,10 +1,7 @@
 // src/types/index.ts
 
 export type BookingStatus =
-  | "confirmed"
-  | "cancelled"
-  | "rescheduled"
-  | "completed";
+  "confirmed" | "cancelled" | "rescheduled" | "completed";
 
 export interface Supervisor {
   id: string;
@@ -44,6 +41,7 @@ export interface Booking {
   reminderSent?: boolean;
   createdAt: string;
   bookingType?: "initial_interview" | "consultation";
+  consultationType?: "behavior_analysis" | "organizational_behavior";
 }
 
 export interface Review {
@@ -64,6 +62,7 @@ export interface CreateBookingPayload {
   date: string;
   time: string;
   bookingType?: "initial_interview" | "consultation";
+  consultationType?: "behavior_analysis" | "organizational_behavior";
   password?: string;
 }
 
@@ -151,16 +150,9 @@ export interface Trainee {
 }
 
 export type FieldworkActivityType =
-  | "direct"
-  | "indirect"
-  | "supervision_direct"
-  | "supervision_indirect";
+  "direct" | "indirect" | "supervision_direct" | "supervision_indirect";
 export type FieldworkActivityStatus =
-  | "draft"
-  | "submitted"
-  | "approved"
-  | "revision_requested"
-  | "rejected";
+  "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
 
 export interface FieldworkActivity {
   id: string;

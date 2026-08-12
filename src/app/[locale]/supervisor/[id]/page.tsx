@@ -18,11 +18,23 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
   let reviews: any[] = [];
 
   try {
-    const { adminDb } = await import("@/lib/firebase/admin");
+    const { adminDb, adminStorage } = await import("@/lib/firebase/admin");
     const snap = await adminDb.collection("supervisors").doc(id).get();
     if (!snap.exists) notFound();
     supervisor = { id: snap.id, ...snap.data() };
     if (!supervisor.isActive) notFound();
+    if (supervisor.photoPath) {
+      try {
+        const [signedPhoto] = await adminStorage
+          .bucket()
+          .file(supervisor.photoPath)
+          .getSignedUrl({
+            action: "read",
+            expires: Date.now() + 60 * 60 * 1000,
+          });
+        supervisor.photo = signedPhoto;
+      } catch {}
+    }
 
     const today = new Date().toISOString().split("T")[0];
     const slotsSnap = await adminDb
@@ -69,7 +81,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
   const specialization =
     supervisor?.specialization ||
     (supervisor?.accountType === "consultant"
-      ? "مستشار إدارة السلوك التنظيمي"
+      ? "مستشار مهني في تحليل السلوك وإدارة السلوك التنظيمي"
       : "مشرف أكاديمي");
 
   return (
