@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
 
 interface Supervisor {
   id: string;
@@ -381,7 +382,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
               <div className="ep-avatar">
                 {s.photo ? (
                   <img
-                    src={convertDriveUrl(s.photo)}
+                    src={normalizeProviderPhotoUrl(s.photo)}
                     alt={s.name}
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
@@ -430,7 +431,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
               <div className="ep-preview-img">
                 {form.photo && !previewError ? (
                   <img
-                    src={form.photo}
+                    src={normalizeProviderPhotoUrl(form.photo)}
                     alt="preview"
                     onError={() => setPreviewError(true)}
                   />

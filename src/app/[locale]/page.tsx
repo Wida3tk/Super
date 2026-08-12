@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,11 @@ export default async function HomePage({ params }: HomePageProps) {
       .filter((s: any) => s.isActive === true);
     supervisors = await Promise.all(
       supervisors.map(async (provider: any) => {
-        if (!provider.photoPath) return provider;
+        if (!provider.photoPath)
+          return {
+            ...provider,
+            photo: normalizeProviderPhotoUrl(provider.photo),
+          };
         try {
           const [signedPhoto] = await adminStorage
             .bucket()
@@ -34,7 +39,10 @@ export default async function HomePage({ params }: HomePageProps) {
             });
           return { ...provider, photo: signedPhoto };
         } catch {
-          return provider;
+          return {
+            ...provider,
+            photo: normalizeProviderPhotoUrl(provider.photo),
+          };
         }
       }),
     );
