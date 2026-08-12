@@ -27,7 +27,9 @@ export default async function HomePage({ params }: HomePageProps) {
         if (!provider.photoPath)
           return {
             ...provider,
-            photo: normalizeProviderPhotoUrl(provider.photo),
+            photo: provider.photo
+              ? `/api/provider-photo?id=${encodeURIComponent(provider.id)}`
+              : "",
           };
         try {
           const [signedPhoto] = await adminStorage

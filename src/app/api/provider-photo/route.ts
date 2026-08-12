@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb, adminStorage } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
+import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
 
 const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -59,12 +60,34 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") || "";
   const provider = await adminDb.collection("supervisors").doc(id).get();
-  if (
-    !provider.exists ||
-    provider.data()?.isActive === false ||
-    !provider.data()?.photoPath
-  )
+  if (!provider.exists || provider.data()?.isActive === false)
     return new NextResponse(null, { status: 404 });
+  if (!provider.data()?.photoPath) {
+    const photoUrl = normalizeProviderPhotoUrl(provider.data()?.photo);
+    let parsed: URL;
+    try {
+      parsed = new URL(photoUrl);
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+    if (
+      parsed.protocol !== "https:" ||
+      !["drive.google.com", "drive.usercontent.google.com"].includes(
+        parsed.hostname,
+      )
+    )
+      return new NextResponse(null, { status: 404 });
+    const upstream = await fetch(parsed, { redirect: "follow" });
+    const contentType = upstream.headers.get("content-type") || "";
+    if (!upstream.ok || !contentType.startsWith("image/"))
+      return new NextResponse(null, { status: 404 });
+    return new NextResponse(new Uint8Array(await upstream.arrayBuffer()), {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      },
+    });
+  }
   const target = adminStorage.bucket().file(String(provider.data()!.photoPath));
   const [[meta], [buffer]] = await Promise.all([
     target.getMetadata(),

@@ -35,6 +35,8 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
           });
         supervisor.photo = signedPhoto;
       } catch {}
+    } else if (supervisor.photo) {
+      supervisor.photo = `/api/provider-photo?id=${encodeURIComponent(id)}`;
     }
 
     const today = new Date().toISOString().split("T")[0];
