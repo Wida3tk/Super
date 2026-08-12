@@ -12,14 +12,17 @@ const statusLabel: Record<string, string> = {
 };
 export default function TraineeRequestsManager({
   initialRequests,
+  supervisors,
 }: {
   initialRequests: any[];
+  supervisors: any[];
 }) {
   const [items, setItems] = useState(initialRequests),
     [selected, setSelected] = useState<any>(null),
     [note, setNote] = useState(""),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState("");
+  const [newSupervisorId, setNewSupervisorId] = useState("");
   async function decide(decision: "approved" | "rejected") {
     if (!selected) return;
     setSaving(true);
@@ -27,7 +30,12 @@ export default function TraineeRequestsManager({
     const r = await fetch("/api/admin/trainee-requests", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selected.id, decision, adminNote: note }),
+      body: JSON.stringify({
+        id: selected.id,
+        decision,
+        adminNote: note,
+        newSupervisorId,
+      }),
     });
     if (r.ok) {
       setItems((c) =>
@@ -39,6 +47,7 @@ export default function TraineeRequestsManager({
       );
       setSelected(null);
       setNote("");
+      setNewSupervisorId("");
     } else setMessage("تعذر حفظ القرار.");
     setSaving(false);
   }
@@ -115,6 +124,7 @@ export default function TraineeRequestsManager({
                         setSelected(item);
                         setNote(item.adminNote || "");
                         setMessage("");
+                        setNewSupervisorId(item.newSupervisorId || "");
                       }}
                       style={button}
                     >
@@ -160,6 +170,37 @@ export default function TraineeRequestsManager({
               من {selected.startDate} إلى {selected.returnDate}
             </div>
           )}
+          {selected.type === "change_supervisor" &&
+            selected.status === "pending" && (
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  color: "#64748b",
+                  marginTop: 14,
+                }}
+              >
+                المشرف الجديد
+                <select
+                  value={newSupervisorId}
+                  onChange={(e) => setNewSupervisorId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    marginTop: 6,
+                    padding: 9,
+                    border: "1px solid #dce3ed",
+                    borderRadius: 8,
+                  }}
+                >
+                  <option value="">اختر المشرف</option>
+                  {supervisors.map((supervisor) => (
+                    <option key={supervisor.id} value={supervisor.id}>
+                      {supervisor.name} · {supervisor.availableSeats} مقعد متاح
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           <label
             style={{
               display: "block",
@@ -214,6 +255,37 @@ export default function TraineeRequestsManager({
                 رفض
               </button>
             </div>
+          )}
+          {selected.type === "defer" && selected.status === "approved" && (
+            <button
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                const response = await fetch("/api/admin/trainee-requests", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "resume",
+                    traineeId: selected.traineeId,
+                  }),
+                });
+                setMessage(
+                  response.ok
+                    ? "تمت إعادة تفعيل المتدرب."
+                    : "تعذر إعادة التفعيل.",
+                );
+                setSaving(false);
+              }}
+              style={{
+                ...button,
+                width: "100%",
+                marginTop: 14,
+                background: "#10b981",
+                color: "#fff",
+              }}
+            >
+              إعادة المتدرب إلى الحالة النشطة
+            </button>
           )}
           <p style={{ fontSize: 10, color: "#94a3b8", marginTop: 12 }}>
             {selected.type === "change_supervisor" &&

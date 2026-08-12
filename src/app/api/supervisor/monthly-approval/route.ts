@@ -73,7 +73,9 @@ export async function POST(req: NextRequest) {
     !check ||
     !check.validHoursBand ||
     !check.meetsSupervision ||
-    !check.meetsGroupLimit
+    !check.meetsGroupLimit ||
+    !check.meetsDirectLimit ||
+    !check.meetsIndirectMinimum
   )
     return NextResponse.json(
       { error: "MONTH_NOT_COMPLIANT", compliance: check || null },
@@ -104,6 +106,10 @@ export async function POST(req: NextRequest) {
           fieldwork: check.fieldwork,
           supervision: check.supervision,
           group: check.group,
+          direct: check.direct,
+          indirect: check.indirect,
+          directRate: check.directRate,
+          indirectRate: check.indirectRate,
         },
         createdAt: now,
       },

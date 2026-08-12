@@ -161,6 +161,18 @@ export default function TraineeFieldworkDashboard({
   const monthGroupPct = monthSupervision
     ? (monthGroup / monthSupervision) * 100
     : 0;
+  const monthDirect = monthApproved
+    .filter((a) => a.activityType === "direct")
+    .reduce((n, a) => n + a.duration, 0);
+  const monthIndirect = monthApproved
+    .filter((a) => a.activityType === "indirect")
+    .reduce((n, a) => n + a.duration, 0);
+  const monthDirectPct = monthFieldwork
+    ? (monthDirect / monthFieldwork) * 100
+    : 0;
+  const monthIndirectPct = monthFieldwork
+    ? (monthIndirect / monthFieldwork) * 100
+    : 0;
   const editActivity = (activity: FieldworkActivity) => {
     setEditingId(activity.id);
     setForm({
@@ -438,6 +450,16 @@ export default function TraineeFieldworkDashboard({
                   ok={monthGroupPct <= 50}
                   title="الإشراف الجماعي"
                   value={`${monthGroupPct.toFixed(1)}% (الحد الأعلى 50%)`}
+                />
+                <ComplianceItem
+                  ok={monthFieldwork > 0 && monthDirectPct <= 40}
+                  title="الساعات المباشرة"
+                  value={`${monthDirectPct.toFixed(1)}% (الحد الأعلى 40%)`}
+                />
+                <ComplianceItem
+                  ok={monthFieldwork > 0 && monthIndirectPct >= 60}
+                  title="الساعات غير المباشرة"
+                  value={`${monthIndirectPct.toFixed(1)}% (الحد الأدنى 60%)`}
                 />
                 <ComplianceItem
                   ok={Boolean(latestAssessment)}

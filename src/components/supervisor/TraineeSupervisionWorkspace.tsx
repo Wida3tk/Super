@@ -314,6 +314,12 @@ function Overview({
               <li className={current.meetsGroupLimit ? "ok" : "bad"}>
                 الإشراف الجماعي لا يتجاوز 50%
               </li>
+              <li className={current.meetsDirectLimit ? "ok" : "bad"}>
+                الساعات المباشرة لا تتجاوز 40%
+              </li>
+              <li className={current.meetsIndirectMinimum ? "ok" : "bad"}>
+                الساعات غير المباشرة 60% على الأقل
+              </li>
             </ul>
           ) : (
             <p className="muted">لا توجد ساعات معتمدة لهذا الشهر.</p>
@@ -394,7 +400,7 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
     if (!r.ok) {
       setMsg(
         x.error === "MONTH_NOT_COMPLIANT"
-          ? "لا يمكن إغلاق الشهر قبل استيفاء الساعات ونسبة الإشراف وحد الجماعي."
+          ? "لا يمكن إغلاق الشهر قبل استيفاء نطاق الساعات ونسبة الإشراف وحد الجماعي وتوزيع المباشر 40% وغير المباشر 60%."
           : x.error === "PENDING_ACTIVITIES"
             ? "توجد ساعات ما زالت قيد المراجعة."
             : x.error === "SUPERVISOR_CREDENTIAL_EXPIRED"
