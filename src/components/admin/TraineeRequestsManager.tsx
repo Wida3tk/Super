@@ -4,6 +4,7 @@ const typeLabel: Record<string, string> = {
   defer: "تأجيل الإشراف",
   withdraw: "انسحاب",
   change_supervisor: "تغيير المشرف",
+  termination: "إنهاء العلاقة الإشرافية",
 };
 const statusLabel: Record<string, string> = {
   pending: "بانتظار المراجعة",

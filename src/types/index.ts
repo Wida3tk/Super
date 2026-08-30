@@ -323,6 +323,13 @@ export interface Session {
   month: string; // "2026-05"
   duration?: number; // بالساعة — فقط للفردية والجماعية
   absenceReason?: AbsenceReason; // فقط للغياب
+  scheduledTime?: string;
+  noticeGivenAt?: string;
+  noticeHours?: number;
+  timelyNotice?: boolean;
+  absenceSequence?: number;
+  recommendedAction?: "warning" | "billable_warning" | "admin_review";
+  billingStatus?: "pending" | "not_billable" | "billable";
   warningReason?: WarningReason; // فقط للإنذار
   notes?: string;
   createdAt: string;

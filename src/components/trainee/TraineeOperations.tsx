@@ -67,8 +67,24 @@ export function AttendanceRecord({ sessions }: { sessions: any[] }) {
                   </b>
                   <small>
                     {s.date}
+                    {s.scheduledTime ? ` · الموعد ${s.scheduledTime}` : ""}
+                    {s.noticeHours !== null && s.noticeHours !== undefined
+                      ? ` · الإشعار قبل ${s.noticeHours} ساعة`
+                      : ""}
                     {s.notes ? ` · ${s.notes}` : ""}
                   </small>
+                  {s.type === "absence" && (
+                    <small>
+                      {s.timelyNotice
+                        ? "اعتذار ضمن المهلة"
+                        : "اعتذار متأخر أو دون إشعار"}
+                      {s.billingStatus === "billable"
+                        ? " · محتسبة ماليًا"
+                        : s.billingStatus === "not_billable"
+                          ? " · غير محتسبة ماليًا"
+                          : " · القرار المالي قيد المراجعة"}
+                    </small>
+                  )}
                 </div>
               </article>
             ))}
@@ -118,7 +134,11 @@ export function TraineeRequests({
           ? "يوجد طلب من النوع نفسه بانتظار المراجعة."
           : data.error === "INVALID_DATES"
             ? "تحقق من تاريخ بداية التأجيل والعودة."
-            : "أكمل بيانات الطلب وسببًا واضحًا.",
+            : data.error === "NOTICE_TOO_SHORT"
+              ? "يجب تقديم طلب التأجيل قبل بدايته بـ14 يومًا على الأقل."
+              : data.error === "DEFER_TOO_LONG"
+                ? "مدة التأجيل لا يمكن أن تتجاوز 30 يومًا."
+                : "أكمل بيانات الطلب وسببًا واضحًا.",
       );
     setSaving(false);
   }
@@ -166,6 +186,12 @@ export function TraineeRequests({
                 />
               </label>
             </div>
+          )}
+          {form.type === "defer" && (
+            <p className="ops-note">
+              يقدم الطلب قبل 14 يومًا على الأقل، ولمدة لا تتجاوز 30 يومًا.
+              اعتماد الطلب من الإدارة فقط.
+            </p>
           )}
           <label>
             سبب الطلب

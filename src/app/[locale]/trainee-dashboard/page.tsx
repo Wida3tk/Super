@@ -26,6 +26,8 @@ export default async function TraineeDashboardPage({
     financialPlanSnap,
     agreementSnap,
     assignmentsSnap,
+    improvementPlansSnap,
+    progressReportsSnap,
   ] = await Promise.all([
     adminDb
       .collection("fieldworkActivities")
@@ -69,6 +71,16 @@ export default async function TraineeDashboardPage({
     adminDb.collection("supervisionAgreements").doc(trainee.id).get(),
     adminDb
       .collection("assignments")
+      .where("traineeId", "==", trainee.id)
+      .limit(50)
+      .get(),
+    adminDb
+      .collection("performanceImprovementPlans")
+      .where("traineeId", "==", trainee.id)
+      .limit(50)
+      .get(),
+    adminDb
+      .collection("progressReports")
       .where("traineeId", "==", trainee.id)
       .limit(50)
       .get(),
@@ -128,6 +140,18 @@ export default async function TraineeDashboardPage({
       .map((d) => ({ id: d.id, ...d.data() }))
       .sort((a: any, b: any) =>
         String(b.startDate).localeCompare(String(a.startDate)),
+      ),
+    improvementPlans: improvementPlansSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((item: any) => item.visibleToTrainee !== false)
+      .sort((a: any, b: any) =>
+        String(b.createdAt).localeCompare(String(a.createdAt)),
+      ),
+    progressReports: progressReportsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((item: any) => item.visibleToTrainee !== false)
+      .sort((a: any, b: any) =>
+        String(b.periodEnd).localeCompare(String(a.periodEnd)),
       ),
   };
   return (

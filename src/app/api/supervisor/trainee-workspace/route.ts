@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
     activities,
     agreement,
     assignments,
+    improvementPlans,
+    progressReports,
   ] = await Promise.all([
     adminDb
       .collection("supervisionDocuments")
@@ -67,6 +69,16 @@ export async function GET(req: NextRequest) {
     adminDb.collection("supervisionAgreements").doc(traineeId).get(),
     adminDb
       .collection("assignments")
+      .where("traineeId", "==", traineeId)
+      .limit(50)
+      .get(),
+    adminDb
+      .collection("performanceImprovementPlans")
+      .where("traineeId", "==", traineeId)
+      .limit(50)
+      .get(),
+    adminDb
+      .collection("progressReports")
       .where("traineeId", "==", traineeId)
       .limit(50)
       .get(),
@@ -113,6 +125,12 @@ export async function GET(req: NextRequest) {
       .sort((a: any, b: any) =>
         String(b.startDate).localeCompare(String(a.startDate)),
       ),
+    improvementPlans: map(improvementPlans).sort((a: any, b: any) =>
+      String(b.createdAt).localeCompare(String(a.createdAt)),
+    ),
+    progressReports: map(progressReports).sort((a: any, b: any) =>
+      String(b.periodEnd).localeCompare(String(a.periodEnd)),
+    ),
   });
 }
 
@@ -250,6 +268,91 @@ export async function POST(req: NextRequest) {
         .map((s: any) => s.competencyId),
       totalScore: scores.reduce((n: number, s: any) => n + s.score, 0),
       maxScore: scores.length * 5,
+      createdAt: now,
+      createdBy: supervisor.id,
+    });
+    return NextResponse.json({ success: true, id: ref.id });
+  }
+  if (body.entity === "improvement_plan") {
+    if (
+      !clean(body.title, 200) ||
+      !clean(body.issue, 3000) ||
+      !clean(body.requiredAction, 3000) ||
+      !clean(body.dueDate, 10)
+    )
+      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
+    const ref = adminDb.collection("performanceImprovementPlans").doc();
+    await ref.set({
+      traineeId,
+      supervisorId: supervisor.id,
+      title: clean(body.title, 200),
+      issue: clean(body.issue, 3000),
+      requiredAction: clean(body.requiredAction, 3000),
+      dueDate: clean(body.dueDate, 10),
+      status: "active",
+      attempts: [],
+      finalDecision: "",
+      visibleToTrainee: body.visibleToTrainee !== false,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: supervisor.id,
+    });
+    return NextResponse.json({ success: true, id: ref.id });
+  }
+  if (body.entity === "termination_request") {
+    const reason = clean(body.reason, 3000);
+    const requestedEndDate = clean(body.requestedEndDate, 10);
+    if (reason.length < 10 || !/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate))
+      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
+    const pending = await adminDb
+      .collection("traineeRequests")
+      .where("traineeId", "==", traineeId)
+      .where("type", "==", "termination")
+      .where("status", "==", "pending")
+      .limit(1)
+      .get();
+    if (!pending.empty)
+      return NextResponse.json({ error: "PENDING_EXISTS" }, { status: 409 });
+    const trainee = await adminDb.collection("trainees").doc(traineeId).get();
+    const ref = await adminDb.collection("traineeRequests").add({
+      traineeId,
+      traineeName: trainee.data()?.name || traineeId,
+      traineeEmail: trainee.data()?.email || "",
+      supervisorId: supervisor.id,
+      type: "termination",
+      requestedBy: "supervisor",
+      reason,
+      requestedEndDate,
+      waiveNotice: Boolean(body.waiveNotice),
+      status: "pending",
+      adminNote: "",
+      createdAt: now,
+      updatedAt: now,
+    });
+    return NextResponse.json({ success: true, id: ref.id });
+  }
+  if (body.entity === "progress_report") {
+    if (
+      !clean(body.periodStart, 10) ||
+      !clean(body.periodEnd, 10) ||
+      !clean(body.progressSummary, 4000) ||
+      !clean(body.nextGoals, 4000)
+    )
+      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
+    const ref = adminDb.collection("progressReports").doc();
+    await ref.set({
+      traineeId,
+      supervisorId: supervisor.id,
+      periodStart: clean(body.periodStart, 10),
+      periodEnd: clean(body.periodEnd, 10),
+      strengths: clean(body.strengths, 4000),
+      developmentAreas: clean(body.developmentAreas, 4000),
+      progressSummary: clean(body.progressSummary, 4000),
+      nextGoals: clean(body.nextGoals, 4000),
+      attendanceNote: clean(body.attendanceNote, 2000),
+      documentationNote: clean(body.documentationNote, 2000),
+      privateNote: clean(body.privateNote, 4000),
+      visibleToTrainee: body.visibleToTrainee !== false,
       createdAt: now,
       createdBy: supervisor.id,
     });
@@ -416,6 +519,63 @@ export async function PATCH(req: NextRequest) {
         : t,
     );
     await ref.update({ tasks: updated, updatedAt: new Date().toISOString() });
+    return NextResponse.json({ success: true });
+  }
+  if (body.entity === "improvement_attempt") {
+    const ref = adminDb
+      .collection("performanceImprovementPlans")
+      .doc(clean(body.id, 100));
+    const snap = await ref.get();
+    if (
+      !snap.exists ||
+      snap.data()?.traineeId !== traineeId ||
+      snap.data()?.supervisorId !== supervisor.id
+    )
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    const current = snap.data() as any;
+    const attempts = Array.isArray(current.attempts) ? current.attempts : [];
+    if (
+      attempts.length >= 3 ||
+      !clean(body.feedback, 3000) ||
+      !clean(body.outcome, 2000)
+    )
+      return NextResponse.json({ error: "INVALID_ATTEMPT" }, { status: 400 });
+    const nextAttempts = [
+      ...attempts,
+      {
+        number: attempts.length + 1,
+        date: clean(body.date, 10) || new Date().toISOString().slice(0, 10),
+        feedback: clean(body.feedback, 3000),
+        traineeResponse: clean(body.traineeResponse, 3000),
+        outcome: clean(body.outcome, 2000),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    const requestedStatus = ["active", "completed", "escalated"].includes(
+      body.status,
+    )
+      ? body.status
+      : "active";
+    await ref.update({
+      attempts: nextAttempts,
+      status:
+        nextAttempts.length === 3 && requestedStatus === "active"
+          ? "review_required"
+          : requestedStatus,
+      finalDecision: clean(body.finalDecision, 2000),
+      updatedAt: new Date().toISOString(),
+    });
+    if (nextAttempts.length === 3)
+      await adminDb.collection("notifications").add({
+        type: "warning",
+        audience: "admin",
+        supervisorId: supervisor.id,
+        traineeId,
+        title: "خطة تحسين تحتاج قرارًا",
+        message: `اكتملت ثلاث محاولات تغذية راجعة في خطة: ${current.title}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({ error: "INVALID_ENTITY" }, { status: 400 });

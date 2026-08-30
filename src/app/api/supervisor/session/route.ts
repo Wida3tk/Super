@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
     duration,
     absenceReason,
     warningReason,
+    scheduledTime,
+    noticeGivenAt,
+    billingStatus,
     notes,
   } = await req.json();
 
@@ -93,6 +96,28 @@ export async function POST(req: NextRequest) {
 
   const batch = adminDb.batch();
   const now = new Date().toISOString();
+  let absenceSequence: number | null = null;
+  if (type === "absence") {
+    const attendanceSnapshot = await adminDb
+      .collection("monthlySnapshots")
+      .doc(`${supervisor.id}_${uniqueTraineeIds[0]}_${month}`)
+      .get();
+    absenceSequence = Number(attendanceSnapshot.data()?.absenceCount || 0) + 1;
+  }
+  const scheduledDateTime = scheduledTime
+    ? new Date(`${date}T${scheduledTime}:00`)
+    : null;
+  const noticeDateTime = noticeGivenAt ? new Date(noticeGivenAt) : null;
+  const noticeHours =
+    scheduledDateTime &&
+    noticeDateTime &&
+    Number.isFinite(scheduledDateTime.getTime()) &&
+    Number.isFinite(noticeDateTime.getTime())
+      ? Math.round(
+          ((scheduledDateTime.getTime() - noticeDateTime.getTime()) / 3600000) *
+            10,
+        ) / 10
+      : null;
   let absenceEscalation: {
     traineeId: string;
     count: number;
@@ -110,6 +135,26 @@ export async function POST(req: NextRequest) {
     duration: duration || null,
     absenceReason: absenceReason || null,
     warningReason: warningReason || null,
+    scheduledTime: scheduledTime || null,
+    noticeGivenAt: noticeGivenAt || null,
+    noticeHours,
+    timelyNotice: noticeHours !== null ? noticeHours >= 6 : false,
+    absenceSequence,
+    recommendedAction:
+      absenceSequence === null
+        ? null
+        : absenceSequence >= 3
+          ? "admin_review"
+          : absenceSequence === 2
+            ? "billable_warning"
+            : "warning",
+    billingStatus:
+      type === "absence" &&
+      ["pending", "not_billable", "billable"].includes(billingStatus)
+        ? billingStatus
+        : type === "absence"
+          ? "pending"
+          : null,
     notes: notes || "",
     createdAt: now,
     createdBy: supervisor.id,

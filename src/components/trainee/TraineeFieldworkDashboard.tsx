@@ -60,6 +60,8 @@ export default function TraineeFieldworkDashboard({
     | "meetings"
     | "documents"
     | "agreement"
+    | "improvement"
+    | "reports"
     | "policies"
     | "attendance"
     | "requests"
@@ -372,6 +374,8 @@ export default function TraineeFieldworkDashboard({
               ["meetings", "الاجتماعات والمهام"],
               ["documents", "المستندات"],
               ["agreement", "الاتفاقية"],
+              ["improvement", "تحسين الأداء"],
+              ["reports", "تقارير التقدم"],
               ["attendance", "الغياب والإنذارات"],
               ["requests", "طلباتي"],
               ["finance", "الخطة المالية"],
@@ -710,6 +714,14 @@ export default function TraineeFieldworkDashboard({
             supervisorName={supervisorName}
           />
         )}
+        {activeTab === "improvement" && (
+          <ImprovementSummary items={supervisionFile?.improvementPlans || []} />
+        )}
+        {activeTab === "reports" && (
+          <ProgressReportSummary
+            items={supervisionFile?.progressReports || []}
+          />
+        )}
         {activeTab === "policies" && <SupervisionPolicies audience="trainee" />}
         {activeTab === "attendance" && (
           <AttendanceRecord sessions={supervisionFile?.attendance || []} />
@@ -965,6 +977,18 @@ function TabIcon({ name }: { name: string }) {
         <path d="M9 8h6M9 12h6M9 16h4" />
       </>
     ),
+    improvement: (
+      <>
+        <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+        <path d="m4 7 6-4 6 6 5-5" />
+      </>
+    ),
+    reports: (
+      <>
+        <path d="M5 3h14v18H5z" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </>
+    ),
     attendance: (
       <>
         <circle cx="12" cy="12" r="9" />
@@ -1184,6 +1208,107 @@ const documentLabels: Record<string, string> = {
   final_verification: "التحقق النهائي",
   other: "مستند آخر",
 };
+function ProgressReportSummary({ items }: { items: any[] }) {
+  if (!items.length)
+    return (
+      <section className="panel">
+        <h3>تقارير التقدم</h3>
+        <p className="muted">لم يصدر المشرف تقرير تقدم دوري بعد.</p>
+      </section>
+    );
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <h3>تقارير التقدم الدورية</h3>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        {items.map((item) => (
+          <article className="detail-card" key={item.id}>
+            <h4>
+              {item.periodStart} — {item.periodEnd}
+            </h4>
+            <p>{item.progressSummary}</p>
+            <p>
+              <b>نقاط القوة:</b> {item.strengths || "—"}
+            </p>
+            <p>
+              <b>مجالات التطوير:</b> {item.developmentAreas || "—"}
+            </p>
+            <p>
+              <b>أهداف الفترة القادمة:</b> {item.nextGoals}
+            </p>
+            {item.attendanceNote && (
+              <p>
+                <b>الحضور:</b> {item.attendanceNote}
+              </p>
+            )}
+            {item.documentationNote && (
+              <p>
+                <b>التوثيق:</b> {item.documentationNote}
+              </p>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ImprovementSummary({ items }: { items: any[] }) {
+  if (!items.length)
+    return (
+      <section className="panel">
+        <h3>تحسين الأداء</h3>
+        <p className="muted">لا توجد خطة تحسين أداء نشطة في ملفك.</p>
+      </section>
+    );
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <h3>خطط تحسين الأداء والتغذية الراجعة</h3>
+      <p className="muted" style={{ textAlign: "right", padding: "5px 0" }}>
+        تعرض هذه الصفحة الملاحظات المهنية والإجراءات المتفق عليها ونتائج
+        المتابعة.
+      </p>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        {items.map((item) => (
+          <article className="detail-card" key={item.id}>
+            <h4>{item.title}</h4>
+            <p>{item.issue}</p>
+            <p>
+              <b>الإجراء المطلوب:</b> {item.requiredAction}
+            </p>
+            <span className="status">
+              {item.status === "completed"
+                ? "مكتملة"
+                : item.status === "review_required"
+                  ? "تحتاج قرارًا"
+                  : "قيد المتابعة"}
+            </span>
+            <small style={{ display: "block", marginTop: 8 }}>
+              المهلة: {item.dueDate} · المحاولات: {item.attempts?.length || 0}/3
+            </small>
+            {(item.attempts || []).map((attempt: any) => (
+              <div
+                key={attempt.number}
+                style={{
+                  background: "#f8fafc",
+                  padding: 9,
+                  borderRadius: 8,
+                  marginTop: 8,
+                }}
+              >
+                <b>
+                  المتابعة {attempt.number} · {attempt.date}
+                </b>
+                <p>{attempt.feedback}</p>
+                <p>النتيجة: {attempt.outcome}</p>
+              </div>
+            ))}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AgreementSummary({ agreement, assignments, supervisorName }: any) {
   if (!agreement)
     return (

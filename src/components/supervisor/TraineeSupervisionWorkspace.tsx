@@ -73,7 +73,14 @@ export default function TraineeSupervisionWorkspace({
   const [traineeId, setTraineeId] = useState(trainees[0]?.id || "");
   const trainee = trainees.find((t) => t.id === traineeId);
   const [tab, setTab] = useState<
-    "overview" | "agreement" | "documents" | "meetings" | "assessment" | "plan"
+    | "overview"
+    | "agreement"
+    | "documents"
+    | "meetings"
+    | "assessment"
+    | "plan"
+    | "improvement"
+    | "reports"
   >("overview");
   const [data, setData] = useState<any>({
     documents: [],
@@ -83,6 +90,8 @@ export default function TraineeSupervisionWorkspace({
     activities: [],
     agreement: null,
     assignments: [],
+    improvementPlans: [],
+    progressReports: [],
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -135,6 +144,8 @@ export default function TraineeSupervisionWorkspace({
     <div className="ws" dir="rtl">
       <style>{css}</style>
       <style>{`.agreement-note{font-size:12px;line-height:1.8;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:9px;margin:0 0 14px}.assignment-card{border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin-bottom:9px;background:#fbfdff}.assignment-card div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}.assignment-card div+div{border-top:1px solid #edf2f7}.assignment-card span{color:#64748b;text-align:left}.assignment-card p{font-size:11px;color:#64748b;background:#f1f5f9;padding:8px;border-radius:8px;margin:8px 0 0}`}</style>
+      <style>{`.improvement-card{border:1px solid #e2e8f0;border-radius:13px;padding:14px;margin-bottom:10px}.improvement-card header{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}.improvement-card header span,.improvement-card small{font-size:11px;color:#64748b}.improvement-card p{font-size:12px;line-height:1.7;margin:5px 0}.feedback{display:grid;gap:4px;background:#f8fafc;border-right:3px solid #0d40fc;padding:9px;margin-top:8px;font-size:11px}.attempt-form{display:grid;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}.attempt-form textarea{min-height:55px}`}</style>
+      <style>{`.termination-box{display:grid;gap:8px;margin-top:18px;padding:14px;border:1px solid #fecaca;background:#fffafa;border-radius:12px}.termination-box h4{color:#991b1b;margin:0}.termination-box p{font-size:11px;color:#64748b;margin:0}.termination-box input,.termination-box textarea{width:100%}`}</style>
       <div className="ws-toolbar">
         <div>
           <h2>ملف الإشراف المتكامل</h2>
@@ -170,6 +181,8 @@ export default function TraineeSupervisionWorkspace({
         {[
           ["overview", "الملخص والامتثال"],
           ["agreement", "الاتفاقية والإسناد"],
+          ["improvement", "تحسين الأداء"],
+          ["reports", "التقارير الدورية"],
           ["documents", "الموافقات والمستندات"],
           ["meetings", "الجلسات والمحاضر"],
           ["assessment", "تقييم الكفاءة"],
@@ -213,6 +226,15 @@ export default function TraineeSupervisionWorkspace({
               assignments={data.assignments || []}
               onSave={save}
             />
+          )}
+          {tab === "improvement" && (
+            <ImprovementPlans
+              items={data.improvementPlans || []}
+              onSave={save}
+            />
+          )}
+          {tab === "reports" && (
+            <ProgressReports items={data.progressReports || []} onSave={save} />
           )}
           {tab === "meetings" && (
             <Meetings
@@ -986,6 +1008,330 @@ function Assessment({ items, onSave }: any) {
   );
 }
 
+function ProgressReports({ items, onSave }: any) {
+  const [form, setForm] = useState({
+    periodStart: "",
+    periodEnd: "",
+    strengths: "",
+    developmentAreas: "",
+    progressSummary: "",
+    nextGoals: "",
+    attendanceNote: "",
+    documentationNote: "",
+    privateNote: "",
+    visibleToTrainee: true,
+  });
+  const submit = async () => {
+    if (await onSave({ entity: "progress_report", ...form }))
+      setForm({
+        periodStart: "",
+        periodEnd: "",
+        strengths: "",
+        developmentAreas: "",
+        progressSummary: "",
+        nextGoals: "",
+        attendanceNote: "",
+        documentationNote: "",
+        privateNote: "",
+        visibleToTrainee: true,
+      });
+  };
+  return (
+    <div className="split">
+      <FormBox title="إصدار تقرير تقدم دوري">
+        <div className="form-grid">
+          <Field label="بداية الفترة">
+            <input
+              type="date"
+              value={form.periodStart}
+              onChange={(e) =>
+                setForm({ ...form, periodStart: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="نهاية الفترة">
+            <input
+              type="date"
+              value={form.periodEnd}
+              onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="ملخص التقدم">
+          <textarea
+            value={form.progressSummary}
+            onChange={(e) =>
+              setForm({ ...form, progressSummary: e.target.value })
+            }
+          />
+        </Field>
+        <div className="form-grid">
+          <Field label="نقاط القوة">
+            <textarea
+              value={form.strengths}
+              onChange={(e) => setForm({ ...form, strengths: e.target.value })}
+            />
+          </Field>
+          <Field label="مجالات التطوير">
+            <textarea
+              value={form.developmentAreas}
+              onChange={(e) =>
+                setForm({ ...form, developmentAreas: e.target.value })
+              }
+            />
+          </Field>
+        </div>
+        <Field label="أهداف الفترة القادمة">
+          <textarea
+            value={form.nextGoals}
+            onChange={(e) => setForm({ ...form, nextGoals: e.target.value })}
+          />
+        </Field>
+        <div className="form-grid">
+          <Field label="ملاحظة الحضور">
+            <textarea
+              value={form.attendanceNote}
+              onChange={(e) =>
+                setForm({ ...form, attendanceNote: e.target.value })
+              }
+            />
+          </Field>
+          <Field label="ملاحظة التوثيق والساعات">
+            <textarea
+              value={form.documentationNote}
+              onChange={(e) =>
+                setForm({ ...form, documentationNote: e.target.value })
+              }
+            />
+          </Field>
+        </div>
+        <Field label="ملاحظة داخلية للمشرف والإدارة">
+          <textarea
+            value={form.privateNote}
+            onChange={(e) => setForm({ ...form, privateNote: e.target.value })}
+          />
+        </Field>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.visibleToTrainee}
+            onChange={(e) =>
+              setForm({ ...form, visibleToTrainee: e.target.checked })
+            }
+          />{" "}
+          يظهر التقرير للمتدرب
+        </label>
+        <button className="save" onClick={submit}>
+          اعتماد التقرير
+        </button>
+      </FormBox>
+      <ListBox title="سجل التقارير">
+        {items.map((item: any) => (
+          <article className="improvement-card" key={item.id}>
+            <header>
+              <b>
+                {item.periodStart} — {item.periodEnd}
+              </b>
+              <span>{item.visibleToTrainee ? "ظاهر للمتدرب" : "داخلي"}</span>
+            </header>
+            <p>{item.progressSummary}</p>
+            <p>
+              <b>نقاط القوة:</b> {item.strengths || "—"}
+            </p>
+            <p>
+              <b>مجالات التطوير:</b> {item.developmentAreas || "—"}
+            </p>
+            <p>
+              <b>الأهداف القادمة:</b> {item.nextGoals}
+            </p>
+          </article>
+        ))}
+        {!items.length && <Empty />}
+      </ListBox>
+    </div>
+  );
+}
+
+function ImprovementPlans({ items, onSave }: any) {
+  const [form, setForm] = useState({
+    title: "",
+    issue: "",
+    requiredAction: "",
+    dueDate: "",
+    visibleToTrainee: true,
+  });
+  const [attempts, setAttempts] = useState<Record<string, any>>({});
+  const create = async () => {
+    if (await onSave({ entity: "improvement_plan", ...form }))
+      setForm({
+        title: "",
+        issue: "",
+        requiredAction: "",
+        dueDate: "",
+        visibleToTrainee: true,
+      });
+  };
+  const addAttempt = async (item: any) => {
+    const entry = attempts[item.id] || {};
+    if (
+      await onSave(
+        { entity: "improvement_attempt", id: item.id, ...entry },
+        "PATCH",
+      )
+    )
+      setAttempts((current) => ({ ...current, [item.id]: {} }));
+  };
+  return (
+    <div className="split">
+      <FormBox title="إنشاء خطة تحسين أداء">
+        <div className="form-grid">
+          <Field label="عنوان الخطة">
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </Field>
+          <Field label="المهلة">
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="الملاحظة أو مجال القصور">
+          <textarea
+            value={form.issue}
+            onChange={(e) => setForm({ ...form, issue: e.target.value })}
+          />
+        </Field>
+        <Field label="الإجراء المطلوب ومعيار التحسن">
+          <textarea
+            value={form.requiredAction}
+            onChange={(e) =>
+              setForm({ ...form, requiredAction: e.target.value })
+            }
+          />
+        </Field>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={form.visibleToTrainee}
+            onChange={(e) =>
+              setForm({ ...form, visibleToTrainee: e.target.checked })
+            }
+          />{" "}
+          تظهر الخطة للمتدرب
+        </label>
+        <button className="save" onClick={create}>
+          حفظ خطة التحسين
+        </button>
+      </FormBox>
+      <ListBox title="خطط التحسين ومحاولات التغذية الراجعة">
+        {items.map((item: any) => {
+          const entry = attempts[item.id] || {};
+          const count = item.attempts?.length || 0;
+          return (
+            <article className="improvement-card" key={item.id}>
+              <header>
+                <b>{item.title}</b>
+                <span>
+                  {count}/3 محاولات ·{" "}
+                  {item.status === "review_required"
+                    ? "تحتاج قرارًا"
+                    : item.status === "completed"
+                      ? "مكتملة"
+                      : "نشطة"}
+                </span>
+              </header>
+              <p>
+                <b>الملاحظة:</b> {item.issue}
+              </p>
+              <p>
+                <b>المطلوب:</b> {item.requiredAction}
+              </p>
+              <small>المهلة: {item.dueDate}</small>
+              {(item.attempts || []).map((a: any) => (
+                <div className="feedback" key={a.number}>
+                  <b>
+                    المحاولة {a.number} · {a.date}
+                  </b>
+                  <span>{a.feedback}</span>
+                  <span>النتيجة: {a.outcome}</span>
+                </div>
+              ))}
+              {count < 3 && item.status !== "completed" && (
+                <div className="attempt-form">
+                  <input
+                    type="date"
+                    value={entry.date || ""}
+                    onChange={(e) =>
+                      setAttempts({
+                        ...attempts,
+                        [item.id]: { ...entry, date: e.target.value },
+                      })
+                    }
+                  />
+                  <textarea
+                    placeholder="التغذية الراجعة المقدمة"
+                    value={entry.feedback || ""}
+                    onChange={(e) =>
+                      setAttempts({
+                        ...attempts,
+                        [item.id]: { ...entry, feedback: e.target.value },
+                      })
+                    }
+                  />
+                  <textarea
+                    placeholder="رد المتدرب"
+                    value={entry.traineeResponse || ""}
+                    onChange={(e) =>
+                      setAttempts({
+                        ...attempts,
+                        [item.id]: {
+                          ...entry,
+                          traineeResponse: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <textarea
+                    placeholder="نتيجة المتابعة"
+                    value={entry.outcome || ""}
+                    onChange={(e) =>
+                      setAttempts({
+                        ...attempts,
+                        [item.id]: { ...entry, outcome: e.target.value },
+                      })
+                    }
+                  />
+                  <select
+                    value={entry.status || "active"}
+                    onChange={(e) =>
+                      setAttempts({
+                        ...attempts,
+                        [item.id]: { ...entry, status: e.target.value },
+                      })
+                    }
+                  >
+                    <option value="active">استمرار الخطة</option>
+                    <option value="completed">تحقق التحسن</option>
+                    <option value="escalated">رفع للإدارة</option>
+                  </select>
+                  <button className="outline" onClick={() => addAttempt(item)}>
+                    إضافة محاولة متابعة
+                  </button>
+                </div>
+              )}
+            </article>
+          );
+        })}
+        {!items.length && <Empty />}
+      </ListBox>
+    </div>
+  );
+}
+
 function Agreement({ agreement, assignments, onSave }: any) {
   const [form, setForm] = useState({
     signedAt: "",
@@ -1011,6 +1357,11 @@ function Agreement({ agreement, assignments, onSave }: any) {
     completed: "مكتملة",
     terminated: "منتهية",
   };
+  const [termination, setTermination] = useState({
+    reason: "",
+    requestedEndDate: "",
+    waiveNotice: false,
+  });
   return (
     <div className="split">
       <FormBox title="بطاقة اتفاقية الإشراف">
@@ -1109,6 +1460,48 @@ function Agreement({ agreement, assignments, onSave }: any) {
         >
           حفظ بطاقة الاتفاقية
         </button>
+        <div className="termination-box">
+          <h4>طلب إنهاء العلاقة الإشرافية</h4>
+          <p>يرفع الطلب للإدارة، ولا تتغير حالة المتدرب قبل اعتماد القرار.</p>
+          <input
+            type="date"
+            value={termination.requestedEndDate}
+            onChange={(e) =>
+              setTermination({
+                ...termination,
+                requestedEndDate: e.target.value,
+              })
+            }
+          />
+          <textarea
+            placeholder="سبب الإنهاء والتفاصيل المهنية"
+            value={termination.reason}
+            onChange={(e) =>
+              setTermination({ ...termination, reason: e.target.value })
+            }
+          />
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={termination.waiveNotice}
+              onChange={(e) =>
+                setTermination({
+                  ...termination,
+                  waiveNotice: e.target.checked,
+                })
+              }
+            />{" "}
+            طلب تجاوز مهلة الإشعار بسبب حالة تستدعي ذلك
+          </label>
+          <button
+            className="outline"
+            onClick={() =>
+              onSave({ entity: "termination_request", ...termination })
+            }
+          >
+            رفع الطلب للإدارة
+          </button>
+        </div>
       </FormBox>
       <ListBox title="سجل الإسناد وانتقال المشرف">
         {assignments.map((item: any) => (

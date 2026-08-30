@@ -27,6 +27,20 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json({ error: "INVALID_DATES" }, { status: 400 });
   }
+  if (type === "defer") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${returnDate}T00:00:00`);
+    const noticeDays = Math.ceil(
+      (start.getTime() - today.getTime()) / 86400000,
+    );
+    const deferDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+    if (noticeDays < 14)
+      return NextResponse.json({ error: "NOTICE_TOO_SHORT" }, { status: 400 });
+    if (deferDays > 30)
+      return NextResponse.json({ error: "DEFER_TOO_LONG" }, { status: 400 });
+  }
   const pending = await adminDb
     .collection("traineeRequests")
     .where("traineeId", "==", trainee.id)
@@ -37,22 +51,20 @@ export async function POST(request: NextRequest) {
   if (!pending.empty)
     return NextResponse.json({ error: "PENDING_EXISTS" }, { status: 409 });
   const now = new Date().toISOString();
-  const ref = await adminDb
-    .collection("traineeRequests")
-    .add({
-      traineeId: trainee.id,
-      traineeName: trainee.name,
-      traineeEmail: trainee.email,
-      supervisorId: trainee.currentSupervisorId || "",
-      type,
-      reason,
-      startDate: type === "defer" ? startDate : "",
-      returnDate: type === "defer" ? returnDate : "",
-      status: "pending",
-      adminNote: "",
-      createdAt: now,
-      updatedAt: now,
-    });
+  const ref = await adminDb.collection("traineeRequests").add({
+    traineeId: trainee.id,
+    traineeName: trainee.name,
+    traineeEmail: trainee.email,
+    supervisorId: trainee.currentSupervisorId || "",
+    type,
+    reason,
+    startDate: type === "defer" ? startDate : "",
+    returnDate: type === "defer" ? returnDate : "",
+    status: "pending",
+    adminNote: "",
+    createdAt: now,
+    updatedAt: now,
+  });
   return NextResponse.json({
     success: true,
     request: {

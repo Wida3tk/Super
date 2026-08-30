@@ -49,6 +49,37 @@ export async function PATCH(request: NextRequest) {
       withdrawnAt: now,
       updatedAt: now,
     });
+  if (decision === "approved" && data.type === "termination") {
+    batch.update(traineeRef, {
+      status: "terminated",
+      terminatedAt: now,
+      terminationReason: data.reason || "",
+      updatedAt: now,
+    });
+    batch.set(
+      adminDb.collection("supervisionAgreements").doc(data.traineeId),
+      {
+        status: "terminated",
+        terminatedAt: now,
+        terminationReason: data.reason || "",
+        updatedAt: now,
+        updatedBy: admin.uid,
+      },
+      { merge: true },
+    );
+    const currentAssignments = await adminDb
+      .collection("assignments")
+      .where("traineeId", "==", data.traineeId)
+      .get();
+    currentAssignments.docs
+      .filter((doc) => !doc.data().endDate)
+      .forEach((doc) =>
+        batch.update(doc.ref, {
+          endDate: (data.requestedEndDate || now).slice(0, 10),
+          notes: "إنهاء بعد موافقة الإدارة",
+        }),
+      );
+  }
   if (decision === "approved" && data.type === "change_supervisor") {
     const [supervisor, trainee, activitySnap] = await Promise.all([
       adminDb.collection("supervisors").doc(newSupervisorId).get(),
