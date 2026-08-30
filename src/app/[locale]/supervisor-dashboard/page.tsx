@@ -140,6 +140,8 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         .stat-lbl{font-size:11px;font-weight:500;color:var(--gray-500);}
         .footer{text-align:center;padding:20px;color:var(--gray-500);font-size:12px;border-top:1px solid var(--gray-200);background:#fff;margin-top:32px;}
         .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
+        .operations-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(250px,1fr);gap:12px;margin-bottom:18px;align-items:stretch}
+        @media(max-width:1050px){.operations-grid{grid-template-columns:1fr}}
       `}</style>
 
       <div dir="rtl">
@@ -250,17 +252,15 @@ export default async function SupervisorDashboardPage({ params }: Props) {
           </div>
 
           {/* Availability + Seats */}
-          <div style={{ marginBottom: 20 }}>
+          <div className="operations-grid">
             <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
-          </div>
-          {!isConsultant && (
-            <div style={{ marginBottom: 24 }}>
+            {!isConsultant && (
               <SeatsManager
                 supervisorId={supervisor.id}
                 currentSeats={supervisor.availableSeats ?? 0}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* إشعارات الإدارة */}
           {notifications.length > 0 && (

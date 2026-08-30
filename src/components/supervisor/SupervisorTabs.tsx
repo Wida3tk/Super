@@ -171,6 +171,9 @@ function SupervisorOverview({
   sessions,
   onNavigate,
 }: any) {
+  const [traineeSearch, setTraineeSearch] = useState("");
+  const [traineePage, setTraineePage] = useState(0);
+  const pageSize = 6;
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = bookings
     .filter((booking: any) => booking.date >= today)
@@ -182,9 +185,19 @@ function SupervisorOverview({
     },
     {},
   );
+  const filteredTrainees = trainees.filter((trainee: any) =>
+    `${trainee.name || ""} ${trainee.email || ""} ${trainee.license || ""}`
+      .toLowerCase()
+      .includes(traineeSearch.toLowerCase()),
+  );
+  const pageCount = Math.max(1, Math.ceil(filteredTrainees.length / pageSize));
+  const visibleTrainees = filteredTrainees.slice(
+    traineePage * pageSize,
+    traineePage * pageSize + pageSize,
+  );
   return (
     <div>
-      <style>{`.supervisor-tabs{overflow-x:auto}.supervisor-overview{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}.overview-card{background:#fff;border:1px solid #EEF2F7;border-radius:18px;padding:20px;box-shadow:0 6px 22px #0014420a}.overview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.overview-head h3{font-size:16px}.overview-list{display:grid;gap:9px}.overview-row{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #EEF2F7;border-radius:12px;background:#FCFDFE}.overview-avatar{width:37px;height:37px;border-radius:11px;background:#EEF4FF;color:#0D40FC;display:grid;place-items:center;font-weight:800}.overview-main{flex:1;min-width:0}.overview-main b{display:block;font-size:13px}.overview-main span{font-size:11px;color:#8898AA}.overview-action{border:0;background:#EEF4FF;color:#0D40FC;border-radius:8px;padding:7px 10px;cursor:pointer;font:inherit;font-size:11px}.priority-box{background:linear-gradient(145deg,#001442,#0D40FC);color:#fff;border-radius:18px;padding:22px;margin-bottom:16px}.priority-box p{color:#CAD8FF;font-size:12px;margin:7px 0 17px;line-height:1.7}.priority-actions{display:grid;gap:8px}.priority-actions button{border:1px solid #ffffff25;background:#ffffff12;color:#fff;border-radius:10px;padding:10px;text-align:right;cursor:pointer;font:inherit}.empty-overview{padding:28px;text-align:center;color:#8898AA;font-size:13px}@media(max-width:850px){.supervisor-overview{grid-template-columns:1fr}.supervisor-tabs>button{min-width:145px!important}}`}</style>
+      <style>{`.supervisor-tabs{overflow-x:auto}.supervisor-overview{display:grid;grid-template-columns:1.25fr .75fr;gap:14px}.overview-card{background:#fff;border:1px solid #EEF2F7;border-radius:15px;padding:15px;box-shadow:0 3px 14px #00144208}.overview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.overview-head h3{font-size:14px}.overview-list{display:grid;gap:6px}.overview-row{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid #EEF2F7;border-radius:10px;background:#FCFDFE}.overview-avatar{width:32px;height:32px;border-radius:9px;background:#EEF4FF;color:#0D40FC;display:grid;place-items:center;font-size:11px;font-weight:800}.overview-main{flex:1;min-width:0}.overview-main b{display:block;font-size:12px}.overview-main span{font-size:10px;color:#8898AA}.overview-action{border:0;background:#EEF4FF;color:#0D40FC;border-radius:7px;padding:6px 9px;cursor:pointer;font:inherit;font-size:10px}.trainee-tools{display:flex;gap:7px;align-items:center}.trainee-search{border:1px solid #DCE3ED;background:#F8FAFC;border-radius:8px;padding:6px 9px;font:inherit;font-size:11px;width:190px}.pager{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px;font-size:11px;color:#64748b}.pager button{border:1px solid #DCE3ED;background:#fff;border-radius:7px;padding:4px 9px;cursor:pointer}.pager button:disabled{opacity:.4}.priority-box{background:linear-gradient(145deg,#001442,#0D40FC);color:#fff;border-radius:15px;padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:18px}.priority-box p{color:#CAD8FF;font-size:11px;margin:4px 0;line-height:1.6}.priority-actions{display:flex;gap:7px;flex-wrap:wrap}.priority-actions button{border:1px solid #ffffff25;background:#ffffff12;color:#fff;border-radius:8px;padding:7px 9px;text-align:right;cursor:pointer;font:inherit;font-size:11px}.empty-overview{padding:20px;text-align:center;color:#8898AA;font-size:12px}@media(max-width:850px){.supervisor-overview{grid-template-columns:1fr}.supervisor-tabs>button{min-width:145px!important}.priority-box{align-items:flex-start;flex-direction:column}.trainee-tools{width:100%}.trainee-search{width:100%}}`}</style>
       <div className="priority-box">
         <h2>مساحة عمل الإشراف</h2>
         <p>
@@ -207,15 +220,26 @@ function SupervisorOverview({
         <section className="overview-card">
           <div className="overview-head">
             <h3>المتدربون المسندون إليك</h3>
-            <button
-              className="overview-action"
-              onClick={() => onNavigate("workspace")}
-            >
-              إدارة الملفات
-            </button>
+            <div className="trainee-tools">
+              <input
+                className="trainee-search"
+                value={traineeSearch}
+                placeholder="بحث بالاسم أو الرخصة"
+                onChange={(e) => {
+                  setTraineeSearch(e.target.value);
+                  setTraineePage(0);
+                }}
+              />
+              <button
+                className="overview-action"
+                onClick={() => onNavigate("workspace")}
+              >
+                إدارة الملفات
+              </button>
+            </div>
           </div>
           <div className="overview-list">
-            {trainees.map((trainee: any) => (
+            {visibleTrainees.map((trainee: any) => (
               <div className="overview-row" key={trainee.id}>
                 <div className="overview-avatar">
                   {String(trainee.name || "م").slice(0, 2)}
@@ -235,12 +259,33 @@ function SupervisorOverview({
                 </button>
               </div>
             ))}
-            {!trainees.length && (
+            {!filteredTrainees.length && (
               <div className="empty-overview">
                 لا يوجد متدربون مسندون حاليًا.
               </div>
             )}
           </div>
+          {filteredTrainees.length > pageSize && (
+            <div className="pager">
+              <button
+                disabled={traineePage === 0}
+                onClick={() => setTraineePage((p) => Math.max(0, p - 1))}
+              >
+                السابق
+              </button>
+              <span>
+                {traineePage + 1} / {pageCount}
+              </span>
+              <button
+                disabled={traineePage >= pageCount - 1}
+                onClick={() =>
+                  setTraineePage((p) => Math.min(pageCount - 1, p + 1))
+                }
+              >
+                التالي
+              </button>
+            </div>
+          )}
         </section>
         <div>
           <section className="overview-card" style={{ marginBottom: 16 }}>
