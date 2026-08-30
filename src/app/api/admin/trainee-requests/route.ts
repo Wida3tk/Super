@@ -50,9 +50,14 @@ export async function PATCH(request: NextRequest) {
       updatedAt: now,
     });
   if (decision === "approved" && data.type === "change_supervisor") {
-    const [supervisor, trainee] = await Promise.all([
+    const [supervisor, trainee, activitySnap] = await Promise.all([
       adminDb.collection("supervisors").doc(newSupervisorId).get(),
       traineeRef.get(),
+      adminDb
+        .collection("fieldworkActivities")
+        .where("traineeId", "==", data.traineeId)
+        .limit(1000)
+        .get(),
     ]);
     if (!supervisor.exists || supervisor.data()?.isActive === false)
       return NextResponse.json(
@@ -61,6 +66,15 @@ export async function PATCH(request: NextRequest) {
       );
     const previousSupervisorId =
       trainee.data()?.currentSupervisorId || data.supervisorId || "";
+    const hoursAtTransfer = activitySnap.docs
+      .map((doc) => doc.data())
+      .filter(
+        (activity) =>
+          activity.supervisorId === previousSupervisorId &&
+          activity.status === "approved" &&
+          String(activity.activityType || "").startsWith("supervision_"),
+      )
+      .reduce((total, activity) => total + Number(activity.duration || 0), 0);
     batch.update(traineeRef, {
       currentSupervisorId: newSupervisorId,
       status: "active",
@@ -75,6 +89,7 @@ export async function PATCH(request: NextRequest) {
       .forEach((doc) =>
         batch.update(doc.ref, {
           endDate: now.slice(0, 10),
+          hoursAtTransfer: Math.round(hoursAtTransfer * 100) / 100,
           notes: "نقل بموافقة الإدارة",
         }),
       );
@@ -83,9 +98,20 @@ export async function PATCH(request: NextRequest) {
       supervisorId: newSupervisorId,
       startDate: now.slice(0, 10),
       notes: "نقل بعد موافقة طلب تغيير المشرف",
+      carriedSupervisionHours: Math.round(hoursAtTransfer * 100) / 100,
       createdAt: now,
       createdBy: admin.uid,
     });
+    batch.set(
+      adminDb.collection("supervisionAgreements").doc(data.traineeId),
+      {
+        currentSupervisorId: newSupervisorId,
+        carriedSupervisionHours: Math.round(hoursAtTransfer * 100) / 100,
+        updatedAt: now,
+        updatedBy: admin.uid,
+      },
+      { merge: true },
+    );
     batch.update(ref, { previousSupervisorId, newSupervisorId });
   }
   batch.set(adminDb.collection("traineeStatusHistory").doc(), {

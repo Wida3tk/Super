@@ -24,6 +24,8 @@ export default async function TraineeDashboardPage({
     attendanceSnap,
     requestsSnap,
     financialPlanSnap,
+    agreementSnap,
+    assignmentsSnap,
   ] = await Promise.all([
     adminDb
       .collection("fieldworkActivities")
@@ -64,6 +66,12 @@ export default async function TraineeDashboardPage({
       .limit(50)
       .get(),
     adminDb.collection("financialPlans").doc(trainee.id).get(),
+    adminDb.collection("supervisionAgreements").doc(trainee.id).get(),
+    adminDb
+      .collection("assignments")
+      .where("traineeId", "==", trainee.id)
+      .limit(50)
+      .get(),
   ]);
   const activities = (
     activitySnap.docs.map((d) => ({
@@ -113,6 +121,14 @@ export default async function TraineeDashboardPage({
     financialPlan: financialPlanSnap.exists
       ? { id: financialPlanSnap.id, ...financialPlanSnap.data() }
       : null,
+    agreement: agreementSnap.exists
+      ? { id: agreementSnap.id, ...agreementSnap.data() }
+      : null,
+    assignments: assignmentsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a: any, b: any) =>
+        String(b.startDate).localeCompare(String(a.startDate)),
+      ),
   };
   return (
     <TraineeFieldworkDashboard

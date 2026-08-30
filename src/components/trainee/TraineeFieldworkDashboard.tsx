@@ -59,6 +59,7 @@ export default function TraineeFieldworkDashboard({
     | "competency"
     | "meetings"
     | "documents"
+    | "agreement"
     | "policies"
     | "attendance"
     | "requests"
@@ -370,6 +371,7 @@ export default function TraineeFieldworkDashboard({
               ["competency", "تقييم الكفاءة"],
               ["meetings", "الاجتماعات والمهام"],
               ["documents", "المستندات"],
+              ["agreement", "الاتفاقية"],
               ["attendance", "الغياب والإنذارات"],
               ["requests", "طلباتي"],
               ["finance", "الخطة المالية"],
@@ -701,6 +703,13 @@ export default function TraineeFieldworkDashboard({
         {activeTab === "documents" && (
           <DocumentDetails documents={supervisionFile?.documents || []} />
         )}
+        {activeTab === "agreement" && (
+          <AgreementSummary
+            agreement={supervisionFile?.agreement || null}
+            assignments={supervisionFile?.assignments || []}
+            supervisorName={supervisorName}
+          />
+        )}
         {activeTab === "policies" && <SupervisionPolicies audience="trainee" />}
         {activeTab === "attendance" && (
           <AttendanceRecord sessions={supervisionFile?.attendance || []} />
@@ -950,6 +959,12 @@ function TabIcon({ name }: { name: string }) {
         <path d="M14 3v5h5M9 13h6M9 17h6" />
       </>
     ),
+    agreement: (
+      <>
+        <path d="M6 3h12v18H6z" />
+        <path d="M9 8h6M9 12h6M9 16h4" />
+      </>
+    ),
     attendance: (
       <>
         <circle cx="12" cy="12" r="9" />
@@ -1169,6 +1184,102 @@ const documentLabels: Record<string, string> = {
   final_verification: "التحقق النهائي",
   other: "مستند آخر",
 };
+function AgreementSummary({ agreement, assignments, supervisorName }: any) {
+  if (!agreement)
+    return (
+      <section className="panel">
+        <h3>اتفاقية الإشراف</h3>
+        <p className="muted">لم تُسجل بطاقة الاتفاقية في ملفك بعد.</p>
+      </section>
+    );
+  const statuses: Record<string, string> = {
+    draft: "مسودة",
+    active: "سارية",
+    paused: "معلقة",
+    completed: "مكتملة",
+    terminated: "منتهية",
+  };
+  const endDate = new Date(`${agreement.effectiveFrom}T00:00:00`);
+  if (!Number.isNaN(endDate.getTime()))
+    endDate.setMonth(
+      endDate.getMonth() + Number(agreement.durationMonths || 0),
+    );
+  return (
+    <section className="panel" style={{ marginTop: 16 }}>
+      <div className="account-heading">
+        <div>
+          <h3>ملخص اتفاقية الإشراف</h3>
+          <p className="muted" style={{ padding: "5px 0", textAlign: "right" }}>
+            النسخة الموقعة المعتمدة في المستندات هي المرجع الرسمي.
+          </p>
+        </div>
+        <span className="status">
+          {statuses[agreement.status] || agreement.status}
+        </span>
+      </div>
+      <div className="detail-grid" style={{ marginTop: 14 }}>
+        {[
+          ["المشرف الحالي", supervisorName || "—"],
+          ["تاريخ التوقيع", agreement.signedAt || "—"],
+          ["بداية الإشراف", agreement.effectiveFrom || "—"],
+          [
+            "النهاية المتوقعة",
+            Number.isNaN(endDate.getTime())
+              ? "—"
+              : endDate.toISOString().slice(0, 10),
+          ],
+          ["مدة الاتفاقية", `${agreement.durationMonths || 0} شهر`],
+          [
+            "ساعات الإشراف المتفق عليها",
+            `${agreement.plannedSupervisionHours || 0} ساعة`,
+          ],
+          ["الساعات المرحلة", `${agreement.carriedSupervisionHours || 0} ساعة`],
+          ["مهلة إشعار الإنهاء", `${agreement.noticeDays || 0} يوم`],
+        ].map(([label, value]) => (
+          <article className="detail-card" key={label}>
+            <h4>{label}</h4>
+            <p>{value}</p>
+          </article>
+        ))}
+      </div>
+      {agreement.notes && (
+        <div className="motivation-strip" style={{ marginTop: 14 }}>
+          <b>ملاحظات الاتفاقية</b>
+          <span>{agreement.notes}</span>
+        </div>
+      )}
+      {assignments.length > 0 && (
+        <div className="table-wrap" style={{ marginTop: 16 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>الإسناد</th>
+                <th>البداية</th>
+                <th>النهاية</th>
+                <th>ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((item: any, index: number) => (
+                <tr key={item.id}>
+                  <td>
+                    {item.endDate
+                      ? `إسناد سابق ${assignments.length - index}`
+                      : "الإسناد الحالي"}
+                  </td>
+                  <td>{item.startDate || "—"}</td>
+                  <td>{item.endDate || "مستمر"}</td>
+                  <td>{item.notes || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function DocumentDetails({ documents }: { documents: any[] }) {
   if (!documents.length)
     return (

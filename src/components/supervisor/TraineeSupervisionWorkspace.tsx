@@ -73,7 +73,7 @@ export default function TraineeSupervisionWorkspace({
   const [traineeId, setTraineeId] = useState(trainees[0]?.id || "");
   const trainee = trainees.find((t) => t.id === traineeId);
   const [tab, setTab] = useState<
-    "overview" | "documents" | "meetings" | "assessment" | "plan"
+    "overview" | "agreement" | "documents" | "meetings" | "assessment" | "plan"
   >("overview");
   const [data, setData] = useState<any>({
     documents: [],
@@ -81,6 +81,8 @@ export default function TraineeSupervisionWorkspace({
     assessments: [],
     plan: { goals: [] },
     activities: [],
+    agreement: null,
+    assignments: [],
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -132,6 +134,7 @@ export default function TraineeSupervisionWorkspace({
   return (
     <div className="ws" dir="rtl">
       <style>{css}</style>
+      <style>{`.agreement-note{font-size:12px;line-height:1.8;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:9px;margin:0 0 14px}.assignment-card{border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin-bottom:9px;background:#fbfdff}.assignment-card div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}.assignment-card div+div{border-top:1px solid #edf2f7}.assignment-card span{color:#64748b;text-align:left}.assignment-card p{font-size:11px;color:#64748b;background:#f1f5f9;padding:8px;border-radius:8px;margin:8px 0 0}`}</style>
       <div className="ws-toolbar">
         <div>
           <h2>ملف الإشراف المتكامل</h2>
@@ -166,6 +169,7 @@ export default function TraineeSupervisionWorkspace({
       <div className="ws-tabs">
         {[
           ["overview", "الملخص والامتثال"],
+          ["agreement", "الاتفاقية والإسناد"],
           ["documents", "الموافقات والمستندات"],
           ["meetings", "الجلسات والمحاضر"],
           ["assessment", "تقييم الكفاءة"],
@@ -200,6 +204,13 @@ export default function TraineeSupervisionWorkspace({
             <Documents
               traineeId={traineeId}
               items={data.documents}
+              onSave={save}
+            />
+          )}
+          {tab === "agreement" && (
+            <Agreement
+              agreement={data.agreement}
+              assignments={data.assignments || []}
               onSave={save}
             />
           )}
@@ -971,6 +982,160 @@ function Assessment({ items, onSave }: any) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Agreement({ agreement, assignments, onSave }: any) {
+  const [form, setForm] = useState({
+    signedAt: "",
+    effectiveFrom: "",
+    durationMonths: 18,
+    plannedSupervisionHours: 75,
+    carriedSupervisionHours: 0,
+    financialTermMonths: 12,
+    noticeDays: 30,
+    status: "draft",
+    notes: "",
+  });
+  useEffect(
+    () => setForm((current) => ({ ...current, ...(agreement || {}) })),
+    [agreement],
+  );
+  const set = (key: string, value: any) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  const statuses: Record<string, string> = {
+    draft: "مسودة",
+    active: "سارية",
+    paused: "معلقة",
+    completed: "مكتملة",
+    terminated: "منتهية",
+  };
+  return (
+    <div className="split">
+      <FormBox title="بطاقة اتفاقية الإشراف">
+        <p className="agreement-note">
+          تلخص البطاقة البيانات التشغيلية، ولا تستبدل الاتفاقية الموقعة المرفوعة
+          ضمن المستندات.
+        </p>
+        <div className="form-grid">
+          <Field label="تاريخ التوقيع">
+            <input
+              type="date"
+              value={form.signedAt}
+              onChange={(e) => set("signedAt", e.target.value)}
+            />
+          </Field>
+          <Field label="بداية سريان الإشراف">
+            <input
+              type="date"
+              value={form.effectiveFrom}
+              onChange={(e) => set("effectiveFrom", e.target.value)}
+            />
+          </Field>
+          <Field label="مدة الاتفاقية بالأشهر">
+            <input
+              type="number"
+              min="1"
+              max="60"
+              value={form.durationMonths}
+              onChange={(e) => set("durationMonths", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="مدة الخطة المالية بالأشهر">
+            <input
+              type="number"
+              min="1"
+              max="60"
+              value={form.financialTermMonths}
+              onChange={(e) =>
+                set("financialTermMonths", Number(e.target.value))
+              }
+            />
+          </Field>
+          <Field label="ساعات الإشراف المتفق عليها">
+            <input
+              type="number"
+              min="1"
+              step="0.5"
+              value={form.plannedSupervisionHours}
+              onChange={(e) =>
+                set("plannedSupervisionHours", Number(e.target.value))
+              }
+            />
+          </Field>
+          <Field label="ساعات مرحلة من مشرف سابق">
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={form.carriedSupervisionHours}
+              onChange={(e) =>
+                set("carriedSupervisionHours", Number(e.target.value))
+              }
+            />
+          </Field>
+          <Field label="مهلة إشعار الإنهاء بالأيام">
+            <input
+              type="number"
+              min="0"
+              max="90"
+              value={form.noticeDays}
+              onChange={(e) => set("noticeDays", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="حالة الاتفاقية">
+            <select
+              value={form.status}
+              onChange={(e) => set("status", e.target.value)}
+            >
+              {Object.entries(statuses).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <Field label="ملاحظات الاتفاقية أو النقل">
+          <textarea
+            value={form.notes || ""}
+            onChange={(e) => set("notes", e.target.value)}
+          />
+        </Field>
+        <button
+          className="save"
+          onClick={() => onSave({ entity: "agreement", ...form }, "PUT")}
+        >
+          حفظ بطاقة الاتفاقية
+        </button>
+      </FormBox>
+      <ListBox title="سجل الإسناد وانتقال المشرف">
+        {assignments.map((item: any) => (
+          <article className="assignment-card" key={item.id}>
+            <div>
+              <b>المشرف</b>
+              <span>{item.supervisorName || item.supervisorId}</span>
+            </div>
+            <div>
+              <b>البداية</b>
+              <span>{item.startDate || "—"}</span>
+            </div>
+            <div>
+              <b>النهاية</b>
+              <span>{item.endDate || "الإسناد الحالي"}</span>
+            </div>
+            {item.hoursAtTransfer !== undefined && (
+              <div>
+                <b>الساعات عند النقل</b>
+                <span>{item.hoursAtTransfer}</span>
+              </div>
+            )}
+            {item.notes && <p>{item.notes}</p>}
+          </article>
+        ))}
+        {!assignments.length && <Empty />}
+      </ListBox>
     </div>
   );
 }

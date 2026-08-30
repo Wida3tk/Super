@@ -34,32 +34,59 @@ export async function GET(req: NextRequest) {
   const traineeId = req.nextUrl.searchParams.get("traineeId");
   if (!traineeId || !(await ownsTrainee(supervisor.id, traineeId)))
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  const [documents, meetings, assessments, plan, activities] =
-    await Promise.all([
-      adminDb
-        .collection("supervisionDocuments")
-        .where("traineeId", "==", traineeId)
-        .limit(100)
-        .get(),
-      adminDb
-        .collection("meetingMinutes")
-        .where("traineeId", "==", traineeId)
-        .limit(100)
-        .get(),
-      adminDb
-        .collection("competencyAssessments")
-        .where("traineeId", "==", traineeId)
-        .limit(50)
-        .get(),
-      adminDb.collection("supervisionPlans").doc(traineeId).get(),
-      adminDb
-        .collection("fieldworkActivities")
-        .where("traineeId", "==", traineeId)
-        .limit(1000)
-        .get(),
-    ]);
+  const [
+    documents,
+    meetings,
+    assessments,
+    plan,
+    activities,
+    agreement,
+    assignments,
+  ] = await Promise.all([
+    adminDb
+      .collection("supervisionDocuments")
+      .where("traineeId", "==", traineeId)
+      .limit(100)
+      .get(),
+    adminDb
+      .collection("meetingMinutes")
+      .where("traineeId", "==", traineeId)
+      .limit(100)
+      .get(),
+    adminDb
+      .collection("competencyAssessments")
+      .where("traineeId", "==", traineeId)
+      .limit(50)
+      .get(),
+    adminDb.collection("supervisionPlans").doc(traineeId).get(),
+    adminDb
+      .collection("fieldworkActivities")
+      .where("traineeId", "==", traineeId)
+      .limit(1000)
+      .get(),
+    adminDb.collection("supervisionAgreements").doc(traineeId).get(),
+    adminDb
+      .collection("assignments")
+      .where("traineeId", "==", traineeId)
+      .limit(50)
+      .get(),
+  ]);
   const map = (snap: FirebaseFirestore.QuerySnapshot) =>
     snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const assignmentRows = map(assignments) as any[];
+  const supervisorIds = [
+    ...new Set(assignmentRows.map((item) => item.supervisorId).filter(Boolean)),
+  ];
+  const supervisorDocs = supervisorIds.length
+    ? await adminDb.getAll(
+        ...supervisorIds.map((id) =>
+          adminDb.collection("supervisors").doc(String(id)),
+        ),
+      )
+    : [];
+  const supervisorNames = new Map(
+    supervisorDocs.map((doc) => [doc.id, String(doc.data()?.name || doc.id)]),
+  );
   return NextResponse.json({
     documents: map(documents).sort((a: any, b: any) =>
       String(b.createdAt).localeCompare(String(a.createdAt)),
@@ -74,6 +101,18 @@ export async function GET(req: NextRequest) {
       ? { id: plan.id, ...plan.data() }
       : { traineeId, goals: [] },
     activities: map(activities),
+    agreement: agreement.exists
+      ? { id: agreement.id, ...agreement.data() }
+      : null,
+    assignments: assignmentRows
+      .map((item) => ({
+        ...item,
+        supervisorName:
+          supervisorNames.get(item.supervisorId) || item.supervisorId,
+      }))
+      .sort((a: any, b: any) =>
+        String(b.startDate).localeCompare(String(a.startDate)),
+      ),
   });
 }
 
@@ -225,60 +264,100 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const traineeId = clean(body.traineeId, 100);
-  if (
-    !traineeId ||
-    !(await ownsTrainee(supervisor.id, traineeId)) ||
-    body.entity !== "plan"
-  )
+  if (!traineeId || !(await ownsTrainee(supervisor.id, traineeId)))
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  if (body.entity === "agreement") {
+    const durationMonths = Number(body.durationMonths);
+    const plannedSupervisionHours = Number(body.plannedSupervisionHours);
+    const carriedSupervisionHours = Number(body.carriedSupervisionHours || 0);
+    if (
+      !clean(body.signedAt, 10) ||
+      !clean(body.effectiveFrom, 10) ||
+      !Number.isFinite(durationMonths) ||
+      durationMonths < 1 ||
+      durationMonths > 60 ||
+      !Number.isFinite(plannedSupervisionHours) ||
+      plannedSupervisionHours < 1 ||
+      plannedSupervisionHours > 500 ||
+      !Number.isFinite(carriedSupervisionHours) ||
+      carriedSupervisionHours < 0
+    )
+      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
+    const status = [
+      "draft",
+      "active",
+      "paused",
+      "completed",
+      "terminated",
+    ].includes(body.status)
+      ? body.status
+      : "draft";
+    const ref = adminDb.collection("supervisionAgreements").doc(traineeId);
+    const existing = await ref.get();
+    await ref.set(
+      {
+        traineeId,
+        currentSupervisorId: supervisor.id,
+        signedAt: clean(body.signedAt, 10),
+        effectiveFrom: clean(body.effectiveFrom, 10),
+        durationMonths,
+        plannedSupervisionHours,
+        carriedSupervisionHours,
+        financialTermMonths: Math.min(
+          60,
+          Math.max(1, Number(body.financialTermMonths) || durationMonths),
+        ),
+        noticeDays: Math.min(90, Math.max(0, Number(body.noticeDays) || 30)),
+        status,
+        notes: clean(body.notes, 4000),
+        updatedAt: new Date().toISOString(),
+        updatedBy: supervisor.id,
+        createdAt: existing.data()?.createdAt || new Date().toISOString(),
+      },
+      { merge: true },
+    );
+    return NextResponse.json({ success: true });
+  }
+  if (body.entity !== "plan")
+    return NextResponse.json({ error: "INVALID_ENTITY" }, { status: 400 });
   const goals = Array.isArray(body.goals)
-    ? body.goals
-        .slice(0, 100)
-        .map((g: any, index: number) => ({
-          id: clean(g.id, 100) || `goal-${Date.now()}-${index}`,
-          domain: clean(g.domain, 150),
-          title: clean(g.title, 1000),
-          startDate: clean(g.startDate, 10) || null,
-          dueDate: clean(g.dueDate, 10) || null,
-          masteryCriterion: clean(g.masteryCriterion, 1000),
-          status: [
-            "not_started",
-            "in_progress",
-            "achieved",
-            "retrain",
-          ].includes(g.status)
-            ? g.status
-            : "not_started",
-          supervisorNote: clean(g.supervisorNote, 2000),
-          order: index,
-        }))
+    ? body.goals.slice(0, 100).map((g: any, index: number) => ({
+        id: clean(g.id, 100) || `goal-${Date.now()}-${index}`,
+        domain: clean(g.domain, 150),
+        title: clean(g.title, 1000),
+        startDate: clean(g.startDate, 10) || null,
+        dueDate: clean(g.dueDate, 10) || null,
+        masteryCriterion: clean(g.masteryCriterion, 1000),
+        status: ["not_started", "in_progress", "achieved", "retrain"].includes(
+          g.status,
+        )
+          ? g.status
+          : "not_started",
+        supervisorNote: clean(g.supervisorNote, 2000),
+        order: index,
+      }))
     : [];
   const currentPlan = await adminDb
     .collection("supervisionPlans")
     .doc(traineeId)
     .get();
   if (currentPlan.exists)
-    await adminDb
-      .collection("supervisionPlanVersions")
-      .add({
-        ...currentPlan.data(),
-        traineeId,
-        archivedAt: new Date().toISOString(),
-        archivedBy: supervisor.id,
-      });
-  await adminDb
-    .collection("supervisionPlans")
-    .doc(traineeId)
-    .set(
-      {
-        traineeId,
-        supervisorId: supervisor.id,
-        goals,
-        versionUpdatedAt: new Date().toISOString(),
-        updatedBy: supervisor.id,
-      },
-      { merge: true },
-    );
+    await adminDb.collection("supervisionPlanVersions").add({
+      ...currentPlan.data(),
+      traineeId,
+      archivedAt: new Date().toISOString(),
+      archivedBy: supervisor.id,
+    });
+  await adminDb.collection("supervisionPlans").doc(traineeId).set(
+    {
+      traineeId,
+      supervisorId: supervisor.id,
+      goals,
+      versionUpdatedAt: new Date().toISOString(),
+      updatedBy: supervisor.id,
+    },
+    { merge: true },
+  );
   return NextResponse.json({ success: true });
 }
 

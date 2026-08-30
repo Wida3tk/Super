@@ -293,6 +293,24 @@ export interface Assignment {
   createdBy: string; // adminId
 }
 
+export interface SupervisionAgreement {
+  id: string;
+  traineeId: string;
+  currentSupervisorId: string;
+  signedAt: string;
+  effectiveFrom: string;
+  durationMonths: number;
+  financialTermMonths: number;
+  plannedSupervisionHours: number;
+  carriedSupervisionHours: number;
+  noticeDays: number;
+  status: "draft" | "active" | "paused" | "completed" | "terminated";
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 // ===========================
 // الجلسة
 // ===========================
