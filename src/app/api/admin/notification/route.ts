@@ -1,51 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminAuth } from '@/lib/firebase/admin';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from "next/server";
+import { adminDb, adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
+  const sessionCookie = cookieStore.get("__session")?.value;
   if (!sessionCookie) return false;
   try {
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase();
-  } catch { return false; }
+    return (
+      decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await verifyAdmin()))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { type, message, targetType, targetId } = await req.json();
-  if (!type || !message) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+  if (!type || !message)
+    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  const createdAt = new Date();
+  const expiresAt = new Date(
+    createdAt.getTime() + 30 * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   // لو للجميع، أضف إشعار لكل مشرف
-  if (targetType === 'all') {
-    const supervisorsSnap = await adminDb.collection('supervisors').get();
+  if (targetType === "all") {
+    const supervisorsSnap = await adminDb.collection("supervisors").get();
     const batch = adminDb.batch();
-    supervisorsSnap.docs.forEach(doc => {
-      const ref = adminDb.collection('notifications').doc();
+    supervisorsSnap.docs.forEach((doc) => {
+      const ref = adminDb.collection("notifications").doc();
       batch.set(ref, {
-        type, message,
-        targetType: 'all',
+        type,
+        message,
+        targetType: "all",
         supervisorId: doc.id,
         read: false,
-        createdAt: new Date().toISOString(),
+        createdAt: createdAt.toISOString(),
+        expiresAt,
       });
     });
     await batch.commit();
-    const ref = await adminDb.collection('notifications').add({
-      type, message, targetType: 'all', supervisorId: null, read: false,
-      createdAt: new Date().toISOString(),
+    const ref = await adminDb.collection("notifications").add({
+      type,
+      message,
+      targetType: "all",
+      supervisorId: null,
+      read: false,
+      createdAt: createdAt.toISOString(),
+      expiresAt,
     });
     return NextResponse.json({ id: ref.id });
   }
 
   // لمشرف محدد
-  const ref = await adminDb.collection('notifications').add({
-    type, message, targetType: 'supervisor',
+  const ref = await adminDb.collection("notifications").add({
+    type,
+    message,
+    targetType: "supervisor",
     supervisorId: targetId,
     read: false,
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt.toISOString(),
+    expiresAt,
   });
 
   return NextResponse.json({ id: ref.id });

@@ -96,10 +96,18 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const notifications = notifsSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
+  const notificationCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const notifications = (
+    notifsSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as any[]
+  ).filter(
+    (notification) =>
+      !notification.read &&
+      (!notification.createdAt ||
+        new Date(notification.createdAt).getTime() >= notificationCutoff),
+  );
   const fieldworkActivities = (
     fieldworkSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
   ).filter((a) => a.status === "submitted");
