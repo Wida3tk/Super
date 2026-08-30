@@ -150,192 +150,256 @@ export default async function SupervisorDashboardPage({ params }: Props) {
         .footer a{color:var(--primary);text-decoration:none;font-weight:600;}
         .operations-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(250px,1fr);gap:12px;margin-bottom:18px;align-items:stretch}
         @media(max-width:1050px){.operations-grid{grid-template-columns:1fr}}
+        .supervisor-page{min-height:100vh;background:radial-gradient(circle at 8% 4%,#dff7ff 0,transparent 27%),radial-gradient(circle at 95% 8%,#eae7ff 0,transparent 25%),#f5f7fb;padding:0 28px 32px}
+        .dashboard-wrap{max-width:1180px;margin:0 auto}
+        .supervisor-page .nav{height:68px;padding:0;background:transparent;position:static;box-shadow:none}
+        .supervisor-page .nav-div{background:#dbe3ef}
+        .supervisor-page .nav-title{color:#53657d;background:#fff;border:1px solid #dfe6f0;padding:6px 11px;border-radius:99px;font-size:11px}
+        .supervisor-page .nav-back{background:#fff;border:1px solid #d9e1ed;color:#64748b}
+        .supervisor-page .nav-back:hover{background:#eef4ff;color:#0d40fc}
+        .supervisor-page .hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#001442 0%,#0935ce 62%,#0d70fc 100%);border-radius:24px;padding:30px 34px;display:grid;grid-template-columns:1.5fr .72fr;gap:24px;box-shadow:0 20px 50px #0d40fc25}
+        .supervisor-page .hero:after{content:'';position:absolute;width:310px;height:310px;border-radius:50%;background:#55d7ff18;left:-80px;top:-155px}
+        .hero-copy{position:relative;z-index:1}
+        .hero-eyebrow{font-size:12px;color:#73e3ff;font-weight:700;margin-bottom:7px}
+        .supervisor-page .hero h1{font-size:29px;margin-bottom:8px}
+        .supervisor-page .hero p{font-size:14px;color:#d5e1ff;line-height:1.8;max-width:620px}
+        .hero-glance{position:relative;z-index:1;background:#ffffff13;border:1px solid #ffffff24;border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
+        .hero-glance-title{font-size:12px;color:#a9c4ff;margin-bottom:11px}
+        .hero-glance-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .hero-glance-item{background:#ffffff0d;border:1px solid #ffffff16;border-radius:11px;padding:10px}
+        .hero-glance-item b{display:block;color:#fff;font-size:22px;line-height:1.2}
+        .hero-glance-item span{font-size:10px;color:#c9d8ff}
+        .supervisor-page .hero-date{display:inline-flex;margin-top:14px;color:#c9d8ff;background:#ffffff0d}
+        .supervisor-page .main{max-width:none;padding:18px 0 42px}
+        .supervisor-page .stats{gap:14px;margin-bottom:18px}
+        .supervisor-page .stat-card{border-radius:18px;padding:17px;background:#ffffffeb;box-shadow:0 9px 28px #0014420b;border-top:3px solid #dce6ff}
+        .supervisor-page .stat-card:nth-child(2){border-top-color:#ef9f27}.supervisor-page .stat-card:nth-child(3){border-top-color:#7668ff}.supervisor-page .stat-card:nth-child(4){border-top-color:#10b981}
+        .supervisor-page .stat-val{font-size:25px}.supervisor-page .stat-icon{width:38px;height:38px;font-size:17px}
+        .supervisor-page .footer{background:transparent;border:0;margin:0;padding:10px}
+        @media(max-width:850px){.supervisor-page{padding:0 16px 24px}.supervisor-page .hero{grid-template-columns:1fr;padding:25px}.supervisor-page .hero h1{font-size:25px}.hero-glance{display:none}.supervisor-page .nav-title{display:none}}
       `}</style>
 
-      <div dir="rtl">
-        <nav className="nav">
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div>
-              <img
-                src="/logo.svg"
-                alt="سلوكيرا"
-                style={{ height: "32px", width: "auto" }}
-              />
-            </div>
-            <div className="nav-div" />
-            <span className="nav-title">
-              {isConsultant ? "لوحة المستشار" : "لوحة المشرف"}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Link href={`/${locale}`} className="nav-back">
-              ← الرئيسية
-            </Link>
-            <LogoutButton locale={locale} />
-          </div>
-        </nav>
-
-        <div className="hero">
-          <div>
-            <h1>مرحباً، {supervisor.name} 👋</h1>
-            <p>
-              {supervisor.bio ||
-                (isConsultant
-                  ? "مستشار إدارة السلوك التنظيمي في الواجهة الموحّدة للإشراف"
-                  : "مشرف أكاديمي في الواجهة الموحّدة للإشراف")}
-            </p>
-          </div>
-          <div className="hero-date">
-            {new Date().toLocaleDateString("ar-SA", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </div>
-        </div>
-
-        <div className="main">
-          {/* Stats */}
-          <div className="stats">
-            <div className="stat-card">
-              <div
-                className="stat-icon"
-                style={{ background: "rgba(13,64,252,0.08)" }}
-              >
-                📋
-              </div>
+      <div className="supervisor-page" dir="rtl">
+        <div className="dashboard-wrap">
+          <nav className="nav">
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div>
-                <div className="stat-val">{supervisor.totalSessions ?? 0}</div>
-                <div className="stat-lbl">إجمالي الجلسات</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div
-                className="stat-icon"
-                style={{ background: "rgba(239,68,68,0.08)" }}
-              >
-                ✓
-              </div>
-              <div>
-                <div
-                  className="stat-val"
-                  style={{
-                    color: fieldworkActivities.length ? "#dc2626" : "#059669",
-                  }}
-                >
-                  {fieldworkActivities.length}
-                </div>
-                <div className="stat-lbl">ساعات تنتظر المراجعة</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div
-                className="stat-icon"
-                style={{ background: "rgba(245,158,11,0.08)" }}
-              >
-                ⭐
-              </div>
-              <div>
-                <div className="stat-val" style={{ color: "#d97706" }}>
-                  {(supervisor.ratingAverage ?? 0).toFixed(1)}
-                </div>
-                <div className="stat-lbl">متوسط التقييم</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div
-                className="stat-icon"
-                style={{ background: "rgba(16,185,129,0.08)" }}
-              >
-                🗓️
-              </div>
-              <div>
-                <div className="stat-val" style={{ color: "#059669" }}>
-                  {upcomingCount}
-                </div>
-                <div className="stat-lbl">مقابلات قادمة</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Availability + Seats */}
-          <div className="operations-grid">
-            <AvailabilityManager supervisorId={supervisor.id} locale={locale} />
-            {!isConsultant && (
-              <SeatsManager
-                supervisorId={supervisor.id}
-                currentSeats={supervisor.availableSeats ?? 0}
-              />
-            )}
-          </div>
-
-          {/* إشعارات الإدارة */}
-          {notifications.length > 0 && (
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                border: "1px solid #E2E8F0",
-                overflow: "hidden",
-                marginBottom: 20,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 20px",
-                  borderBottom: "1px solid #F1F5F9",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  background: "#FAFAFA",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>🔔</span>
-                  <span
-                    style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}
-                  >
-                    رسائل الإدارة
-                  </span>
-                  {unreadCount > 0 && (
-                    <span
-                      style={{
-                        background: "#EF4444",
-                        color: "#fff",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: "1px 7px",
-                        borderRadius: 99,
-                      }}
-                    >
-                      {unreadCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div style={{ padding: "12px 16px" }}>
-                <SupervisorNotifications
-                  notifications={notifications}
-                  supervisorId={supervisor.id}
+                <img
+                  src="/logo.svg"
+                  alt="سلوكيرا"
+                  style={{ height: "32px", width: "auto" }}
                 />
               </div>
+              <div className="nav-div" />
+              <span className="nav-title">
+                {isConsultant ? "لوحة المستشار" : "لوحة المشرف"}
+              </span>
             </div>
-          )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Link href={`/${locale}`} className="nav-back">
+                ← الرئيسية
+              </Link>
+              <LogoutButton locale={locale} />
+            </div>
+          </nav>
 
-          {/* Main Tabs */}
-          <SupervisorTabs
-            bookings={allBookings}
-            supervisorId={supervisor.id}
-            initialTrainees={initialTrainees}
-            initialSessions={initialSessions}
-            initialSnapshots={initialSnapshots}
-            upcomingCount={upcomingCount}
-            traineesCount={initialTrainees.length}
-            fieldworkActivities={fieldworkActivities}
-            supervisor={supervisor}
-          />
+          <div className="hero">
+            <div className="hero-copy">
+              <div className="hero-eyebrow">
+                مساحة الإشراف والمتابعة المهنية ✦
+              </div>
+              <h1>مرحباً، {supervisor.name} 👋</h1>
+              <p>
+                {supervisor.bio ||
+                  (isConsultant
+                    ? "مستشار إدارة السلوك التنظيمي في الواجهة الموحّدة للإشراف"
+                    : "تابع متدربيك، راجع الساعات، ووثّق تقدمهم المهني من مساحة عمل واحدة.")}
+              </p>
+              <div className="hero-date">
+                {new Date().toLocaleDateString("ar-SA", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+            </div>
+            <aside className="hero-glance">
+              <div className="hero-glance-title">ملخص مساحة العمل اليوم</div>
+              <div className="hero-glance-grid">
+                <div className="hero-glance-item">
+                  <b>{initialTrainees.length}</b>
+                  <span>متدربون مسندون</span>
+                </div>
+                <div className="hero-glance-item">
+                  <b>{fieldworkActivities.length}</b>
+                  <span>ساعات للمراجعة</span>
+                </div>
+                <div className="hero-glance-item">
+                  <b>{upcomingCount}</b>
+                  <span>مواعيد قادمة</span>
+                </div>
+                <div className="hero-glance-item">
+                  <b>{unreadCount}</b>
+                  <span>رسائل جديدة</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div className="main">
+            {/* Stats */}
+            <div className="stats">
+              <div className="stat-card">
+                <div
+                  className="stat-icon"
+                  style={{ background: "rgba(13,64,252,0.08)" }}
+                >
+                  📋
+                </div>
+                <div>
+                  <div className="stat-val">
+                    {supervisor.totalSessions ?? 0}
+                  </div>
+                  <div className="stat-lbl">إجمالي الجلسات</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div
+                  className="stat-icon"
+                  style={{ background: "rgba(239,68,68,0.08)" }}
+                >
+                  ✓
+                </div>
+                <div>
+                  <div
+                    className="stat-val"
+                    style={{
+                      color: fieldworkActivities.length ? "#dc2626" : "#059669",
+                    }}
+                  >
+                    {fieldworkActivities.length}
+                  </div>
+                  <div className="stat-lbl">ساعات تنتظر المراجعة</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div
+                  className="stat-icon"
+                  style={{ background: "rgba(245,158,11,0.08)" }}
+                >
+                  ⭐
+                </div>
+                <div>
+                  <div className="stat-val" style={{ color: "#d97706" }}>
+                    {(supervisor.ratingAverage ?? 0).toFixed(1)}
+                  </div>
+                  <div className="stat-lbl">متوسط التقييم</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div
+                  className="stat-icon"
+                  style={{ background: "rgba(16,185,129,0.08)" }}
+                >
+                  🗓️
+                </div>
+                <div>
+                  <div className="stat-val" style={{ color: "#059669" }}>
+                    {upcomingCount}
+                  </div>
+                  <div className="stat-lbl">مقابلات قادمة</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Availability + Seats */}
+            <div className="operations-grid">
+              <AvailabilityManager
+                supervisorId={supervisor.id}
+                locale={locale}
+              />
+              {!isConsultant && (
+                <SeatsManager
+                  supervisorId={supervisor.id}
+                  currentSeats={supervisor.availableSeats ?? 0}
+                />
+              )}
+            </div>
+
+            {/* إشعارات الإدارة */}
+            {notifications.length > 0 && (
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  border: "1px solid #E2E8F0",
+                  overflow: "hidden",
+                  marginBottom: 20,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    borderBottom: "1px solid #F1F5F9",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "#FAFAFA",
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <span style={{ fontSize: 18 }}>🔔</span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0F172A",
+                      }}
+                    >
+                      رسائل الإدارة
+                    </span>
+                    {unreadCount > 0 && (
+                      <span
+                        style={{
+                          background: "#EF4444",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "1px 7px",
+                          borderRadius: 99,
+                        }}
+                      >
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ padding: "12px 16px" }}>
+                  <SupervisorNotifications
+                    notifications={notifications}
+                    supervisorId={supervisor.id}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Main Tabs */}
+            <SupervisorTabs
+              bookings={allBookings}
+              supervisorId={supervisor.id}
+              initialTrainees={initialTrainees}
+              initialSessions={initialSessions}
+              initialSnapshots={initialSnapshots}
+              upcomingCount={upcomingCount}
+              traineesCount={initialTrainees.length}
+              fieldworkActivities={fieldworkActivities}
+              supervisor={supervisor}
+            />
+          </div>
         </div>
 
         <div className="footer">

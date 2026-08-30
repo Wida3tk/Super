@@ -71,12 +71,14 @@ export default function SupervisorTabs({
         className="supervisor-tabs"
         style={{
           display: "flex",
-          background: "#fff",
+          gap: 5,
+          background: "linear-gradient(120deg,#001442,#082b83)",
           borderRadius: 16,
-          border: `1px solid ${COLORS.gray200}`,
-          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,.07)",
+          overflowX: "auto",
+          padding: 7,
           marginBottom: 20,
-          boxShadow: "0 1px 4px rgba(1,20,66,0.05)",
+          boxShadow: "0 10px 26px rgba(1,20,66,.10)",
         }}
       >
         {tabs.map((t) => (
@@ -84,27 +86,26 @@ export default function SupervisorTabs({
             key={t.key}
             onClick={() => setActiveTab(t.key as any)}
             style={{
-              flex: 1,
-              padding: "16px 20px",
+              flex: "1 0 auto",
+              padding: "10px 13px",
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
               fontSize: 14,
               fontWeight: activeTab === t.key ? 700 : 400,
-              color: activeTab === t.key ? COLORS.primary : COLORS.gray500,
-              background: activeTab === t.key ? "#F0F5FF" : "#fff",
-              borderBottom:
-                activeTab === t.key
-                  ? `3px solid ${COLORS.primary}`
-                  : "3px solid transparent",
+              color: activeTab === t.key ? COLORS.primary : "#b9c7e8",
+              background: activeTab === t.key ? "#fff" : "transparent",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
               transition: "all 0.15s",
+              borderRadius: 10,
+              boxShadow:
+                activeTab === t.key ? "0 5px 14px rgba(0,0,0,.14)" : "none",
             }}
           >
-            <span style={{ fontSize: 18 }}>{t.icon}</span>
+            <span style={{ fontSize: 16 }}>{t.icon}</span>
             <span>{t.label}</span>
             {t.count > 0 && (
               <span
