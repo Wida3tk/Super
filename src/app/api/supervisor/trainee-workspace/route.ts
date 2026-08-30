@@ -299,38 +299,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ success: true, id: ref.id });
   }
-  if (body.entity === "termination_request") {
-    const reason = clean(body.reason, 3000);
-    const requestedEndDate = clean(body.requestedEndDate, 10);
-    if (reason.length < 10 || !/^\d{4}-\d{2}-\d{2}$/.test(requestedEndDate))
-      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
-    const pending = await adminDb
-      .collection("traineeRequests")
-      .where("traineeId", "==", traineeId)
-      .where("type", "==", "termination")
-      .where("status", "==", "pending")
-      .limit(1)
-      .get();
-    if (!pending.empty)
-      return NextResponse.json({ error: "PENDING_EXISTS" }, { status: 409 });
-    const trainee = await adminDb.collection("trainees").doc(traineeId).get();
-    const ref = await adminDb.collection("traineeRequests").add({
-      traineeId,
-      traineeName: trainee.data()?.name || traineeId,
-      traineeEmail: trainee.data()?.email || "",
-      supervisorId: supervisor.id,
-      type: "termination",
-      requestedBy: "supervisor",
-      reason,
-      requestedEndDate,
-      waiveNotice: Boolean(body.waiveNotice),
-      status: "pending",
-      adminNote: "",
-      createdAt: now,
-      updatedAt: now,
-    });
-    return NextResponse.json({ success: true, id: ref.id });
-  }
   if (body.entity === "progress_report") {
     if (
       !clean(body.periodStart, 10) ||
@@ -369,58 +337,6 @@ export async function PUT(req: NextRequest) {
   const traineeId = clean(body.traineeId, 100);
   if (!traineeId || !(await ownsTrainee(supervisor.id, traineeId)))
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  if (body.entity === "agreement") {
-    const durationMonths = Number(body.durationMonths);
-    const plannedSupervisionHours = Number(body.plannedSupervisionHours);
-    const carriedSupervisionHours = Number(body.carriedSupervisionHours || 0);
-    if (
-      !clean(body.signedAt, 10) ||
-      !clean(body.effectiveFrom, 10) ||
-      !Number.isFinite(durationMonths) ||
-      durationMonths < 1 ||
-      durationMonths > 60 ||
-      !Number.isFinite(plannedSupervisionHours) ||
-      plannedSupervisionHours < 1 ||
-      plannedSupervisionHours > 500 ||
-      !Number.isFinite(carriedSupervisionHours) ||
-      carriedSupervisionHours < 0
-    )
-      return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
-    const status = [
-      "draft",
-      "active",
-      "paused",
-      "completed",
-      "terminated",
-    ].includes(body.status)
-      ? body.status
-      : "draft";
-    const ref = adminDb.collection("supervisionAgreements").doc(traineeId);
-    const existing = await ref.get();
-    await ref.set(
-      {
-        traineeId,
-        currentSupervisorId: supervisor.id,
-        signedAt: clean(body.signedAt, 10),
-        effectiveFrom: clean(body.effectiveFrom, 10),
-        durationMonths,
-        plannedSupervisionHours,
-        carriedSupervisionHours,
-        financialTermMonths: Math.min(
-          60,
-          Math.max(1, Number(body.financialTermMonths) || durationMonths),
-        ),
-        noticeDays: Math.min(90, Math.max(0, Number(body.noticeDays) || 30)),
-        status,
-        notes: clean(body.notes, 4000),
-        updatedAt: new Date().toISOString(),
-        updatedBy: supervisor.id,
-        createdAt: existing.data()?.createdAt || new Date().toISOString(),
-      },
-      { merge: true },
-    );
-    return NextResponse.json({ success: true });
-  }
   if (body.entity !== "plan")
     return NextResponse.json({ error: "INVALID_ENTITY" }, { status: 400 });
   const goals = Array.isArray(body.goals)

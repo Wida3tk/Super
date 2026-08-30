@@ -145,7 +145,6 @@ export default function TraineeSupervisionWorkspace({
       <style>{css}</style>
       <style>{`.agreement-note{font-size:12px;line-height:1.8;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:9px;margin:0 0 14px}.assignment-card{border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin-bottom:9px;background:#fbfdff}.assignment-card div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}.assignment-card div+div{border-top:1px solid #edf2f7}.assignment-card span{color:#64748b;text-align:left}.assignment-card p{font-size:11px;color:#64748b;background:#f1f5f9;padding:8px;border-radius:8px;margin:8px 0 0}`}</style>
       <style>{`.improvement-card{border:1px solid #e2e8f0;border-radius:13px;padding:14px;margin-bottom:10px}.improvement-card header{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}.improvement-card header span,.improvement-card small{font-size:11px;color:#64748b}.improvement-card p{font-size:12px;line-height:1.7;margin:5px 0}.feedback{display:grid;gap:4px;background:#f8fafc;border-right:3px solid #0d40fc;padding:9px;margin-top:8px;font-size:11px}.attempt-form{display:grid;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}.attempt-form textarea{min-height:55px}`}</style>
-      <style>{`.termination-box{display:grid;gap:8px;margin-top:18px;padding:14px;border:1px solid #fecaca;background:#fffafa;border-radius:12px}.termination-box h4{color:#991b1b;margin:0}.termination-box p{font-size:11px;color:#64748b;margin:0}.termination-box input,.termination-box textarea{width:100%}`}</style>
       <div className="ws-toolbar">
         <div>
           <h2>ملف الإشراف المتكامل</h2>
@@ -224,7 +223,6 @@ export default function TraineeSupervisionWorkspace({
             <Agreement
               agreement={data.agreement}
               assignments={data.assignments || []}
-              onSave={save}
             />
           )}
           {tab === "improvement" && (
@@ -1332,24 +1330,7 @@ function ImprovementPlans({ items, onSave }: any) {
   );
 }
 
-function Agreement({ agreement, assignments, onSave }: any) {
-  const [form, setForm] = useState({
-    signedAt: "",
-    effectiveFrom: "",
-    durationMonths: 18,
-    plannedSupervisionHours: 75,
-    carriedSupervisionHours: 0,
-    financialTermMonths: 12,
-    noticeDays: 30,
-    status: "draft",
-    notes: "",
-  });
-  useEffect(
-    () => setForm((current) => ({ ...current, ...(agreement || {}) })),
-    [agreement],
-  );
-  const set = (key: string, value: any) =>
-    setForm((current) => ({ ...current, [key]: value }));
+function Agreement({ agreement, assignments }: any) {
   const statuses: Record<string, string> = {
     draft: "مسودة",
     active: "سارية",
@@ -1357,151 +1338,45 @@ function Agreement({ agreement, assignments, onSave }: any) {
     completed: "مكتملة",
     terminated: "منتهية",
   };
-  const [termination, setTermination] = useState({
-    reason: "",
-    requestedEndDate: "",
-    waiveNotice: false,
-  });
+  const values = [
+    ["حالة الاتفاقية", statuses[agreement?.status] || "غير مسجلة"],
+    ["تاريخ التوقيع", agreement?.signedAt || "—"],
+    ["بداية سريان الإشراف", agreement?.effectiveFrom || "—"],
+    [
+      "مدة الاتفاقية",
+      agreement?.durationMonths ? `${agreement.durationMonths} شهر` : "—",
+    ],
+    [
+      "مدة الخطة المالية",
+      agreement?.financialTermMonths
+        ? `${agreement.financialTermMonths} شهر`
+        : "—",
+    ],
+    ["ساعات الإشراف المتفق عليها", agreement?.plannedSupervisionHours ?? "—"],
+    ["الساعات المرحلة", agreement?.carriedSupervisionHours ?? "—"],
+    [
+      "مهلة إشعار الإنهاء",
+      agreement?.noticeDays !== undefined ? `${agreement.noticeDays} يوم` : "—",
+    ],
+  ];
   return (
     <div className="split">
       <FormBox title="بطاقة اتفاقية الإشراف">
         <p className="agreement-note">
-          تلخص البطاقة البيانات التشغيلية، ولا تستبدل الاتفاقية الموقعة المرفوعة
-          ضمن المستندات.
+          هذه البطاقة للعرض فقط. تتولى الإدارة إنشاء الاتفاقية وتحديثها وإجراءات
+          الإسناد أو الإنهاء، بينما تبقى النسخة الموقعة ضمن المستندات.
         </p>
-        <div className="form-grid">
-          <Field label="تاريخ التوقيع">
-            <input
-              type="date"
-              value={form.signedAt}
-              onChange={(e) => set("signedAt", e.target.value)}
-            />
-          </Field>
-          <Field label="بداية سريان الإشراف">
-            <input
-              type="date"
-              value={form.effectiveFrom}
-              onChange={(e) => set("effectiveFrom", e.target.value)}
-            />
-          </Field>
-          <Field label="مدة الاتفاقية بالأشهر">
-            <input
-              type="number"
-              min="1"
-              max="60"
-              value={form.durationMonths}
-              onChange={(e) => set("durationMonths", Number(e.target.value))}
-            />
-          </Field>
-          <Field label="مدة الخطة المالية بالأشهر">
-            <input
-              type="number"
-              min="1"
-              max="60"
-              value={form.financialTermMonths}
-              onChange={(e) =>
-                set("financialTermMonths", Number(e.target.value))
-              }
-            />
-          </Field>
-          <Field label="ساعات الإشراف المتفق عليها">
-            <input
-              type="number"
-              min="1"
-              step="0.5"
-              value={form.plannedSupervisionHours}
-              onChange={(e) =>
-                set("plannedSupervisionHours", Number(e.target.value))
-              }
-            />
-          </Field>
-          <Field label="ساعات مرحلة من مشرف سابق">
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              value={form.carriedSupervisionHours}
-              onChange={(e) =>
-                set("carriedSupervisionHours", Number(e.target.value))
-              }
-            />
-          </Field>
-          <Field label="مهلة إشعار الإنهاء بالأيام">
-            <input
-              type="number"
-              min="0"
-              max="90"
-              value={form.noticeDays}
-              onChange={(e) => set("noticeDays", Number(e.target.value))}
-            />
-          </Field>
-          <Field label="حالة الاتفاقية">
-            <select
-              value={form.status}
-              onChange={(e) => set("status", e.target.value)}
-            >
-              {Object.entries(statuses).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <div className="form-grid agreement-readonly">
+          {values.map(([label, value]) => (
+            <div key={label} className="metric">
+              <span>{label}</span>
+              <b>{value}</b>
+            </div>
+          ))}
         </div>
-        <Field label="ملاحظات الاتفاقية أو النقل">
-          <textarea
-            value={form.notes || ""}
-            onChange={(e) => set("notes", e.target.value)}
-          />
-        </Field>
-        <button
-          className="save"
-          onClick={() => onSave({ entity: "agreement", ...form }, "PUT")}
-        >
-          حفظ بطاقة الاتفاقية
-        </button>
-        <div className="termination-box">
-          <h4>طلب إنهاء العلاقة الإشرافية</h4>
-          <p>يرفع الطلب للإدارة، ولا تتغير حالة المتدرب قبل اعتماد القرار.</p>
-          <input
-            type="date"
-            value={termination.requestedEndDate}
-            onChange={(e) =>
-              setTermination({
-                ...termination,
-                requestedEndDate: e.target.value,
-              })
-            }
-          />
-          <textarea
-            placeholder="سبب الإنهاء والتفاصيل المهنية"
-            value={termination.reason}
-            onChange={(e) =>
-              setTermination({ ...termination, reason: e.target.value })
-            }
-          />
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={termination.waiveNotice}
-              onChange={(e) =>
-                setTermination({
-                  ...termination,
-                  waiveNotice: e.target.checked,
-                })
-              }
-            />{" "}
-            طلب تجاوز مهلة الإشعار بسبب حالة تستدعي ذلك
-          </label>
-          <button
-            className="outline"
-            onClick={() =>
-              onSave({ entity: "termination_request", ...termination })
-            }
-          >
-            رفع الطلب للإدارة
-          </button>
-        </div>
+        {agreement?.notes && (
+          <p className="agreement-note">{agreement.notes}</p>
+        )}
       </FormBox>
       <ListBox title="سجل الإسناد وانتقال المشرف">
         {assignments.map((item: any) => (
