@@ -98,6 +98,17 @@ export default async function HomePage({ params }: HomePageProps) {
     (provider) => (availableDatesByProvider[provider.id]?.length || 0) > 0,
   ).length;
 
+  const demoRatingFor = (id: string) => {
+    const seed = Array.from(id).reduce(
+      (total, character) => total + character.charCodeAt(0),
+      0,
+    );
+    return {
+      average: 4.6 + (seed % 4) / 10,
+      reviews: 8 + (seed % 24),
+    };
+  };
+
   return (
     <>
       <style>{`
@@ -306,7 +317,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .sup-btn.unavailable{background:#F8FAFC;color:#8898AA;border:1px solid #DDE5EF;box-shadow:none;cursor:not-allowed}
         .sup-btn.profile{background:#fff;color:#0D40FC;border:1px solid #BFD0FF;box-shadow:none}.sup-btn.profile:hover{background:#EEF4FF}
         .availability-line{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:-6px 0 13px}.availability-line.open{color:#047857}.availability-line.closed{color:#94A3B8}.availability-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-        .more-toggle{position:absolute;opacity:0;pointer-events:none}.more-toggle:not(:checked)~.supervisors-grid .sup-card:nth-child(n+5){display:none}.more-label{display:flex;width:max-content;margin:24px auto 0;align-items:center;padding:11px 20px;border:1px solid #C7D4E8;border-radius:11px;background:#fff;color:#0D40FC;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(1,20,66,.07)}.more-label:hover{background:#EEF4FF}.more-close{display:none}.more-toggle:checked~.more-label .more-open{display:none}.more-toggle:checked~.more-label .more-close{display:inline}
+        .more-toggle{position:absolute;opacity:0;pointer-events:none}.more-toggle:not(:checked)~.supervisors-grid .sup-card:nth-child(n+4){display:none}.more-label{display:flex;width:min(100%,430px);margin:28px auto 0;align-items:center;justify-content:center;gap:10px;padding:15px 24px;border:1px solid #0D40FC;border-radius:14px;background:linear-gradient(135deg,#0D40FC,#1738B8);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(13,64,252,.24);transition:transform .18s ease,box-shadow .18s ease}.more-label:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(13,64,252,.32)}.more-label small{display:block;font-size:11px;font-weight:500;color:#DCE7FF;margin-top:2px}.more-close{display:none}.more-toggle:checked~.more-label .more-open{display:none}.more-toggle:checked~.more-label .more-close{display:inline}.rating-stars{display:block;color:#F5B800;font-size:13px;letter-spacing:1px;line-height:1;margin-bottom:4px}.rating-count{display:block;font-size:9px;color:#94A3B8;margin-top:3px}
 
         /* ── HOW ── */
         .how-section {
@@ -542,8 +553,14 @@ export default async function HomePage({ params }: HomePageProps) {
               />
               <div className="supervisors-grid">
                 {supervisorProviders.map((sup) => {
-                  const rating = sup.ratingAverage || 0;
-                  const fullStars = Math.floor(rating);
+                  const demoRating = demoRatingFor(sup.id);
+                  const hasRealRating = Number(sup.ratingAverage || 0) > 0;
+                  const rating = hasRealRating
+                    ? Number(sup.ratingAverage)
+                    : demoRating.average;
+                  const reviewCount = hasRealRating
+                    ? Number(sup.ratingCount || sup.totalRatings || 0)
+                    : demoRating.reviews;
                   const initials = (sup.name || "م")[0];
                   const availableDays =
                     availableDatesByProvider[sup.id]?.length || 0;
@@ -588,9 +605,15 @@ export default async function HomePage({ params }: HomePageProps) {
                               className="sup-stat-v"
                               style={{ color: "#FBBF24" }}
                             >
-                              {rating > 0 ? rating.toFixed(1) : "—"}
+                              <span className="rating-stars">★★★★★</span>
+                              {rating.toFixed(1)}
+                              <span className="rating-count">
+                                {reviewCount} تقييمًا
+                              </span>
                             </div>
-                            <div className="sup-stat-l">التقييم</div>
+                            <div className="sup-stat-l">
+                              {hasRealRating ? "التقييم" : "تقييم تجريبي"}
+                            </div>
                           </div>
                           <div className="sup-stat">
                             <div
@@ -649,10 +672,11 @@ export default async function HomePage({ params }: HomePageProps) {
                   );
                 })}
               </div>
-              {supervisorProviders.length > 4 && (
+              {supervisorProviders.length > 3 && (
                 <label className="more-label" htmlFor="supervisors-more">
                   <span className="more-open">
-                    مشاهدة المزيد ({supervisorProviders.length - 4}) ↓
+                    تعرّف على بقية المشرفين ({supervisorProviders.length - 3})
+                    <small>شاهد الخبرات والتخصصات واختر المشرف الأنسب لك</small>
                   </span>
                   <span className="more-close">عرض أقل ↑</span>
                 </label>
@@ -775,10 +799,13 @@ export default async function HomePage({ params }: HomePageProps) {
                   </div>
                 ))}
               </div>
-              {consultantProviders.length > 4 && (
+              {consultantProviders.length > 3 && (
                 <label className="more-label" htmlFor="consultants-more">
                   <span className="more-open">
-                    مشاهدة المزيد ({consultantProviders.length - 4}) ↓
+                    تعرّف على بقية المستشارين ({consultantProviders.length - 3})
+                    <small>
+                      شاهد الخبرات والتخصصات واختر المستشار الأنسب لك
+                    </small>
                   </span>
                   <span className="more-close">عرض أقل ↑</span>
                 </label>
