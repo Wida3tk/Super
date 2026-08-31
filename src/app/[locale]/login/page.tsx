@@ -1,17 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 
 export default function LoginPage() {
-  const [portal, setPortal] = useState<"trainee" | "provider">("trainee");
+  const [portal, setPortal] = useState<"trainee" | "provider" | "admin">(
+    "trainee",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("portal") === "admin") {
+      setPortal("admin");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,30 +180,38 @@ export default function LoginPage() {
         <div className="page-right">
           <div className="login-box">
             <div className="login-welcome">
-              <h1>تسجيل الدخول</h1>
-              <p>اختر نوع حسابك ثم أدخل بيانات الدخول</p>
+              <h1>{portal === "admin" ? "دخول الإدارة" : "تسجيل الدخول"}</h1>
+              <p>
+                {portal === "admin"
+                  ? "أدخل بيانات حساب الإدارة للوصول إلى لوحة التحكم"
+                  : "اختر نوع حسابك ثم أدخل بيانات الدخول"}
+              </p>
             </div>
 
-            <div className="portal-picker" aria-label="نوع الحساب">
-              <button
-                type="button"
-                className={`portal-option ${portal === "trainee" ? "active" : ""}`}
-                onClick={() => setPortal("trainee")}
-              >
-                حساب المتدرب
-              </button>
-              <button
-                type="button"
-                className={`portal-option ${portal === "provider" ? "active" : ""}`}
-                onClick={() => setPortal("provider")}
-              >
-                المشرف أو المستشار
-              </button>
-            </div>
+            {portal !== "admin" && (
+              <div className="portal-picker" aria-label="نوع الحساب">
+                <button
+                  type="button"
+                  className={`portal-option ${portal === "trainee" ? "active" : ""}`}
+                  onClick={() => setPortal("trainee")}
+                >
+                  حساب المتدرب
+                </button>
+                <button
+                  type="button"
+                  className={`portal-option ${portal === "provider" ? "active" : ""}`}
+                  onClick={() => setPortal("provider")}
+                >
+                  المشرف أو المستشار
+                </button>
+              </div>
+            )}
             <p className="portal-hint">
-              {portal === "trainee"
-                ? "لمتابعة الساعات والخطة الإشرافية والمواعيد."
-                : "لإدارة المتدربين والجلسات والمواعيد المتاحة."}
+              {portal === "admin"
+                ? "هذه الصفحة مخصصة لإدارة منصة سلوكيرا."
+                : portal === "trainee"
+                  ? "لمتابعة الساعات والخطة الإشرافية والمواعيد."
+                  : "لإدارة المتدربين والجلسات والمواعيد المتاحة."}
             </p>
 
             <form onSubmit={handleLogin}>
