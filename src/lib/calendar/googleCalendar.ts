@@ -4,10 +4,12 @@
 import { google } from "googleapis";
 
 function getCalendarClient() {
+  const organizerEmail = process.env.GOOGLE_CALENDAR_ORGANIZER_EMAIL;
   const auth = new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     scopes: ["https://www.googleapis.com/auth/calendar"],
+    subject: organizerEmail,
   });
 
   return google.calendar({ version: "v3", auth });
