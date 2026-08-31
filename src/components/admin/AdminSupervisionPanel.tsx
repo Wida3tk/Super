@@ -337,7 +337,7 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
                   style={{ fontSize: 11, color: COLORS.gray500, marginTop: 2 }}
                 >
                   {l === "QASP-S"
-                    ? "1500 ساعة خبرة · 50 ساعة إشراف"
+                    ? "1000 أو 1500 ساعة خبرة · 50 ساعة إشراف"
                     : "2000 ساعة خبرة · 100 ساعة إشراف"}
                 </div>
               </div>

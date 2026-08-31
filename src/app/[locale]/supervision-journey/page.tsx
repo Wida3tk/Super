@@ -141,7 +141,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
 
       <div className="stats">
         <div className="stat">
-          <strong>1500 أو 2000</strong>
+          <strong>1000 أو 1500 أو 2000</strong>
           <span>ساعة خبرة ميدانية حسب الرخصة</span>
         </div>
         <div className="stat">
@@ -178,11 +178,11 @@ export default async function SupervisionJourneyPage({ params }: Props) {
       >
         <label className="path-tab" htmlFor="path-assistant">
           <strong>مساعد محلل سلوك</strong>
-          <span>خطة 12 شهرًا</span>
+          <span>تقسيط حتى 12 دفعة</span>
         </label>
         <label className="path-tab" htmlFor="path-analyst">
           <strong>محلل سلوك</strong>
-          <span>خطة 18 شهرًا</span>
+          <span>تقسيط حتى 18 دفعة</span>
         </label>
       </div>
 
@@ -198,12 +198,12 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         <div className="path-panel assistant-panel">
           <article className="path-card">
             <span className="path-badge">لحملة البكالوريوس</span>
-            <span className="duration-chip">12 شهرًا</span>
+            <span className="duration-chip">حتى 12 دفعة</span>
             <h3>رخصة مساعد محلل سلوك</h3>
             <div className="path-code">QASP-S</div>
             <div className="path-numbers">
               <div className="path-number">
-                <strong>1500</strong>
+                <strong>1000 أو 1500</strong>
                 <span>ساعة خبرة ميدانية</span>
               </div>
               <div className="path-number">
