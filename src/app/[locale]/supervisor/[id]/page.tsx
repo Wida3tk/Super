@@ -82,7 +82,12 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
       ? "consultation"
       : "initial_interview";
 
-  const rating = supervisor?.ratingAverage || 0;
+  const reviewAverage = reviews.length
+    ? reviews.reduce((total, review) => total + Number(review.rating || 0), 0) /
+      reviews.length
+    : 0;
+  const rating = Number(supervisor?.ratingAverage || reviewAverage || 0);
+  const ratingCount = Number(supervisor?.ratingCount || reviews.length || 0);
   const initials = (supervisor?.name || "م")[0];
   const seats = supervisor?.availableSeats ?? 0;
   const specialization =
@@ -218,57 +223,48 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                       {"☆".repeat(5 - Math.floor(rating))}
                     </span>
                     <span className="rating-num">{rating.toFixed(1)}</span>
-                    <span className="rating-count">
-                      ({reviews.length} تقييم)
-                    </span>
+                    <span className="rating-count">({ratingCount} تقييم)</span>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="profile-body">
-              <div className="kpis">
-                <div className="kpi">
-                  <div className="kpi-icon">📚</div>
-                  <div className="kpi-val">
-                    {supervisor?.totalSessions ?? 0}
+              {!supervisor?.profileOnly && (
+                <div className="kpis">
+                  <div className="kpi">
+                    <div className="kpi-icon">⭐</div>
+                    <div className="kpi-val" style={{ color: "#F59E0B" }}>
+                      {rating > 0 ? rating.toFixed(1) : "جديد"}
+                    </div>
+                    <div className="kpi-lbl">تقييم العملاء</div>
                   </div>
-                  <div className="kpi-lbl">إجمالي الجلسات</div>
-                </div>
-                <div className="kpi">
-                  <div className="kpi-icon">⭐</div>
-                  <div className="kpi-val" style={{ color: "#F59E0B" }}>
-                    {rating > 0 ? rating.toFixed(1) : "—"}
+                  <div className="kpi">
+                    <div className="kpi-icon">📅</div>
+                    <div className="kpi-val" style={{ color: "#10B981" }}>
+                      {availableDates.length}
+                    </div>
+                    <div className="kpi-lbl">أيام متاحة</div>
                   </div>
-                  <div className="kpi-lbl">متوسط التقييم</div>
-                </div>
-                <div className="kpi">
-                  <div className="kpi-icon">📅</div>
-                  <div className="kpi-val" style={{ color: "#10B981" }}>
-                    {availableDates.length}
+                  <div className="kpi">
+                    <div className="kpi-icon">🪑</div>
+                    <div
+                      className="kpi-val"
+                      style={{ color: seats > 0 ? "#10B981" : "#94A3B8" }}
+                    >
+                      {seats > 0 ? seats : "قريبًا"}
+                    </div>
+                    <div className="kpi-lbl">مقاعد الحجز</div>
                   </div>
-                  <div className="kpi-lbl">أيام متاحة</div>
-                </div>
-                <div className="kpi">
-                  <div className="kpi-icon">🪑</div>
-                  <div
-                    className="kpi-val"
-                    style={{
-                      color:
-                        seats > 5
-                          ? "#10B981"
-                          : seats > 0
-                            ? "#F59E0B"
-                            : "#EF4444",
-                    }}
-                  >
-                    {supervisor?.profileOnly ? "—" : seats}
-                  </div>
-                  <div className="kpi-lbl">
-                    {supervisor?.profileOnly ? "حالة الحجز" : "مقاعد متاحة"}
+                  <div className="kpi">
+                    <div className="kpi-icon">💻</div>
+                    <div className="kpi-val" style={{ fontSize: 16 }}>
+                      {supervisor?.serviceMode || "عن بُعد"}
+                    </div>
+                    <div className="kpi-lbl">تقديم الخدمة</div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* SEATS STATUS */}
               {supervisor?.profileOnly ? (
@@ -388,7 +384,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                 <div className="section-body">
                   {reviews.length === 0 ? (
                     <div className="no-reviews">
-                      لا توجد تقييمات بعد — كن أول من يقيّم!
+                      سيتم نشر تقييمات وآراء العملاء المعتمدة هنا.
                     </div>
                   ) : (
                     reviews.map((r) => (

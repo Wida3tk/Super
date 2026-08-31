@@ -98,17 +98,6 @@ export default async function HomePage({ params }: HomePageProps) {
     (provider) => (availableDatesByProvider[provider.id]?.length || 0) > 0,
   ).length;
 
-  const demoRatingFor = (id: string) => {
-    const seed = Array.from(id).reduce(
-      (total, character) => total + character.charCodeAt(0),
-      0,
-    );
-    return {
-      average: 4.6 + (seed % 4) / 10,
-      reviews: 8 + (seed % 24),
-    };
-  };
-
   return (
     <>
       <style>{`
@@ -315,9 +304,9 @@ export default async function HomePage({ params }: HomePageProps) {
         }
         .sup-btn:hover { background: #0935d4; transform: translateY(-1px); }
         .sup-btn.unavailable{background:#F8FAFC;color:#8898AA;border:1px solid #DDE5EF;box-shadow:none;cursor:not-allowed}
-        .sup-btn.profile{background:#fff;color:#0D40FC;border:1px solid #BFD0FF;box-shadow:none}.sup-btn.profile:hover{background:#EEF4FF}
+        .sup-btn.profile{background:#fff;color:#0D40FC;border:1px solid #BFD0FF;box-shadow:none}.sup-btn.profile:hover{background:#EEF4FF}.sup-btn.profile.primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 5px 14px rgba(13,64,252,.2)}.sup-btn.profile.primary:hover{background:#062FC8}
         .availability-line{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:-6px 0 13px}.availability-line.open{color:#047857}.availability-line.closed{color:#94A3B8}.availability-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-        .more-toggle{position:absolute;opacity:0;pointer-events:none}.more-toggle:not(:checked)~.supervisors-grid .sup-card:nth-child(n+4){display:none}.more-label{display:flex;width:min(100%,430px);margin:28px auto 0;align-items:center;justify-content:center;gap:10px;padding:15px 24px;border:1px solid #0D40FC;border-radius:14px;background:linear-gradient(135deg,#0D40FC,#1738B8);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(13,64,252,.24);transition:transform .18s ease,box-shadow .18s ease}.more-label:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(13,64,252,.32)}.more-label small{display:block;font-size:11px;font-weight:500;color:#DCE7FF;margin-top:2px}.more-close{display:none}.more-toggle:checked~.more-label .more-open{display:none}.more-toggle:checked~.more-label .more-close{display:inline}.rating-stars{display:block;color:#F5B800;font-size:13px;letter-spacing:1px;line-height:1;margin-bottom:4px}.rating-count{display:block;font-size:9px;color:#94A3B8;margin-top:3px}
+        .more-toggle{position:absolute;opacity:0;pointer-events:none}.more-toggle:not(:checked)~.supervisors-grid .sup-card:nth-child(n+4){display:none}.more-label{display:flex;width:min(100%,430px);margin:28px auto 0;align-items:center;justify-content:center;gap:10px;padding:15px 24px;border:1px solid #0D40FC;border-radius:14px;background:linear-gradient(135deg,#0D40FC,#1738B8);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(13,64,252,.24);transition:transform .18s ease,box-shadow .18s ease}.more-label:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(13,64,252,.32)}.more-label small{display:block;font-size:11px;font-weight:500;color:#DCE7FF;margin-top:2px}.more-close{display:none}.more-toggle:checked~.more-label .more-open{display:none}.more-toggle:checked~.more-label .more-close{display:inline}.rating-stars{display:block;color:#F5B800;font-size:13px;letter-spacing:1px;line-height:1;margin-bottom:4px}.service-value{font-size:13px!important;line-height:1.2!important}.status-value{font-size:13px!important;line-height:1.2!important}
 
         /* ── HOW ── */
         .how-section {
@@ -553,14 +542,10 @@ export default async function HomePage({ params }: HomePageProps) {
               />
               <div className="supervisors-grid">
                 {supervisorProviders.map((sup) => {
-                  const demoRating = demoRatingFor(sup.id);
-                  const hasRealRating = Number(sup.ratingAverage || 0) > 0;
-                  const rating = hasRealRating
-                    ? Number(sup.ratingAverage)
-                    : demoRating.average;
-                  const reviewCount = hasRealRating
-                    ? Number(sup.ratingCount || sup.totalRatings || 0)
-                    : demoRating.reviews;
+                  const rating = Number(sup.ratingAverage || 0);
+                  const credentialLabel = String(
+                    sup.credentialType || sup.credential || "موثّق",
+                  );
                   const initials = (sup.name || "م")[0];
                   const availableDays =
                     availableDatesByProvider[sup.id]?.length || 0;
@@ -595,52 +580,52 @@ export default async function HomePage({ params }: HomePageProps) {
 
                         <div className="sup-stats">
                           <div className="sup-stat">
-                            <div className="sup-stat-v">
-                              {sup.totalSessions ?? 0}
+                            <div className="sup-stat-v service-value">
+                              {credentialLabel.length > 20
+                                ? "ملف مهني موثّق"
+                                : credentialLabel}
                             </div>
-                            <div className="sup-stat-l">الجلسات</div>
+                            <div className="sup-stat-l">الاعتماد المهني</div>
+                          </div>
+                          <div className="sup-stat">
+                            <div className="sup-stat-v service-value">
+                              {sup.serviceMode || "عن بُعد"}
+                            </div>
+                            <div className="sup-stat-l">تقديم الخدمة</div>
                           </div>
                           <div className="sup-stat">
                             <div
-                              className="sup-stat-v"
-                              style={{ color: "#FBBF24" }}
+                              className="sup-stat-v status-value"
+                              style={{ color: canBook ? "#10B981" : "#0D40FC" }}
                             >
-                              <span className="rating-stars">★★★★★</span>
-                              {rating.toFixed(1)}
-                              <span className="rating-count">
-                                {reviewCount} تقييمًا
-                              </span>
+                              {canBook ? "متاح الآن" : "قريبًا"}
                             </div>
-                            <div className="sup-stat-l">
-                              {hasRealRating ? "التقييم" : "تقييم تجريبي"}
-                            </div>
-                          </div>
-                          <div className="sup-stat">
-                            <div
-                              className="sup-stat-v"
-                              style={{ color: "#10B981" }}
-                            >
-                              {sup.availableSeats ?? "—"}
-                            </div>
-                            <div className="sup-stat-l">المقاعد</div>
+                            <div className="sup-stat-l">حالة الحجز</div>
                           </div>
                         </div>
+
+                        {rating > 0 && (
+                          <div className="availability-line open">
+                            <span className="rating-stars">★★★★★</span>
+                            <b>{rating.toFixed(1)}</b> من تقييمات العملاء
+                          </div>
+                        )}
 
                         <div
                           className={`availability-line ${canBook ? "open" : "closed"}`}
                         >
                           <span className="availability-dot" />
                           {canBook
-                            ? `${availableDays} أيام متاحة للحجز`
+                            ? `${availableDays} أيام متاحة — اختر موعدك الآن`
                             : availableDays === 0
-                              ? "بانتظار إضافة مواعيد جديدة"
+                              ? "تصفّح الملف التعريفي والمواعيد ستُضاف قريبًا"
                               : "المقاعد ممتلئة حاليًا"}
                         </div>
 
                         <div className="sup-actions">
                           <Link
                             href={`/${locale}/supervisor/${sup.id}?type=${sup.accountType === "consultant" ? "consultation" : "initial_interview"}`}
-                            className="sup-btn profile"
+                            className={`sup-btn profile ${!canBook ? "primary" : ""}`}
                           >
                             عرض الملف التعريفي
                           </Link>
@@ -774,7 +759,7 @@ export default async function HomePage({ params }: HomePageProps) {
                       <div className="sup-actions">
                         <Link
                           href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
-                          className="sup-btn profile"
+                          className={`sup-btn profile ${(availableDatesByProvider[consultant.id]?.length || 0) === 0 ? "primary" : ""}`}
                         >
                           عرض الملف التعريفي
                         </Link>
