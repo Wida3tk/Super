@@ -304,7 +304,9 @@ export default async function HomePage({ params }: HomePageProps) {
         }
         .sup-btn:hover { background: #0935d4; transform: translateY(-1px); }
         .sup-btn.unavailable{background:#F8FAFC;color:#8898AA;border:1px solid #DDE5EF;box-shadow:none;cursor:not-allowed}
+        .sup-btn.profile{background:#fff;color:#0D40FC;border:1px solid #BFD0FF;box-shadow:none}.sup-btn.profile:hover{background:#EEF4FF}
         .availability-line{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:-6px 0 13px}.availability-line.open{color:#047857}.availability-line.closed{color:#94A3B8}.availability-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+        .more-toggle{position:absolute;opacity:0;pointer-events:none}.more-toggle:not(:checked)~.supervisors-grid .sup-card:nth-child(n+5){display:none}.more-label{display:flex;width:max-content;margin:24px auto 0;align-items:center;padding:11px 20px;border:1px solid #C7D4E8;border-radius:11px;background:#fff;color:#0D40FC;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(1,20,66,.07)}.more-label:hover{background:#EEF4FF}.more-close{display:none}.more-toggle:checked~.more-label .more-open{display:none}.more-toggle:checked~.more-label .more-close{display:inline}
 
         /* ── HOW ── */
         .how-section {
@@ -532,112 +534,130 @@ export default async function HomePage({ params }: HomePageProps) {
               </div>
             </div>
           ) : (
-            <div className="supervisors-grid">
-              {supervisorProviders.map((sup) => {
-                const rating = sup.ratingAverage || 0;
-                const fullStars = Math.floor(rating);
-                const initials = (sup.name || "م")[0];
-                const availableDays =
-                  availableDatesByProvider[sup.id]?.length || 0;
-                const canBook =
-                  availableDays > 0 && (sup.availableSeats ?? 0) > 0;
+            <>
+              <input
+                id="supervisors-more"
+                className="more-toggle"
+                type="checkbox"
+              />
+              <div className="supervisors-grid">
+                {supervisorProviders.map((sup) => {
+                  const rating = sup.ratingAverage || 0;
+                  const fullStars = Math.floor(rating);
+                  const initials = (sup.name || "م")[0];
+                  const availableDays =
+                    availableDatesByProvider[sup.id]?.length || 0;
+                  const canBook =
+                    availableDays > 0 && (sup.availableSeats ?? 0) > 0;
 
-                return (
-                  <div key={sup.id} className="sup-card">
-                    <div className="sup-card-top">
-                      <div className="sup-avatar-wrap">
-                        {sup.photo ? (
-                          <img src={sup.photo} alt={sup.name} />
-                        ) : (
-                          initials
-                        )}
-                      </div>
-                      <div className="sup-card-name-area">
-                        <div className="sup-name">{sup.name}</div>
-                        <span className="sup-spec">
-                          {sup.accountType === "consultant"
-                            ? "مستشار تحليل سلوك"
-                            : "مشرف أكاديمي"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="sup-card-body">
-                      <p className="sup-bio">
-                        {sup.bio ||
-                          "مشرف أكاديمي متخصص في تحليل السلوك التطبيقي."}
-                      </p>
-
-                      <div className="sup-stats">
-                        <div className="sup-stat">
-                          <div className="sup-stat-v">
-                            {sup.totalSessions ?? 0}
-                          </div>
-                          <div className="sup-stat-l">الجلسات</div>
+                  return (
+                    <div key={sup.id} className="sup-card">
+                      <div className="sup-card-top">
+                        <div className="sup-avatar-wrap">
+                          {sup.photo ? (
+                            <img src={sup.photo} alt={sup.name} />
+                          ) : (
+                            initials
+                          )}
                         </div>
-                        <div className="sup-stat">
-                          <div
-                            className="sup-stat-v"
-                            style={{ color: "#FBBF24" }}
-                          >
-                            {rating > 0 ? rating.toFixed(1) : "—"}
-                          </div>
-                          <div className="sup-stat-l">التقييم</div>
-                        </div>
-                        <div className="sup-stat">
-                          <div
-                            className="sup-stat-v"
-                            style={{ color: "#10B981" }}
-                          >
-                            {sup.availableSeats ?? "—"}
-                          </div>
-                          <div className="sup-stat-l">المقاعد</div>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`availability-line ${canBook ? "open" : "closed"}`}
-                      >
-                        <span className="availability-dot" />
-                        {canBook
-                          ? `${availableDays} أيام متاحة للحجز`
-                          : availableDays === 0
-                            ? "بانتظار إضافة مواعيد جديدة"
-                            : "المقاعد ممتلئة حاليًا"}
-                      </div>
-
-                      <div
-                        className="sup-actions"
-                        style={{ gridTemplateColumns: "1fr" }}
-                      >
-                        {!canBook ? (
-                          <span
-                            className="sup-btn unavailable"
-                            aria-disabled="true"
-                          >
-                            لا توجد مواعيد متاحة
+                        <div className="sup-card-name-area">
+                          <div className="sup-name">{sup.name}</div>
+                          <span className="sup-spec">
+                            {sup.accountType === "consultant"
+                              ? "مستشار تحليل سلوك"
+                              : "مشرف أكاديمي"}
                           </span>
-                        ) : sup.accountType === "consultant" ? (
+                        </div>
+                      </div>
+
+                      <div className="sup-card-body">
+                        <p className="sup-bio">
+                          {sup.bio ||
+                            "مشرف أكاديمي متخصص في تحليل السلوك التطبيقي."}
+                        </p>
+
+                        <div className="sup-stats">
+                          <div className="sup-stat">
+                            <div className="sup-stat-v">
+                              {sup.totalSessions ?? 0}
+                            </div>
+                            <div className="sup-stat-l">الجلسات</div>
+                          </div>
+                          <div className="sup-stat">
+                            <div
+                              className="sup-stat-v"
+                              style={{ color: "#FBBF24" }}
+                            >
+                              {rating > 0 ? rating.toFixed(1) : "—"}
+                            </div>
+                            <div className="sup-stat-l">التقييم</div>
+                          </div>
+                          <div className="sup-stat">
+                            <div
+                              className="sup-stat-v"
+                              style={{ color: "#10B981" }}
+                            >
+                              {sup.availableSeats ?? "—"}
+                            </div>
+                            <div className="sup-stat-l">المقاعد</div>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`availability-line ${canBook ? "open" : "closed"}`}
+                        >
+                          <span className="availability-dot" />
+                          {canBook
+                            ? `${availableDays} أيام متاحة للحجز`
+                            : availableDays === 0
+                              ? "بانتظار إضافة مواعيد جديدة"
+                              : "المقاعد ممتلئة حاليًا"}
+                        </div>
+
+                        <div className="sup-actions">
                           <Link
-                            href={`/${locale}/supervisor/${sup.id}?type=consultation`}
-                            className="sup-btn consult"
+                            href={`/${locale}/supervisor/${sup.id}?type=${sup.accountType === "consultant" ? "consultation" : "initial_interview"}`}
+                            className="sup-btn profile"
                           >
-                            احجز استشارة
+                            عرض الملف التعريفي
                           </Link>
-                        ) : (
-                          <Link
-                            href={`/${locale}/supervisor/${sup.id}?type=initial_interview`}
-                            className="sup-btn"
-                          >
-                            احجز مقابلة أولية
-                          </Link>
-                        )}
+                          {!canBook ? (
+                            <span
+                              className="sup-btn unavailable"
+                              aria-disabled="true"
+                            >
+                              لا توجد مواعيد متاحة
+                            </span>
+                          ) : sup.accountType === "consultant" ? (
+                            <Link
+                              href={`/${locale}/supervisor/${sup.id}?type=consultation`}
+                              className="sup-btn consult"
+                            >
+                              احجز استشارة
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/${locale}/supervisor/${sup.id}?type=initial_interview`}
+                              className="sup-btn"
+                            >
+                              احجز مقابلة أولية
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {supervisorProviders.length > 4 && (
+                <label className="more-label" htmlFor="supervisors-more">
+                  <span className="more-open">
+                    مشاهدة المزيد ({supervisorProviders.length - 4}) ↓
+                  </span>
+                  <span className="more-close">عرض أقل ↑</span>
+                </label>
+              )}
+            </>
           )}
         </section>
 
@@ -672,75 +692,98 @@ export default async function HomePage({ params }: HomePageProps) {
               <div className="empty-txt">لا يوجد مستشارون متاحون حاليًا</div>
             </div>
           ) : (
-            <div className="supervisors-grid">
-              {consultantProviders.map((consultant) => (
-                <div key={consultant.id} className="sup-card">
-                  <div className="sup-card-top">
-                    <div className="sup-avatar-wrap">
-                      {consultant.photo ? (
-                        <img src={consultant.photo} alt={consultant.name} />
-                      ) : (
-                        (consultant.name || "م")[0]
-                      )}
-                    </div>
-                    <div className="sup-card-name-area">
-                      <div className="sup-name">{consultant.name}</div>
-                      <span className="sup-spec">مستشار مهني</span>
-                    </div>
-                  </div>
-                  <div className="sup-card-body">
-                    <p className="sup-bio">
-                      {consultant.bio ||
-                        "مستشار متخصص يقدم استشارات مهنية في تحليل السلوك وإدارة السلوك التنظيمي وفق طبيعة الاحتياج."}
-                    </p>
-                    <div className="sup-stats">
-                      <div className="sup-stat">
-                        <div className="sup-stat-v">
-                          {consultant.totalSessions ?? 0}
-                        </div>
-                        <div className="sup-stat-l">الاستشارات</div>
+            <>
+              <input
+                id="consultants-more"
+                className="more-toggle"
+                type="checkbox"
+              />
+              <div className="supervisors-grid">
+                {consultantProviders.map((consultant) => (
+                  <div key={consultant.id} className="sup-card">
+                    <div className="sup-card-top">
+                      <div className="sup-avatar-wrap">
+                        {consultant.photo ? (
+                          <img src={consultant.photo} alt={consultant.name} />
+                        ) : (
+                          (consultant.name || "م")[0]
+                        )}
                       </div>
-                      <div className="sup-stat">
-                        <div
-                          className="sup-stat-v"
-                          style={{ color: "#FBBF24" }}
+                      <div className="sup-card-name-area">
+                        <div className="sup-name">{consultant.name}</div>
+                        <span className="sup-spec">مستشار مهني</span>
+                      </div>
+                    </div>
+                    <div className="sup-card-body">
+                      <p className="sup-bio">
+                        {consultant.bio ||
+                          "مستشار متخصص يقدم استشارات مهنية في تحليل السلوك وإدارة السلوك التنظيمي وفق طبيعة الاحتياج."}
+                      </p>
+                      <div className="sup-stats">
+                        <div className="sup-stat">
+                          <div className="sup-stat-v">
+                            {consultant.totalSessions ?? 0}
+                          </div>
+                          <div className="sup-stat-l">الاستشارات</div>
+                        </div>
+                        <div className="sup-stat">
+                          <div
+                            className="sup-stat-v"
+                            style={{ color: "#FBBF24" }}
+                          >
+                            {consultant.ratingAverage
+                              ? consultant.ratingAverage.toFixed(1)
+                              : "—"}
+                          </div>
+                          <div className="sup-stat-l">التقييم</div>
+                        </div>
+                      </div>
+                      <div
+                        className={`availability-line ${(availableDatesByProvider[consultant.id]?.length || 0) > 0 ? "open" : "closed"}`}
+                      >
+                        <span className="availability-dot" />
+                        {(availableDatesByProvider[consultant.id]?.length ||
+                          0) > 0
+                          ? `${availableDatesByProvider[consultant.id].length} أيام متاحة للحجز`
+                          : "بانتظار إضافة مواعيد جديدة"}
+                      </div>
+                      <div className="sup-actions">
+                        <Link
+                          href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
+                          className="sup-btn profile"
                         >
-                          {consultant.ratingAverage
-                            ? consultant.ratingAverage.toFixed(1)
-                            : "—"}
-                        </div>
-                        <div className="sup-stat-l">التقييم</div>
+                          عرض الملف التعريفي
+                        </Link>
+                        {(availableDatesByProvider[consultant.id]?.length ||
+                          0) > 0 ? (
+                          <Link
+                            href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
+                            className="sup-btn consult"
+                          >
+                            احجز استشارة
+                          </Link>
+                        ) : (
+                          <span
+                            className="sup-btn unavailable"
+                            aria-disabled="true"
+                          >
+                            لا توجد مواعيد متاحة
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div
-                      className={`availability-line ${(availableDatesByProvider[consultant.id]?.length || 0) > 0 ? "open" : "closed"}`}
-                    >
-                      <span className="availability-dot" />
-                      {(availableDatesByProvider[consultant.id]?.length || 0) >
-                      0
-                        ? `${availableDatesByProvider[consultant.id].length} أيام متاحة للحجز`
-                        : "بانتظار إضافة مواعيد جديدة"}
-                    </div>
-                    {(availableDatesByProvider[consultant.id]?.length || 0) >
-                    0 ? (
-                      <Link
-                        href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
-                        className="sup-btn consult"
-                      >
-                        احجز استشارة
-                      </Link>
-                    ) : (
-                      <span
-                        className="sup-btn unavailable"
-                        aria-disabled="true"
-                      >
-                        لا توجد مواعيد متاحة
-                      </span>
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {consultantProviders.length > 4 && (
+                <label className="more-label" htmlFor="consultants-more">
+                  <span className="more-open">
+                    مشاهدة المزيد ({consultantProviders.length - 4}) ↓
+                  </span>
+                  <span className="more-close">عرض أقل ↑</span>
+                </label>
+              )}
+            </>
           )}
         </section>
 
