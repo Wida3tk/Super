@@ -262,14 +262,27 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                             : "#EF4444",
                     }}
                   >
-                    {seats}
+                    {supervisor?.profileOnly ? "—" : seats}
                   </div>
-                  <div className="kpi-lbl">مقاعد متاحة</div>
+                  <div className="kpi-lbl">
+                    {supervisor?.profileOnly ? "حالة الحجز" : "مقاعد متاحة"}
+                  </div>
                 </div>
               </div>
 
               {/* SEATS STATUS */}
-              {seats > 5 ? (
+              {supervisor?.profileOnly ? (
+                <div
+                  className="seats-badge"
+                  style={{
+                    background: "#EEF4FF",
+                    border: "1px solid #C7D7FE",
+                    color: "#0D40FC",
+                  }}
+                >
+                  ◌ يتم تجهيز الحجز والمواعيد
+                </div>
+              ) : seats > 5 ? (
                 <div className="seats-badge seats-ok">
                   <div className="seats-dot seats-dot-ok" />
                   {seats} مقعد متاح — الحجز مفتوح
