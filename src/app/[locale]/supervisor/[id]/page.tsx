@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import BookingSection from "@/components/booking/BookingSection";
 import Link from "next/link";
 import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
+import { getProviderProfile } from "@/data/providerProfiles";
 
 interface Props {
   params: Promise<{ locale: string; id: string }>;
@@ -61,7 +62,20 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
       reviews = [];
     }
   } catch (e) {
-    if (!supervisor) notFound();
+    if (!supervisor) {
+      const profile = getProviderProfile(id);
+      if (!profile) notFound();
+      supervisor = {
+        ...profile,
+        isActive: true,
+        accountType: "supervisor",
+        profileOnly: true,
+        specialization: profile.role,
+        credentialType: profile.credential,
+        availableSeats: 0,
+        totalSessions: 0,
+      };
+    }
   }
   bookingType =
     supervisor?.accountType === "consultant"
@@ -130,6 +144,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
         .seats-dot-low{background:#d97706;}
 
         .bio-text{font-size:14px;color:var(--gray-600);line-height:1.8;margin-bottom:16px;}
+        .profile-facts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}.profile-fact{background:#F8FAFC;border:1px solid #E5EAF1;border-radius:10px;padding:8px 11px;font-size:11px;color:#475569}.profile-fact b{color:#001442;margin-left:4px}
 
         .avail-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#059669;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;}
         .avail-dot{width:7px;height:7px;border-radius:50%;background:#059669;animation:pulse 1.5s infinite;}
@@ -152,6 +167,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
         .review-stars{color:#FBBF24;font-size:13px;}
         .review-text{font-size:13px;color:var(--gray-600);line-height:1.65;}
         .no-reviews{text-align:center;color:var(--gray-400);font-size:13px;padding:16px 0;}
+        .profile-copy{display:grid;gap:10px}.profile-copy p{font-size:13px;color:#475569;line-height:1.9}.interest-list{display:grid;gap:8px;list-style:none}.interest-list li{position:relative;padding:9px 34px 9px 11px;background:#F8FAFC;border:1px solid #EEF2F7;border-radius:10px;font-size:12px;color:#334155;line-height:1.6}.interest-list li:before{content:'✓';position:absolute;right:11px;top:9px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#E6F1FF;color:#0D40FC;font-size:9px;font-weight:900}
 
         /* BOOKING CARD */
         .booking-card{background:#fff;border-radius:20px;border:1px solid var(--gray-100);box-shadow:0 4px 16px rgba(1,20,66,0.08);overflow:hidden;position:sticky;top:80px;}
@@ -269,7 +285,30 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                 </div>
               )}
 
-              {supervisor?.bio && <p className="bio-text">{supervisor.bio}</p>}
+              {supervisor?.bio && !supervisor?.profileOnly && (
+                <p className="bio-text">{supervisor.bio}</p>
+              )}
+
+              {supervisor?.profileOnly && (
+                <div className="profile-facts">
+                  <span className="profile-fact">
+                    <b>الاعتماد:</b>
+                    {supervisor.credential}
+                  </span>
+                  <span className="profile-fact">
+                    <b>اللغات:</b>
+                    {supervisor.languages.join(" / ")}
+                  </span>
+                  <span className="profile-fact">
+                    <b>الخبرة:</b>
+                    {supervisor.experience}
+                  </span>
+                  <span className="profile-fact">
+                    <b>تقديم الخدمة:</b>
+                    {supervisor.serviceMode}
+                  </span>
+                </div>
+              )}
 
               {availableDates.length > 0 && (
                 <div className="avail-badge">
@@ -283,6 +322,51 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
           <div className="main-grid">
             {/* LEFT: Reviews */}
             <div>
+              {supervisor?.profileOnly && (
+                <>
+                  <div className="section-card">
+                    <div className="section-head">
+                      <div className="section-icon">◈</div>
+                      <span className="section-title">نبذة مهنية</span>
+                    </div>
+                    <div className="section-body profile-copy">
+                      {supervisor.bio.map((paragraph: string) => (
+                        <p key={paragraph}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </div>
+                  {supervisor.highlights?.length > 0 && (
+                    <div className="section-card">
+                      <div className="section-head">
+                        <div className="section-icon">✦</div>
+                        <span className="section-title">الخبرات المهنية</span>
+                      </div>
+                      <div className="section-body">
+                        <ul className="interest-list">
+                          {supervisor.highlights.map((item: string) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  <div className="section-card">
+                    <div className="section-head">
+                      <div className="section-icon">◎</div>
+                      <span className="section-title">
+                        الاهتمامات العلمية والمهنية
+                      </span>
+                    </div>
+                    <div className="section-body">
+                      <ul className="interest-list">
+                        {supervisor.interests.map((item: string) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="section-card">
                 <div className="section-head">
                   <div className="section-icon">💬</div>
@@ -331,7 +415,29 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                 </div>
               </div>
               <div className="booking-body">
-                {seats === 0 && bookingType === "initial_interview" ? (
+                {supervisor?.profileOnly ? (
+                  <div style={{ textAlign: "center", padding: "32px 16px" }}>
+                    <div style={{ fontSize: 36, marginBottom: 12 }}>📅</div>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: "#001442",
+                        marginBottom: 8,
+                      }}
+                    >
+                      الحجز سيفتح قريبًا
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#8898AA",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      يتم تجهيز حساب المشرف ومواعيده المتاحة.
+                    </div>
+                  </div>
+                ) : seats === 0 && bookingType === "initial_interview" ? (
                   <div style={{ textAlign: "center", padding: "32px 16px" }}>
                     <div style={{ fontSize: 36, marginBottom: 12 }}>🪑</div>
                     <div

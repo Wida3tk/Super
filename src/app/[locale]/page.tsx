@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
+import { providerProfiles } from "@/data/providerProfiles";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,28 @@ export default async function HomePage({ params }: HomePageProps) {
   } catch (error) {
     supervisors = [];
   }
+
+  const normalizeName = (name: string) =>
+    name.replace(/[.،\sـ]/g, "").toLowerCase();
+  const storedNames = new Set(
+    supervisors.map((provider) => normalizeName(provider.name || "")),
+  );
+  supervisors = [
+    ...supervisors,
+    ...providerProfiles
+      .filter((profile) => !storedNames.has(normalizeName(profile.name)))
+      .map((profile) => ({
+        ...profile,
+        isActive: true,
+        accountType: "supervisor",
+        profileOnly: true,
+        specialization: profile.role,
+        credentialType: profile.credential,
+        bio: profile.bio.join(" "),
+        availableSeats: 0,
+        totalSessions: 0,
+      })),
+  ];
 
   const siteName = cms.siteName || "سلوكيرا";
   const siteNameEn = cms.siteNameEn || "Sulukera";
