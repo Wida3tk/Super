@@ -358,6 +358,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .hero-actions{justify-content:flex-start;margin-bottom:22px}.hero-cta{margin-bottom:0}.hero-trust{display:flex;gap:16px;flex-wrap:wrap;color:var(--gray-600);font-size:12px;font-weight:600}.hero-trust span{display:inline-flex;align-items:center;gap:6px}.hero-trust span::before{content:'✓';display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#DCFCE7;color:#047857;font-size:11px;font-weight:900}
         .hero-stats{display:flex;margin-top:22px}.hero-stat{flex:1;padding:15px 12px}.portal-note{margin-top:15px;padding:0;border:0;background:transparent;text-align:right}.portal-note a{color:var(--primary);font-weight:800;text-decoration:none}
         .path-panel{background:linear-gradient(145deg,#001442 0%,#06277C 100%);border-radius:28px;padding:26px;color:#fff;box-shadow:0 24px 60px rgba(0,20,66,.22);position:relative;overflow:hidden}.path-panel::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(85,215,255,.12);left:-80px;top:-100px}.path-eyebrow{font-size:12px;color:var(--neon);font-weight:800;margin-bottom:7px;position:relative;z-index:1}.path-title{font-size:23px;font-weight:800;margin-bottom:18px;position:relative;z-index:1}.path-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative;z-index:1}.path-option{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:16px;min-height:142px}.path-option.highlight{background:#fff;color:var(--deep);border-color:#fff}.path-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--neon);background:rgba(85,215,255,.12);border-radius:20px;padding:4px 8px;margin-bottom:10px}.highlight .path-tag{color:var(--primary);background:#EEF4FF}.path-option h3{font-size:16px;margin-bottom:8px}.path-option strong{display:block;font-size:27px;line-height:1;color:var(--neon);margin-bottom:5px}.highlight strong{color:var(--primary)}.path-option p{font-size:11px;line-height:1.55;color:rgba(255,255,255,.67)}.highlight p{color:var(--gray-600)}
+        .payment-note{display:inline-flex;margin-top:10px;padding:5px 9px;border-radius:9px;background:rgba(85,215,255,.12);color:var(--neon);font-size:10px;font-weight:800}.highlight .payment-note{background:#EEF4FF;color:var(--primary)}.duration-note{margin-top:14px;font-size:10px;line-height:1.6;color:rgba(255,255,255,.58);position:relative;z-index:1}
         .guides{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);position:relative;z-index:1}.guide-copy{font-size:12px;line-height:1.6;color:rgba(255,255,255,.75)}.guide-copy strong{display:block;color:#fff;font-size:13px}.guide-avatars{display:flex;direction:ltr}.guide-avatars img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:3px solid #09286F;margin-left:-10px;background:#fff}.guide-avatars img:last-child{margin-left:0}.services{padding-top:28px}
 
         @media(max-width:768px){
@@ -442,8 +443,8 @@ export default async function HomePage({ params }: HomePageProps) {
                   <div className="hero-stat-lbl">مشرفًا للاختيار</div>
                 </div>
                 <div className="hero-stat">
-                  <div className="hero-stat-num">12 و18</div>
-                  <div className="hero-stat-lbl">شهرًا حسب المسار</div>
+                  <div className="hero-stat-num">50 و100</div>
+                  <div className="hero-stat-lbl">ساعة إشراف مباشر</div>
                 </div>
                 <div className="hero-stat">
                   <div className="hero-stat-num">50 ر.س</div>
@@ -463,16 +464,22 @@ export default async function HomePage({ params }: HomePageProps) {
                 <div className="path-option highlight">
                   <span className="path-tag">لحملة البكالوريوس</span>
                   <h3>مساعد محلل سلوك</h3>
-                  <strong>12 شهرًا</strong>
-                  <p>1500 ساعة خبرة ميدانية و50 ساعة إشراف مباشر.</p>
+                  <strong>50 ساعة</strong>
+                  <p>إشراف مباشر ضمن مسار 1500 ساعة خبرة ميدانية.</p>
+                  <span className="payment-note">تقسيط حتى 12 دفعة</span>
                 </div>
                 <div className="path-option">
                   <span className="path-tag">للماجستير والدكتوراه</span>
                   <h3>محلل سلوك</h3>
-                  <strong>18 شهرًا</strong>
-                  <p>2000 ساعة خبرة ميدانية و100 ساعة إشراف مباشر.</p>
+                  <strong>100 ساعة</strong>
+                  <p>إشراف مباشر ضمن مسار 2000 ساعة خبرة ميدانية.</p>
+                  <span className="payment-note">تقسيط حتى 18 دفعة</span>
                 </div>
               </div>
+              <p className="duration-note">
+                عدد الدفعات لا يحدد مدة إكمال المسار؛ المدة الفعلية تعتمد على
+                تقدم المتدرب في جمع الساعات واستيفاء المتطلبات.
+              </p>
               <div className="guides">
                 <div className="guide-copy">
                   <strong>مشرفك معك حتى الرخصة</strong>
