@@ -12,13 +12,23 @@ export default async function HomePage({ params }: HomePageProps) {
 
   let supervisors: any[] = [];
   let cms: any = {};
+  const availableDatesByProvider: Record<string, string[]> = {};
 
   try {
     const { adminDb, adminStorage } = await import("@/lib/firebase/admin");
-    const [supervisorsSnap, cmsSnap] = await Promise.all([
+    const today = new Date().toISOString().slice(0, 10);
+    const [supervisorsSnap, cmsSnap, availabilitySnap] = await Promise.all([
       adminDb.collection("supervisors").get(),
       adminDb.collection("settings").doc("cms").get(),
+      adminDb.collection("availability").where("date", ">=", today).get(),
     ]);
+    availabilitySnap.docs.forEach((doc) => {
+      const slot = doc.data();
+      if (slot.isBooked || !slot.supervisorId || !slot.date) return;
+      const dates = availableDatesByProvider[slot.supervisorId] || [];
+      if (!dates.includes(slot.date)) dates.push(slot.date);
+      availableDatesByProvider[slot.supervisorId] = dates;
+    });
     supervisors = supervisorsSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((s: any) => s.isActive === true);
@@ -61,6 +71,9 @@ export default async function HomePage({ params }: HomePageProps) {
   const consultantProviders = supervisors.filter(
     (provider) => provider.accountType === "consultant",
   );
+  const bookableProviderCount = supervisors.filter(
+    (provider) => (availableDatesByProvider[provider.id]?.length || 0) > 0,
+  ).length;
 
   return (
     <>
@@ -267,6 +280,8 @@ export default async function HomePage({ params }: HomePageProps) {
           transition: all 0.18s;
         }
         .sup-btn:hover { background: #0935d4; transform: translateY(-1px); }
+        .sup-btn.unavailable{background:#F8FAFC;color:#8898AA;border:1px solid #DDE5EF;box-shadow:none;cursor:not-allowed}
+        .availability-line{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin:-6px 0 13px}.availability-line.open{color:#047857}.availability-line.closed{color:#94A3B8}.availability-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 
         /* ── HOW ── */
         .how-section {
@@ -382,15 +397,15 @@ export default async function HomePage({ params }: HomePageProps) {
               <div className="hero-stat-num">
                 {supervisors.length > 0 ? `+${supervisors.length}` : "٣+"}
               </div>
-              <div className="hero-stat-lbl">مشرف معتمد</div>
+              <div className="hero-stat-lbl">مقدم خدمة</div>
             </div>
             <div className="hero-stat">
               <div className="hero-stat-num">١٠٠٪</div>
               <div className="hero-stat-lbl">جلسات أونلاين</div>
             </div>
             <div className="hero-stat">
-              <div className="hero-stat-num">٢ دق</div>
-              <div className="hero-stat-lbl">وقت الحجز</div>
+              <div className="hero-stat-num">{bookableProviderCount}</div>
+              <div className="hero-stat-lbl">متاحون للحجز الآن</div>
             </div>
           </div>
           <div className="portal-note">
@@ -473,7 +488,7 @@ export default async function HomePage({ params }: HomePageProps) {
             <div className="section-title-wrap">
               <div className="section-line" />
               <div>
-                <div className="section-title">المشرفون المتاحون</div>
+                <div className="section-title">المشرفون</div>
                 <div className="section-sub">
                   اختر مشرفًا لحجز المقابلة الأولية وبدء مسار الإشراف
                 </div>
@@ -499,6 +514,10 @@ export default async function HomePage({ params }: HomePageProps) {
                 const rating = sup.ratingAverage || 0;
                 const fullStars = Math.floor(rating);
                 const initials = (sup.name || "م")[0];
+                const availableDays =
+                  availableDatesByProvider[sup.id]?.length || 0;
+                const canBook =
+                  availableDays > 0 && (sup.availableSeats ?? 0) > 0;
 
                 return (
                   <div key={sup.id} className="sup-card">
@@ -554,10 +573,28 @@ export default async function HomePage({ params }: HomePageProps) {
                       </div>
 
                       <div
+                        className={`availability-line ${canBook ? "open" : "closed"}`}
+                      >
+                        <span className="availability-dot" />
+                        {canBook
+                          ? `${availableDays} أيام متاحة للحجز`
+                          : availableDays === 0
+                            ? "بانتظار إضافة مواعيد جديدة"
+                            : "المقاعد ممتلئة حاليًا"}
+                      </div>
+
+                      <div
                         className="sup-actions"
                         style={{ gridTemplateColumns: "1fr" }}
                       >
-                        {sup.accountType === "consultant" ? (
+                        {!canBook ? (
+                          <span
+                            className="sup-btn unavailable"
+                            aria-disabled="true"
+                          >
+                            لا توجد مواعيد متاحة
+                          </span>
+                        ) : sup.accountType === "consultant" ? (
                           <Link
                             href={`/${locale}/supervisor/${sup.id}?type=consultation`}
                             className="sup-btn consult"
@@ -652,12 +689,31 @@ export default async function HomePage({ params }: HomePageProps) {
                         <div className="sup-stat-l">التقييم</div>
                       </div>
                     </div>
-                    <Link
-                      href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
-                      className="sup-btn consult"
+                    <div
+                      className={`availability-line ${(availableDatesByProvider[consultant.id]?.length || 0) > 0 ? "open" : "closed"}`}
                     >
-                      احجز استشارة
-                    </Link>
+                      <span className="availability-dot" />
+                      {(availableDatesByProvider[consultant.id]?.length || 0) >
+                      0
+                        ? `${availableDatesByProvider[consultant.id].length} أيام متاحة للحجز`
+                        : "بانتظار إضافة مواعيد جديدة"}
+                    </div>
+                    {(availableDatesByProvider[consultant.id]?.length || 0) >
+                    0 ? (
+                      <Link
+                        href={`/${locale}/supervisor/${consultant.id}?type=consultation`}
+                        className="sup-btn consult"
+                      >
+                        احجز استشارة
+                      </Link>
+                    ) : (
+                      <span
+                        className="sup-btn unavailable"
+                        aria-disabled="true"
+                      >
+                        لا توجد مواعيد متاحة
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

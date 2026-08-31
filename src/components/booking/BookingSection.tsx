@@ -97,7 +97,19 @@ export default function BookingSection({
         `/${locale}/booking-success?token=${result.managementToken}&ref=${result.referenceNumber}&date=${selectedSlot.date}&time=${selectedSlot.time}&supervisor=${encodeURIComponent(supervisor.name)}`,
       );
     } else {
-      setError(result.error || "حدث خطأ، حاول مرة أخرى");
+      const messages: Record<string, string> = {
+        ALREADY_HAS_BOOKING:
+          "لديك حجز مؤكد من هذا النوع بالفعل. ادخل إلى حسابك لمراجعته.",
+        SLOT_NOT_AVAILABLE: "تم حجز هذا الموعد للتو. ارجع واختر موعدًا آخر.",
+        INVALID_SLOT: "الموعد المختار غير صالح. ارجع واختر موعدًا جديدًا.",
+        INVALID_EMAIL: "تحقق من كتابة البريد الإلكتروني بشكل صحيح.",
+        INVALID_PHONE: "أدخل رقم جوال صحيحًا مع رمز الدولة.",
+        INVALID_PASSWORD: "كلمة المرور يجب أن تتكون من 8 أحرف على الأقل.",
+        SUPERVISOR_NOT_FOUND: "مقدم الخدمة غير متاح للحجز حاليًا.",
+      };
+      setError(
+        messages[result.error || ""] || "تعذر إتمام الحجز، حاول مرة أخرى.",
+      );
       setSubmitting(false);
     }
   };
@@ -280,6 +292,7 @@ export default function BookingSection({
         }
         .no-dates-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
         .no-dates-text { color: #94A3B8; font-size: 14px; line-height: 1.6; }
+        .no-dates-back{margin-top:16px;border:1px solid #D1D9E6;background:#fff;color:#0D40FC;padding:9px 13px;border-radius:9px;font:inherit;font-weight:700;cursor:pointer}
       `}</style>
 
       <div className="bk-root">
@@ -306,8 +319,15 @@ export default function BookingSection({
             <div className="no-dates-text">
               لا توجد مواعيد متاحة حالياً
               <br />
-              يرجى التواصل مع المشرف مباشرة
+              ستظهر المواعيد هنا فور إضافتها من مقدم الخدمة
             </div>
+            <button
+              type="button"
+              className="no-dates-back"
+              onClick={() => router.push(`/${locale}#supervisors`)}
+            >
+              اختيار مقدم خدمة آخر
+            </button>
           </div>
         ) : (
           <>
@@ -457,7 +477,7 @@ export default function BookingSection({
                       type="tel"
                       value={studentPhone}
                       onChange={(e) => setStudentPhone(e.target.value)}
-                      placeholder="+966 5X XXX XXXX"
+                      placeholder="رقم الجوال مع رمز الدولة"
                       required
                     />
                   </div>
