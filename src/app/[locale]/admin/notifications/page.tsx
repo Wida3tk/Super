@@ -24,13 +24,19 @@ export default async function NotificationsPage({ params }: Props) {
   if (!auth) redirect(`/${locale}/login`);
   const { adminDb } = auth;
 
-  const [notifsSnap, supervisorsSnap] = await Promise.all([
+  const [notifsSnap, campaignsSnap, supervisorsSnap, traineesSnap] = await Promise.all([
     adminDb.collection('notifications').orderBy('createdAt', 'desc').limit(50).get(),
+    adminDb.collection('notificationCampaigns').orderBy('createdAt', 'desc').limit(30).get(),
     adminDb.collection('supervisors').get(),
+    adminDb.collection('trainees').get(),
   ]);
 
-  const notifications = notifsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const notifications = [
+    ...notifsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((item: any) => item.targetType === 'supervisor' || item.targetType === 'trainee'),
+    ...campaignsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+  ].sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))) as any[];
   const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -51,13 +57,14 @@ export default async function NotificationsPage({ params }: Props) {
         <AdminSidebar locale={locale} notifCount={unreadCount} />
         <div className="main">
           <div className="topbar">
-            <div className="page-title">الإشعارات والـ Shoutouts</div>
+            <div className="page-title">مركز الإشعارات</div>
             <LogoutButton locale={locale} />
           </div>
           <div className="content">
             <NotificationsClient
               notifications={notifications}
               supervisors={supervisors}
+              trainees={trainees}
             />
           </div>
         </div>

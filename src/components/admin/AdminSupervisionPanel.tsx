@@ -46,7 +46,7 @@ const formatMonth = (m: string) => {
 };
 
 const STATUS_LABELS: Record<TraineeStatus, string> = {
-  onboarding: "بوردنق",
+  onboarding: "قيد الانضمام",
   active: "نشط",
   paused: "مؤجل",
   withdrawn: "منسحب",
@@ -63,8 +63,10 @@ const STATUS_COLORS: Record<TraineeStatus, { bg: string; color: string }> = {
 
 const ONBOARDING_STAGES: { key: OnboardingStage; label: string }[] = [
   { key: "initial_interview", label: "مقابلة أولية" },
-  { key: "post_interview", label: "ما بعد المقابلة" },
-  { key: "contracting", label: "التعاقد" },
+  { key: "awaiting_decisions", label: "بانتظار قرار الطرفين" },
+  { key: "admin_review", label: "مراجعة الإدارة" },
+  { key: "contracting", label: "التعاقد والموافقات" },
+  { key: "ready_assignment", label: "جاهز للإسناد" },
 ];
 
 function Badge({
@@ -809,6 +811,15 @@ export default function AdminSupervisionPanel({
   );
   const [exportLoading, setExportLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<string | null>(null);
+  const [traineeSearch, setTraineeSearch] = useState("");
+  const [traineeStatusFilter, setTraineeStatusFilter] = useState("all");
+
+  const filteredTrainees = trainees.filter((trainee) => {
+    const query = traineeSearch.trim().toLowerCase();
+    const matchesQuery = !query || [trainee.name, trainee.email, trainee.phone]
+      .some((value) => String(value || "").toLowerCase().includes(query));
+    return matchesQuery && (traineeStatusFilter === "all" || trainee.status === traineeStatusFilter || trainee.onboardingStage === traineeStatusFilter);
+  });
 
   const stats = {
     total: trainees.length,
@@ -872,7 +883,7 @@ export default function AdminSupervisionPanel({
   const tabs = [
     { key: "supervisors", label: "إنتاجية المشرفين" },
     { key: "trainees", label: "المتدربون" },
-    { key: "onboarding", label: "البوردنق" },
+    { key: "onboarding", label: "طلبات الانضمام" },
     { key: "months", label: "إدارة الأشهر" },
   ];
 
@@ -904,7 +915,7 @@ export default function AdminSupervisionPanel({
             { label: "نشط", value: stats.active, color: COLORS.success },
             { label: "مؤجل", value: stats.paused, color: COLORS.warning },
             {
-              label: "قيد البوردنق",
+              label: "قيد الانضمام",
               value: stats.onboarding,
               color: COLORS.gray500,
             },
@@ -975,6 +986,17 @@ export default function AdminSupervisionPanel({
           </button>
         </div>
       </div>
+      {(activeTab === "trainees" || activeTab === "onboarding") && (
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14,background:"#fff",border:`1px solid ${COLORS.gray200}`,borderRadius:12,padding:10}}>
+          <input value={traineeSearch} onChange={(event) => setTraineeSearch(event.target.value)} placeholder="ابحث بالاسم أو البريد أو الجوال..." style={{flex:"1 1 280px",padding:"9px 12px",border:`1px solid ${COLORS.gray300}`,borderRadius:9,fontFamily:"inherit"}} />
+          <select value={traineeStatusFilter} onChange={(event) => setTraineeStatusFilter(event.target.value)} style={{padding:"9px 12px",border:`1px solid ${COLORS.gray300}`,borderRadius:9,fontFamily:"inherit",background:"#fff"}}>
+            <option value="all">كل المراحل والحالات</option>
+            <option value="active">نشط</option><option value="paused">مؤجل</option><option value="onboarding">قيد الانضمام</option>
+            {ONBOARDING_STAGES.map((stage) => <option key={stage.key} value={stage.key}>{stage.label}</option>)}
+          </select>
+          <span style={{alignSelf:"center",fontSize:12,color:COLORS.gray500}}>{filteredTrainees.length} نتيجة</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div
@@ -1222,7 +1244,7 @@ export default function AdminSupervisionPanel({
                 </tr>
               </thead>
               <tbody>
-                {trainees
+                {filteredTrainees
                   .filter((t) => t.status !== "onboarding")
                   .map((t) => {
                     const sup = supervisors.find(
@@ -1421,7 +1443,7 @@ export default function AdminSupervisionPanel({
                       </tr>
                     );
                   })}
-                {trainees.filter((t) => t.status !== "onboarding").length ===
+                {filteredTrainees.filter((t) => t.status !== "onboarding").length ===
                   0 && (
                   <tr>
                     <td
@@ -1443,7 +1465,7 @@ export default function AdminSupervisionPanel({
         </div>
       )}
 
-      {/* ===== تبويب البوردنق ===== */}
+      {/* ===== تبويب طلبات الانضمام ===== */}
       {activeTab === "onboarding" && (
         <div
           style={{
@@ -1463,7 +1485,7 @@ export default function AdminSupervisionPanel({
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.deep }}>
-              المتدربون قيد البوردنق
+              طلبات الانضمام والإسناد
             </span>
             <span style={{ fontSize: 12, color: COLORS.gray500 }}>
               {stats.onboarding} متدرب
@@ -1491,7 +1513,7 @@ export default function AdminSupervisionPanel({
                 </tr>
               </thead>
               <tbody>
-                {trainees
+                {filteredTrainees
                   .filter((t) => t.status === "onboarding")
                   .map((t) => (
                     <tr
@@ -1594,6 +1616,7 @@ export default function AdminSupervisionPanel({
                       <td style={{ padding: "12px 16px" }}>
                         <button
                           onClick={() => setAssigningTrainee(t)}
+                          disabled={!["ready_assignment", "contracting"].includes(String(t.onboardingStage))}
                           style={{
                             padding: "6px 14px",
                             border: `1px solid ${COLORS.success}`,
@@ -1602,7 +1625,8 @@ export default function AdminSupervisionPanel({
                             color: COLORS.success,
                             fontSize: 12,
                             fontWeight: 600,
-                            cursor: "pointer",
+                            cursor: ["ready_assignment", "contracting"].includes(String(t.onboardingStage)) ? "pointer" : "not-allowed",
+                            opacity: ["ready_assignment", "contracting"].includes(String(t.onboardingStage)) ? 1 : .45,
                             fontFamily: "inherit",
                             whiteSpace: "nowrap",
                           }}
@@ -1612,7 +1636,7 @@ export default function AdminSupervisionPanel({
                       </td>
                     </tr>
                   ))}
-                {trainees.filter((t) => t.status === "onboarding").length ===
+                {filteredTrainees.filter((t) => t.status === "onboarding").length ===
                   0 && (
                   <tr>
                     <td
@@ -1624,7 +1648,7 @@ export default function AdminSupervisionPanel({
                         fontSize: 13,
                       }}
                     >
-                      لا يوجد متدربون قيد البوردنق حالياً
+                      لا توجد طلبات انضمام مطابقة حالياً
                     </td>
                   </tr>
                 )}

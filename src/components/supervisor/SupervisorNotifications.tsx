@@ -12,7 +12,7 @@ interface Notification {
 }
 
 const TYPE_CONFIG = {
-  shoutout: { emoji: "🎉", bg: "#EEF2FF", color: "#4F46E5", label: "Shoutout" },
+  shoutout: { emoji: "🎉", bg: "#EEF2FF", color: "#4F46E5", label: "إشادة" },
   reminder: { emoji: "🔔", bg: "#F0FDF4", color: "#16A34A", label: "تذكير" },
   warning: { emoji: "⚠️", bg: "#FFF7ED", color: "#EA580C", label: "تنبيه" },
 };

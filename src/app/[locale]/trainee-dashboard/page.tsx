@@ -28,6 +28,8 @@ export default async function TraineeDashboardPage({
     assignmentsSnap,
     improvementPlansSnap,
     progressReportsSnap,
+    bookingsSnap,
+    notificationsSnap,
   ] = await Promise.all([
     adminDb
       .collection("fieldworkActivities")
@@ -84,6 +86,8 @@ export default async function TraineeDashboardPage({
       .where("traineeId", "==", trainee.id)
       .limit(50)
       .get(),
+    adminDb.collection("bookings").where("studentEmail", "==", trainee.email).limit(30).get(),
+    adminDb.collection("notifications").where("traineeId", "==", trainee.id).limit(30).get(),
   ]);
   const activities = (
     activitySnap.docs.map((d) => ({
@@ -95,6 +99,14 @@ export default async function TraineeDashboardPage({
     ? String(supervisorSnap.data()?.name || "")
     : "";
   const supervisionFile = {
+    notifications: notificationsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as any))
+      .filter((item: any) => !item.read)
+      .sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))),
+    continuationBooking: (bookingsSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as any))
+      .filter((booking: any) => booking.bookingType !== "consultation" && booking.meetingStatus === "completed")
+      .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))[0]) || null,
     plan: planSnap.exists
       ? { id: planSnap.id, ...planSnap.data() }
       : { goals: [] },

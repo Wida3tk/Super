@@ -31,7 +31,7 @@ export default async function TraineesPage({ params }: Props) {
           {[
             { emoji: '👥', val: trainees.length, label: 'إجمالي المتدربين', color: '#4F46E5', border: '#4F46E5' },
             { emoji: '✅', val: active, label: 'نشطون', color: '#16A34A', border: '#16A34A' },
-            { emoji: '🎓', val: onboarding, label: 'قيد البوردنق', color: '#D97706', border: '#D97706' },
+            { emoji: '🎓', val: onboarding, label: 'قيد الانضمام', color: '#D97706', border: '#D97706' },
             { emoji: '⏸️', val: trainees.filter((t: any) => t.status === 'paused').length, label: 'مؤجل', color: '#64748B', border: '#64748B' },
           ].map(s => (
             <div key={s.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #E2E8F0', borderTop: `3px solid ${s.border}` }}>

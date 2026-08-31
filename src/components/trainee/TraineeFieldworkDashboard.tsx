@@ -74,6 +74,8 @@ export default function TraineeFieldworkDashboard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [continuationDecision, setContinuationDecision] = useState(trainee.traineeContinuationIntent || supervisionFile?.continuationBooking?.traineeContinuationIntent || "pending");
+  const [continuationLoading, setContinuationLoading] = useState(false);
   const [monthlyApproval, setMonthlyApproval] = useState(
     supervisionFile?.monthlyApproval || null,
   );
@@ -282,6 +284,15 @@ export default function TraineeFieldworkDashboard({
     router.push("/ar/login");
     router.refresh();
   };
+  const chooseContinuation = async (decision: "continue" | "decline") => {
+    const bookingId = supervisionFile?.continuationBooking?.id;
+    if (!bookingId) return;
+    setContinuationLoading(true);
+    const response = await fetch("/api/continuation-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookingId, decision }) });
+    if (response.ok) setContinuationDecision(decision);
+    else setError("تعذر حفظ اختيارك الآن، حاول مرة أخرى.");
+    setContinuationLoading(false);
+  };
   const updateMeeting = async (
     id: string,
     action: "acknowledge" | "complete_task",
@@ -338,6 +349,33 @@ export default function TraineeFieldworkDashboard({
             </button>
           </div>
         </nav>
+        {!trainee.currentSupervisorId && (
+          <section style={{background:"linear-gradient(125deg,#001442,#0D40FC)",color:"#fff",borderRadius:24,padding:"30px 34px",marginBottom:18,boxShadow:"0 20px 50px #0d40fc25"}}>
+            <div style={{fontSize:12,color:"#73e3ff",fontWeight:700}}>رحلة الانضمام إلى الإشراف</div>
+            <h1 style={{fontSize:28,margin:"8px 0"}}>أهلًا {trainee.name}</h1>
+            {!supervisionFile?.continuationBooking ? (
+              <>
+                <p style={{color:"#d5e1ff",lineHeight:1.8}}>حسابك جاهز. اختر المشرف واحجز المقابلة الأولية، وبعد اكتمالها سيظهر لك هنا قرار الاستمرار.</p>
+                <button className="primary" onClick={() => router.push("/ar#supervisors")}>اختيار المشرف وحجز المقابلة</button>
+              </>
+            ) : continuationDecision === "pending" ? (
+              <>
+                <p style={{color:"#d5e1ff",lineHeight:1.8}}>اكتملت المقابلة الأولية. أخبرنا إن كنت ترغب في بدء رحلة الإشراف مع هذا المشرف.</p>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:16}}>
+                  <button className="primary" disabled={continuationLoading} onClick={() => chooseContinuation("continue")}>أرغب في البدء مع المشرف</button>
+                  <button className="secondary" disabled={continuationLoading} onClick={() => chooseContinuation("decline")}>لا أرغب في الاستمرار</button>
+                </div>
+              </>
+            ) : continuationDecision === "continue" ? (
+              <p style={{color:"#d5e1ff",lineHeight:1.8}}>تم تسجيل رغبتك ✓ سننتظر قرار المشرف، ثم تراجع الإدارة الطلب وتستكمل التعاقد والموافقات قبل الإسناد النهائي.</p>
+            ) : (
+              <p style={{color:"#d5e1ff",lineHeight:1.8}}>تم تسجيل عدم رغبتك في الاستمرار. يمكنك التواصل مع الإدارة لاختيار مشرف آخر.</p>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginTop:22}}>
+              {["المقابلة الأولية","قرار الطرفين","مراجعة الإدارة والتعاقد","الإسناد وفتح الساعات"].map((step,index) => <div key={step} style={{background:"#ffffff12",border:"1px solid #ffffff20",borderRadius:12,padding:12,fontSize:11}}><b style={{display:"block",color:"#55D7FF",marginBottom:4}}>0{index+1}</b>{step}</div>)}
+            </div>
+          </section>
+        )}
         <section className="welcome-hero">
           <div className="hero-main">
             <div className="eyebrow">
@@ -351,7 +389,7 @@ export default function TraineeFieldworkDashboard({
               مسارك: {pathway.label} · {requiredHours} ساعة خبرة ميدانية ·{" "}
               {supervisionTargetHours} ساعة إشراف مباشر
             </div>
-            <button className="primary" onClick={() => setOpen(true)}>
+            <button className="primary" disabled={!trainee.currentSupervisorId} style={{opacity:trainee.currentSupervisorId ? 1 : .5,cursor:trainee.currentSupervisorId ? "pointer" : "not-allowed"}} onClick={() => trainee.currentSupervisorId && setOpen(true)}>
               ＋ إضافة ساعات جديدة
             </button>
             <div className="progress-wrap">
@@ -388,6 +426,17 @@ export default function TraineeFieldworkDashboard({
             </div>
           </aside>
         </section>
+        {(supervisionFile?.notifications || []).length > 0 && (
+          <section className="panel" style={{marginBottom:18,borderRight:"4px solid #0D40FC"}}>
+            <h3 style={{margin:"0 0 10px"}}>رسائل الإدارة</h3>
+            {(supervisionFile.notifications || []).map((notification: any) => (
+              <div key={notification.id} style={{padding:"10px 0",borderBottom:"1px solid #EEF2F7",fontSize:13}}>
+                <b style={{color:"#0D40FC",marginLeft:8}}>{notification.type === "warning" ? "تنبيه" : notification.type === "shoutout" ? "إشادة" : "تذكير"}</b>
+                {notification.message}
+              </div>
+            ))}
+          </section>
+        )}
         <div className="trainee-tabs">
           {(
             [

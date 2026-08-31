@@ -15,6 +15,8 @@ interface Booking {
   meetingStatus?: MeetingStatus;
   bookingType?: "initial_interview" | "consultation";
   consultationType?: "behavior_analysis" | "organizational_behavior";
+  supervisorContinuationIntent?: "pending" | "continue" | "decline";
+  traineeContinuationIntent?: "pending" | "continue" | "decline";
 }
 
 const COLORS = {
@@ -39,6 +41,16 @@ export default function BookingsManager({
     "upcoming" | "completed" | "missed"
   >("upcoming");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const setContinuationIntent = async (bookingId: string, decision: "continue" | "decline") => {
+    setLoadingId(bookingId);
+    try {
+      const response = await fetch("/api/continuation-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bookingId, decision }) });
+      if (!response.ok) throw new Error();
+      setBookings((current) => current.map((booking) => booking.id === bookingId ? { ...booking, supervisorContinuationIntent: decision } : booking));
+    } catch { alert("تعذر حفظ قرار الاستمرار. تأكد من وجود حساب للمتدرب ثم حاول مجددًا."); }
+    finally { setLoadingId(null); }
+  };
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -241,6 +253,21 @@ export default function BookingsManager({
             >
               {isLoading ? "..." : "↩ إعادة تعيين"}
             </button>
+            {activeTab === "completed" && b.bookingType !== "consultation" && (
+              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${COLORS.gray200}`}}>
+                <div style={{fontSize:11,color:COLORS.gray500,marginBottom:6}}>قرارك بعد المقابلة</div>
+                {b.supervisorContinuationIntent ? (
+                  <div style={{fontSize:12,fontWeight:600,color:b.supervisorContinuationIntent === "continue" ? COLORS.success : COLORS.danger}}>
+                    {b.supervisorContinuationIntent === "continue" ? "✓ أرغب في بدء الإشراف مع هذا المتدرب" : "تم اختيار عدم الاستمرار"}
+                  </div>
+                ) : (
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={() => setContinuationIntent(b.id,"continue")} disabled={isLoading} style={{padding:"6px 10px",border:0,borderRadius:8,background:"#E1F5EE",color:COLORS.success,fontFamily:"inherit",cursor:"pointer"}}>أرغب في بدء الإشراف معه</button>
+                    <button onClick={() => setContinuationIntent(b.id,"decline")} disabled={isLoading} style={{padding:"6px 10px",border:`1px solid ${COLORS.gray300}`,borderRadius:8,background:"#fff",color:COLORS.gray500,fontFamily:"inherit",cursor:"pointer"}}>لا أرغب في الاستمرار</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

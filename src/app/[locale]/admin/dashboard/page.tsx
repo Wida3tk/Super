@@ -180,7 +180,7 @@ export default async function AdminDashboardPage({ params }: Props) {
           {/* Topbar */}
           <div className="topbar">
             <div>
-              <div className="page-title">الداشبورد</div>
+              <div className="page-title">لوحة التحكم</div>
               <div className="page-date">
                 {new Date().toLocaleDateString("ar-SA", {
                   weekday: "long",
@@ -297,7 +297,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                 <div className="stat-note">فردية وجماعية</div>
               </div>
               <div className="stat">
-                <div className="stat-label">قيد البوردنق</div>
+                <div className="stat-label">قيد الانضمام</div>
                 <div className="stat-val" style={{ color: "#8898AA" }}>
                   {onboardingTrainees.length}
                 </div>

@@ -20,12 +20,12 @@ export default async function OnboardingPage({ params }: Props) {
     ]);
     const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const readyToAssign = trainees.filter((t: any) => t.onboardingStage === 'contracting').length;
+    const readyToAssign = trainees.filter((t: any) => ['contracting', 'ready_assignment'].includes(t.onboardingStage)).length;
     return (
-      <AdminPageLayout locale={locale} title="البوردنق والإسناد">
+      <AdminPageLayout locale={locale} title="طلبات الانضمام والإسناد">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
           {[
-            { emoji: '🎓', val: trainees.length, label: 'قيد البوردنق', color: '#D97706', border: '#D97706' },
+            { emoji: '🎓', val: trainees.length, label: 'قيد الانضمام', color: '#D97706', border: '#D97706' },
             { emoji: '🎯', val: readyToAssign, label: 'جاهزون للإسناد', color: '#DC2626', border: '#DC2626' },
             { emoji: '📝', val: trainees.filter((t: any) => t.onboardingStage === 'initial_interview').length, label: 'مقابلة أولية', color: '#64748B', border: '#64748B' },
           ].map(s => (

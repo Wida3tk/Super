@@ -90,17 +90,19 @@ export type License = "QASP-S" | "QBA";
 
 // حالة المتدرب
 export type TraineeStatus =
-  | "onboarding" // قيد البوردنق
+  | "onboarding" // قيد الانضمام
   | "active" // نشط
   | "paused" // مؤجل
   | "withdrawn" // منسحب
   | "completed"; // مكتمل
 
-// مرحلة البوردنق
+// مرحلة الانضمام والإسناد
 export type OnboardingStage =
   | "initial_interview" // مقابلة أولية
-  | "post_interview" // ما بعد المقابلة
-  | "contracting"; // التعاقد
+  | "awaiting_decisions" // بانتظار قرار الطرفين
+  | "admin_review" // مراجعة الإدارة
+  | "contracting" // التعاقد والموافقات
+  | "ready_assignment"; // جاهز للإسناد
 
 // نوع الجلسة
 export type SessionType =
@@ -141,6 +143,9 @@ export interface Trainee {
   status: TraineeStatus;
   onboardingStage?: OnboardingStage; // فقط لو status = onboarding
   currentSupervisorId?: string;
+  interviewSupervisorId?: string;
+  traineeContinuationIntent?: "pending" | "continue" | "decline";
+  supervisorContinuationIntent?: "pending" | "continue" | "decline";
   createdAt: string;
   updatedAt: string;
   // إحصائيات محسوبة (تتحدث عند كل جلسة)

@@ -33,7 +33,7 @@ export default function AdminSidebar({
         {
           href: `${base}`,
           icon: "ti-layout-dashboard",
-          label: "الداشبورد",
+          label: "لوحة التحكم",
           emoji: "🏠",
         },
         {
@@ -63,7 +63,7 @@ export default function AdminSidebar({
         {
           href: `${base}/onboarding`,
           icon: "ti-user-check",
-          label: "البوردنق والإسناد",
+          label: "طلبات الانضمام والإسناد",
           emoji: "🎯",
         },
         {
@@ -152,7 +152,7 @@ export default function AdminSidebar({
           style={{
             fontSize: 10,
             color: "#55D7FF",
-            marginTop: 6,
+            marginTop: 14,
             background: "rgba(85,215,255,.08)",
             border: "1px solid rgba(85,215,255,.16)",
             padding: "2px 8px",

@@ -85,6 +85,12 @@ export async function PATCH(req: NextRequest) {
     if (!traineeBefore.exists)
       return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
     const traineeData = traineeBefore.data() as any;
+    if (traineeData.currentSupervisorId && traineeData.currentSupervisorId !== data.supervisorId) {
+      return NextResponse.json({ error: "ACTIVE_SUPERVISOR_EXISTS", detail: "لدى المتدرب مشرف نشط. استخدم إجراء نقل المتدرب بدل الإسناد المباشر." }, { status: 409 });
+    }
+    if (traineeData.status === "onboarding" && !["contracting", "ready_assignment"].includes(String(traineeData.onboardingStage))) {
+      return NextResponse.json({ error: "NOT_READY_FOR_ASSIGNMENT", detail: "يجب إكمال موافقة الطرفين ومراجعة الإدارة والتعاقد قبل الإسناد." }, { status: 409 });
+    }
     const normalizedEmail = String(traineeData.email || "")
       .trim()
       .toLowerCase();
@@ -168,6 +174,7 @@ export async function PATCH(req: NextRequest) {
       currentSupervisorId: data.supervisorId,
       status: "active",
       onboardingStage: null,
+      assignmentStatus: "active",
       authUid: authUser.uid,
       accountStatus: selfRegistered ? "active" : "invited",
       updatedAt: new Date().toISOString(),
@@ -180,6 +187,7 @@ export async function PATCH(req: NextRequest) {
       notes: data.notes || "",
       createdAt: new Date().toISOString(),
       createdBy: "admin",
+      status: "active",
     });
     await batch.commit();
     if (action === "assign") {
@@ -238,8 +246,11 @@ export async function PATCH(req: NextRequest) {
         : traineeId;
       const stageLabels: Record<string, string> = {
         initial_interview: "مقابلة أولية",
-        post_interview: "ما بعد المقابلة",
-        contracting: "التعاقد",
+        post_interview: "بانتظار قرار الطرفين",
+        awaiting_decisions: "بانتظار قرار الطرفين",
+        admin_review: "مراجعة الإدارة",
+        contracting: "التعاقد والموافقات",
+        ready_assignment: "جاهز للإسناد",
       };
       await logActivity({
         type: "onboarding",

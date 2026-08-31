@@ -333,7 +333,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                   href={`/${locale}/admin/onboarding`}
                 >
                   <i className="ti ti-user-check" aria-hidden="true" />
-                  متابعة البوردنق
+                  متابعة طلبات الانضمام
                 </Link>
                 <Link
                   className="quick-action secondary"
@@ -475,7 +475,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                 <div className="stat-val" style={{ color: "#F59E0B" }}>
                   {onboardingTrainees.length}
                 </div>
-                <div className="stat-label">قيد البوردنق</div>
+                <div className="stat-label">قيد الانضمام</div>
                 <div className="stat-note">
                   منهم {readyToAssign.length} جاهز للإسناد
                 </div>

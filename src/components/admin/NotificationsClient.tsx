@@ -12,7 +12,7 @@ interface Notification {
   id: string;
   type: "shoutout" | "reminder" | "warning";
   message: string;
-  targetType: "all" | "supervisor";
+  targetType: "all" | "all_supervisors" | "supervisor" | "all_trainees" | "trainee";
   targetId?: string;
   targetName?: string;
   read: boolean;
@@ -20,7 +20,7 @@ interface Notification {
 }
 
 const TYPE_CONFIG = {
-  shoutout: { label: "Shoutout 🎉", bg: "#E6F1FB", color: "#185FA5", icon: "ti-star" },
+  shoutout: { label: "إشادة 🎉", bg: "#E6F1FB", color: "#185FA5", icon: "ti-star" },
   reminder: { label: "تذكير", bg: "#EAF3DE", color: "#3B6D11", icon: "ti-bell" },
   warning: { label: "تنبيه", bg: "#FCEBEB", color: "#A32D2D", icon: "ti-alert-circle" },
 };
@@ -35,39 +35,40 @@ const timeAgo = (iso: string) => {
   return `منذ ${Math.floor(hrs / 24)} يوم`;
 };
 
-export default function NotificationsClient({ notifications: initial, supervisors }: {
+export default function NotificationsClient({ notifications: initial, supervisors, trainees }: {
   notifications: Notification[];
   supervisors: any[];
+  trainees: any[];
 }) {
   const [notifications, setNotifications] = useState<Notification[]>(initial);
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<"shoutout" | "reminder" | "warning">("shoutout");
   const [message, setMessage] = useState("");
-  const [targetType, setTargetType] = useState<"all" | "supervisor">("all");
+  const [targetType, setTargetType] = useState<"all_supervisors" | "supervisor" | "all_trainees" | "trainee">("all_supervisors");
   const [targetId, setTargetId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const sendNotification = async () => {
     if (!message.trim()) { setError("يرجى كتابة رسالة"); return; }
-    if (targetType === "supervisor" && !targetId) { setError("يرجى اختيار مشرف"); return; }
+    if ((targetType === "supervisor" || targetType === "trainee") && !targetId) { setError("يرجى اختيار المستلم"); return; }
     setLoading(true);
     setError("");
     try {
       const res = await fetch('/api/admin/notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, message, targetType, targetId: targetType === "supervisor" ? targetId : null }),
+        body: JSON.stringify({ type, message, targetType, targetId: ["supervisor", "trainee"].includes(targetType) ? targetId : null }),
       });
       if (!res.ok) throw new Error('فشل الإرسال');
       const data = await res.json();
-      const sup = supervisors.find(s => s.id === targetId);
+      const recipient = targetType === "supervisor" ? supervisors.find(s => s.id === targetId) : trainees.find(t => t.id === targetId);
       setNotifications(prev => [{
         id: data.id,
         type, message,
         targetType,
-        targetId: targetType === "supervisor" ? targetId : undefined,
-        targetName: sup?.name,
+        targetId: ["supervisor", "trainee"].includes(targetType) ? targetId : undefined,
+        targetName: recipient?.name,
         read: false,
         createdAt: new Date().toISOString(),
       }, ...prev]);
@@ -92,7 +93,7 @@ export default function NotificationsClient({ notifications: initial, supervisor
         <button onClick={() => setShowForm(!showForm)}
           style={{ padding: "9px 18px", border: "none", borderRadius: 10, background: COLORS.deep, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <i className="ti ti-speakerphone" style={{ fontSize: 15 }} aria-hidden="true" />
-          إشعار / Shoutout جديد
+          إنشاء إشعار
         </button>
       </div>
 
@@ -122,7 +123,7 @@ export default function NotificationsClient({ notifications: initial, supervisor
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ fontSize: 12, color: COLORS.gray500, display: "block", marginBottom: 6 }}>المستهدف</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              {[{ key: "all", label: "كل المشرفين" }, { key: "supervisor", label: "مشرف محدد" }].map(t => (
+              {[{ key: "all_supervisors", label: "جميع المشرفين" }, { key: "supervisor", label: "مشرف محدد" }, { key: "all_trainees", label: "جميع المتدربين" }, { key: "trainee", label: "متدرب محدد" }].map(t => (
                 <button key={t.key} onClick={() => setTargetType(t.key as any)}
                   style={{ padding: "7px 14px", border: `1px solid ${targetType === t.key ? COLORS.primary : COLORS.gray300}`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: targetType === t.key ? 600 : 400, background: targetType === t.key ? "#E6F1FB" : "#fff", color: targetType === t.key ? COLORS.primary : COLORS.gray500 }}>
                   {t.label}
@@ -134,6 +135,13 @@ export default function NotificationsClient({ notifications: initial, supervisor
                 style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: `1px solid ${COLORS.gray300}`, borderRadius: 8, background: "#fff" }}>
                 <option value="">اختر مشرفاً...</option>
                 {supervisors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+            {targetType === "trainee" && (
+              <select value={targetId} onChange={e => setTargetId(e.target.value)}
+                style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: `1px solid ${COLORS.gray300}`, borderRadius: 8, background: "#fff" }}>
+                <option value="">اختر متدرباً...</option>
+                {trainees.map(t => <option key={t.id} value={t.id}>{t.name} — {t.email || "دون بريد"}</option>)}
               </select>
             )}
           </div>
@@ -167,7 +175,7 @@ export default function NotificationsClient({ notifications: initial, supervisor
         {notifications.length === 0 ? (
           <div style={{ background: "#fff", borderRadius: 14, padding: "3rem", textAlign: "center", border: `1px solid ${COLORS.gray200}` }}>
             <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>🔔</div>
-            <div style={{ color: COLORS.gray500, fontSize: 13 }}>لا توجد إشعارات — أنشئ أول Shoutout!</div>
+            <div style={{ color: COLORS.gray500, fontSize: 13 }}>لا توجد إشعارات مرسلة حتى الآن.</div>
           </div>
         ) : notifications.map(n => {
           const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.reminder;
@@ -180,7 +188,7 @@ export default function NotificationsClient({ notifications: initial, supervisor
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, background: cfg.bg, color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
                   <span style={{ fontSize: 11, color: COLORS.gray500 }}>
-                    {n.targetType === "all" ? "للجميع" : `لـ ${n.targetName || n.targetId}`}
+                    {{ all: "جميع المشرفين", all_supervisors: "جميع المشرفين", all_trainees: "جميع المتدربين", supervisor: `المشرف: ${n.targetName || "مستلم محدد"}`, trainee: `المتدرب: ${n.targetName || "مستلم محدد"}` }[n.targetType] || "مستلم محدد"}
                   </span>
                   {!n.read && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#0D40FC", display: "inline-block" }} />}
                 </div>

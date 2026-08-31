@@ -28,28 +28,32 @@ export async function POST(req: NextRequest) {
     createdAt.getTime() + 30 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // لو للجميع، أضف إشعار لكل مشرف
-  if (targetType === "all") {
-    const supervisorsSnap = await adminDb.collection("supervisors").get();
+  const isAllSupervisors = targetType === "all" || targetType === "all_supervisors";
+  const isAllTrainees = targetType === "all_trainees";
+  if (isAllSupervisors || isAllTrainees) {
+    const audienceCollection = isAllSupervisors ? "supervisors" : "trainees";
+    const recipientField = isAllSupervisors ? "supervisorId" : "traineeId";
+    const audienceSnap = await adminDb.collection(audienceCollection).get();
     const batch = adminDb.batch();
-    supervisorsSnap.docs.forEach((doc) => {
+    audienceSnap.docs.forEach((doc) => {
       const ref = adminDb.collection("notifications").doc();
       batch.set(ref, {
         type,
         message,
-        targetType: "all",
-        supervisorId: doc.id,
+        targetType: isAllSupervisors ? "all_supervisors" : "all_trainees",
+        [recipientField]: doc.id,
+        targetId: doc.id,
+        targetName: doc.data().name || "",
         read: false,
         createdAt: createdAt.toISOString(),
         expiresAt,
       });
     });
     await batch.commit();
-    const ref = await adminDb.collection("notifications").add({
+    const ref = await adminDb.collection("notificationCampaigns").add({
       type,
       message,
-      targetType: "all",
-      supervisorId: null,
+      targetType: isAllSupervisors ? "all_supervisors" : "all_trainees",
       read: false,
       createdAt: createdAt.toISOString(),
       expiresAt,
@@ -57,12 +61,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id: ref.id });
   }
 
-  // لمشرف محدد
+  const recipientCollection = targetType === "trainee" ? "trainees" : "supervisors";
+  const recipientField = targetType === "trainee" ? "traineeId" : "supervisorId";
+  const recipientSnap = await adminDb.collection(recipientCollection).doc(targetId).get();
+  if (!recipientSnap.exists)
+    return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
   const ref = await adminDb.collection("notifications").add({
     type,
     message,
-    targetType: "supervisor",
-    supervisorId: targetId,
+    targetType,
+    [recipientField]: targetId,
+    targetId,
+    targetName: recipientSnap.data()?.name || "",
     read: false,
     createdAt: createdAt.toISOString(),
     expiresAt,
