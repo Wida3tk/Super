@@ -68,7 +68,10 @@ export default function RegisterPage() {
         throw new Error(
           "تم إنشاء الحساب، لكن تعذر تسجيل الدخول تلقائيًا. استخدم صفحة الدخول.",
         );
-      window.location.href = `/${locale}${form.bookingIntent === "consultation" ? "#consultants" : "#supervisors"}`;
+      window.location.href =
+        form.bookingIntent === "consultation"
+          ? `/${locale}#consultants`
+          : `/${locale}/trainee-dashboard`;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "تعذر إنشاء الحساب.");
       setLoading(false);
@@ -84,7 +87,7 @@ export default function RegisterPage() {
             <div>
               <h1>إنشاء حساب جديد</h1>
               <p className="lead">
-                سجّل مرة واحدة ثم احجز وتابع جميع مواعيدك من حسابك.
+                أنشئ حسابك وأرسل طلب الانضمام؛ ستربطك الإدارة بالمشرف المناسب.
               </p>
             </div>
             <Link href={`/${locale}`}>العودة للرئيسية</Link>
@@ -201,7 +204,7 @@ export default function RegisterPage() {
             </div>
           )}
           <button className="submit" disabled={loading}>
-            {loading ? "جاري إنشاء الحساب..." : "إنشاء الحساب والمتابعة"}
+            {loading ? "جاري إنشاء الحساب..." : "إنشاء الحساب وإرسال الطلب"}
           </button>
         </form>
       </div>

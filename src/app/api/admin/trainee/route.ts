@@ -132,7 +132,10 @@ export async function PATCH(req: NextRequest) {
         );
       }
     }
-    let resetLink: string;
+    const selfRegistered =
+      traineeData.accountStatus === "active" &&
+      traineeData.authUid === authUser.uid;
+    let resetLink = "";
     try {
       await adminAuth.setCustomUserClaims(authUser.uid, {
         role: "trainee",
@@ -140,14 +143,19 @@ export async function PATCH(req: NextRequest) {
       });
       // Use Firebase's hosted password setup flow. A custom continue URL would
       // fail unless every deployment domain is allow-listed in Firebase Auth.
-      const firebaseResetLink =
-        await adminAuth.generatePasswordResetLink(normalizedEmail);
-      const actionCode = new URL(firebaseResetLink).searchParams.get("oobCode");
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL || "https://super-gray-zeta.vercel.app";
-      resetLink = actionCode
-        ? `${appUrl}/ar/setup-password?oobCode=${encodeURIComponent(actionCode)}`
-        : firebaseResetLink;
+      if (!selfRegistered) {
+        const firebaseResetLink =
+          await adminAuth.generatePasswordResetLink(normalizedEmail);
+        const actionCode = new URL(firebaseResetLink).searchParams.get(
+          "oobCode",
+        );
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "https://super-gray-zeta.vercel.app";
+        resetLink = actionCode
+          ? `${appUrl}/ar/setup-password?oobCode=${encodeURIComponent(actionCode)}`
+          : firebaseResetLink;
+      }
     } catch (linkError: any) {
       console.error("Trainee invitation link failed:", linkError);
       return NextResponse.json(
@@ -161,7 +169,7 @@ export async function PATCH(req: NextRequest) {
       status: "active",
       onboardingStage: null,
       authUid: authUser.uid,
-      accountStatus: "invited",
+      accountStatus: selfRegistered ? "active" : "invited",
       updatedAt: new Date().toISOString(),
     });
     const assignRef = adminDb.collection("assignments").doc();
@@ -197,25 +205,27 @@ export async function PATCH(req: NextRequest) {
         traineeId,
         meta: { startDate: data.startDate },
       });
-      const { sendTraineeInvitationEmail } =
-        await import("@/lib/email/emailService");
-      try {
-        await sendTraineeInvitationEmail({
-          name: traineeName,
-          email: normalizedEmail,
-          resetLink,
-          supervisorName: supName,
-        });
-      } catch (emailError) {
-        console.error("Trainee invitation email failed:", emailError);
-        return NextResponse.json({
-          success: true,
-          inviteLink: resetLink,
-          warning: "EMAIL_FAILED",
-        });
-      }
-      if (!process.env.EMAIL_SERVICE_API_KEY) {
-        return NextResponse.json({ success: true, inviteLink: resetLink });
+      if (!selfRegistered) {
+        const { sendTraineeInvitationEmail } =
+          await import("@/lib/email/emailService");
+        try {
+          await sendTraineeInvitationEmail({
+            name: traineeName,
+            email: normalizedEmail,
+            resetLink,
+            supervisorName: supName,
+          });
+        } catch (emailError) {
+          console.error("Trainee invitation email failed:", emailError);
+          return NextResponse.json({
+            success: true,
+            inviteLink: resetLink,
+            warning: "EMAIL_FAILED",
+          });
+        }
+        if (!process.env.EMAIL_SERVICE_API_KEY) {
+          return NextResponse.json({ success: true, inviteLink: resetLink });
+        }
       }
     } else if (action === "updateOnboarding") {
       const { logActivity } = await import("@/lib/activityLog");

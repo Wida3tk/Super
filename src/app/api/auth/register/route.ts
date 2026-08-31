@@ -48,21 +48,59 @@ export async function POST(req: NextRequest) {
       password,
       displayName: name,
     });
-    await adminDb
-      .collection("clients")
-      .doc(user.uid)
-      .set({
+    const now = new Date().toISOString();
+    const batch = adminDb.batch();
+    batch.set(adminDb.collection("clients").doc(user.uid), {
+      name,
+      email,
+      phone,
+      bookingIntent,
+      license,
+      qualification: bookingIntent === "initial_interview" ? qualification : "",
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (bookingIntent === "initial_interview") {
+      const traineeLicense =
+        license === "assistant_behavior_analyst" ? "QASP-S" : "QBA";
+      const requiredHours = traineeLicense === "QASP-S" ? 1000 : 2000;
+      const supervisionTargetHours = traineeLicense === "QASP-S" ? 50 : 100;
+      batch.set(adminDb.collection("trainees").doc(user.uid), {
         name,
         email,
         phone,
-        bookingIntent,
-        license,
-        qualification:
-          bookingIntent === "initial_interview" ? qualification : "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        qualification,
+        license: traineeLicense,
+        requestedLicense: license,
+        requiredHours,
+        fieldworkTargetHours: requiredHours,
+        supervisionTargetHours,
+        status: "onboarding",
+        onboardingStage: "initial_interview",
+        currentSupervisorId: null,
+        totalIndividualHours: 0,
+        totalGroupHours: 0,
+        totalHours: 0,
+        authUid: user.uid,
+        accountStatus: "active",
+        registrationSource: "self_registration",
+        createdAt: now,
+        updatedAt: now,
       });
-    return NextResponse.json({ success: true });
+      batch.set(adminDb.collection("notifications").doc(), {
+        type: "trainee_self_registered",
+        message: `تسجيل متدرب جديد: ${name}`,
+        targetType: "admin",
+        traineeId: user.uid,
+        read: false,
+        createdAt: now,
+      });
+    }
+    await batch.commit();
+    return NextResponse.json({
+      success: true,
+      accountType: bookingIntent === "initial_interview" ? "trainee" : "client",
+    });
   } catch (error: any) {
     return NextResponse.json(
       {

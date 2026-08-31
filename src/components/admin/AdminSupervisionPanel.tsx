@@ -1592,25 +1592,23 @@ export default function AdminSupervisionPanel({
                         </div>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
-                        {t.onboardingStage === "contracting" && (
-                          <button
-                            onClick={() => setAssigningTrainee(t)}
-                            style={{
-                              padding: "6px 14px",
-                              border: `1px solid ${COLORS.success}`,
-                              borderRadius: 8,
-                              background: "#E1F5EE",
-                              color: COLORS.success,
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              fontFamily: "inherit",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            ✓ إسناد لمشرف
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setAssigningTrainee(t)}
+                          style={{
+                            padding: "6px 14px",
+                            border: `1px solid ${COLORS.success}`,
+                            borderRadius: 8,
+                            background: "#E1F5EE",
+                            color: COLORS.success,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ✓ إسناد لمشرف
+                        </button>
                       </td>
                     </tr>
                   ))}
