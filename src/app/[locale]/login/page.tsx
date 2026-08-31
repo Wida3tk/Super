@@ -5,6 +5,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 
 export default function LoginPage() {
+  const [portal, setPortal] = useState<"trainee" | "provider">("trainee");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -132,6 +133,10 @@ export default function LoginPage() {
         .login-welcome { margin-bottom: 36px; }
         .login-welcome h1 { font-size: 28px; font-weight: 800; color: var(--deep); margin-bottom: 6px; }
         .login-welcome p { font-size: 14px; color: #8898AA; }
+        .portal-picker { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:26px;padding:5px;background:#EAF0F8;border-radius:14px; }
+        .portal-option { border:0;border-radius:10px;padding:12px 10px;background:transparent;color:#64748B;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s; }
+        .portal-option.active { background:#fff;color:var(--primary);box-shadow:0 3px 12px rgba(1,20,66,.1); }
+        .portal-hint { font-size:11px;color:#94A3B8;line-height:1.6;margin:-15px 0 22px; }
         .field { margin-bottom: 20px; }
         .field label { display: block; font-size: 12px; font-weight: 700; color: #8898AA; margin-bottom: 8px; letter-spacing: 0.04em; }
         .input-wrap { position: relative; }
@@ -168,8 +173,30 @@ export default function LoginPage() {
           <div className="login-box">
             <div className="login-welcome">
               <h1>تسجيل الدخول</h1>
-              <p>أدخل بياناتك للوصول إلى لوحتك</p>
+              <p>اختر نوع حسابك ثم أدخل بيانات الدخول</p>
             </div>
+
+            <div className="portal-picker" aria-label="نوع الحساب">
+              <button
+                type="button"
+                className={`portal-option ${portal === "trainee" ? "active" : ""}`}
+                onClick={() => setPortal("trainee")}
+              >
+                حساب المتدرب
+              </button>
+              <button
+                type="button"
+                className={`portal-option ${portal === "provider" ? "active" : ""}`}
+                onClick={() => setPortal("provider")}
+              >
+                المشرف أو المستشار
+              </button>
+            </div>
+            <p className="portal-hint">
+              {portal === "trainee"
+                ? "لمتابعة الساعات والخطة الإشرافية والمواعيد."
+                : "لإدارة المتدربين والجلسات والمواعيد المتاحة."}
+            </p>
 
             <form onSubmit={handleLogin}>
               <div className="field">

@@ -148,8 +148,8 @@ export default async function HomePage({ params }: HomePageProps) {
         }
         .nav-lang:hover { background: rgba(13,64,252,0.08); }
         .nav-login { color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:8px 13px;border-radius:9px;background:var(--primary);box-shadow:0 3px 10px rgba(13,64,252,.2);white-space:nowrap }
-        .nav-login.trainee{background:#fff;color:var(--primary);border:1px solid rgba(13,64,252,.25);box-shadow:none}.nav-login.signup{background:var(--deep)}
-        .nav-journey{color:var(--deep);text-decoration:none;font-size:12px;font-weight:700;padding:8px 12px;border-radius:9px;background:#EEF4FF;border:1px solid #C9D7FF;white-space:nowrap}.nav-journey:hover{background:#DDE8FF;color:var(--primary)}
+        .nav-login.signup{background:var(--deep)}
+        .nav-journey{display:inline-flex;align-items:center;gap:7px;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:9px 14px;border-radius:10px;background:linear-gradient(135deg,#0D40FC,#1836A8);border:1px solid #0D40FC;box-shadow:0 5px 14px rgba(13,64,252,.2);white-space:nowrap;transition:all .18s}.nav-journey:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(13,64,252,.28)}.nav-journey::before{content:'✦';color:#55D7FF}
         .portal-note{max-width:760px;margin:18px auto 0;padding:12px 16px;border-radius:12px;background:#ffffffb8;border:1px solid var(--gray-200);font-size:12px;color:var(--gray-600)}
 
         /* ── HERO ── */
@@ -224,7 +224,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .hero-stat:not(:last-child) { border-left: 1px solid var(--gray-100); }
         .hero-stat-num { font-size: 24px; font-weight: 800; color: var(--deep); }
         .hero-stat-lbl { font-size: 11px; color: var(--gray-400); font-weight: 500; margin-top: 2px; }
-        .services{max-width:1080px;margin:-34px auto 0;position:relative;z-index:3;padding:0 24px}.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.service-card{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:24px;box-shadow:0 12px 34px rgba(1,20,66,.1);display:flex;gap:16px;align-items:flex-start}.service-icon{width:48px;height:48px;border-radius:14px;background:#EEF4FF;color:var(--primary);display:grid;place-items:center;font-size:22px;flex:none}.service-card.consult .service-icon{background:#ECFDF5;color:#047857}.service-card h2{font-size:18px;margin-bottom:5px}.service-card p{font-size:13px;color:var(--gray-600);line-height:1.7}.service-link{display:inline-block;margin-top:12px;color:var(--primary);font-size:13px;font-weight:800;text-decoration:none}.consult .service-link{color:#047857}.sup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sup-actions .sup-btn{font-size:12px;padding:10px}.sup-btn.consult{background:#fff;color:#047857;border:1px solid #A7F3D0;box-shadow:none}
+        .services{max-width:1080px;margin:30px auto 0;position:relative;z-index:3;padding:0 24px 10px}.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.service-card{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:24px;box-shadow:0 10px 28px rgba(1,20,66,.08);display:flex;gap:16px;align-items:flex-start}.service-icon{width:48px;height:48px;border-radius:14px;background:#EEF4FF;color:var(--primary);display:grid;place-items:center;font-size:22px;flex:none}.service-card.consult .service-icon{background:#ECFDF5;color:#047857}.service-card h2{font-size:18px;margin-bottom:5px}.service-card p{font-size:13px;color:var(--gray-600);line-height:1.7}.service-link{display:inline-block;margin-top:12px;color:var(--primary);font-size:13px;font-weight:800;text-decoration:none}.consult .service-link{color:#047857}.sup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sup-actions .sup-btn{font-size:12px;padding:10px}.sup-btn.consult{background:#fff;color:#047857;border:1px solid #A7F3D0;box-shadow:none}
 
         /* ── SUPERVISORS ── */
         .section { max-width: 1200px; margin: 0 auto; padding: 56px 40px; }
@@ -364,7 +364,7 @@ export default async function HomePage({ params }: HomePageProps) {
           .section { padding: 40px 20px; }
           .how-section { padding: 48px 24px; }
           .footer { padding: 24px 20px; }
-          .services-grid{grid-template-columns:1fr}.services{margin-top:-20px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
+          .services-grid{grid-template-columns:1fr}.services{margin-top:22px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
         }
       `}</style>
 
@@ -377,22 +377,13 @@ export default async function HomePage({ params }: HomePageProps) {
               href={`/${locale}/supervision-journey`}
               className="nav-journey"
             >
-              تعرّف على رحلة الإشراف
+              اكتشف رحلة الإشراف
             </Link>
             <Link href={`/${locale}/register`} className="nav-login signup">
               تسجيل جديد
             </Link>
-            <Link
-              href={`/${locale}/login?portal=provider`}
-              className="nav-login"
-            >
-              دخول المشرف | المستشار
-            </Link>
-            <Link
-              href={`/${locale}/login?portal=trainee`}
-              className="nav-login trainee"
-            >
-              دخول المتدرب
+            <Link href={`/${locale}/login`} className="nav-login">
+              تسجيل الدخول
             </Link>
             <Link
               href={`/${locale === "ar" ? "en" : "ar"}`}

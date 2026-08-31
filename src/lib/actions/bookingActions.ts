@@ -14,6 +14,10 @@ import {
   isManagementToken,
   validateBookingPayload,
 } from "@/lib/validation/booking";
+import {
+  cancelCalendarEvent,
+  createCalendarEvent,
+} from "@/lib/calendar/googleCalendar";
 
 type BookingResult = {
   success: boolean;
@@ -163,6 +167,29 @@ export async function createBooking(
       return supervisorData;
     });
 
+    let meetLink = "";
+    try {
+      const startDateTime = `${payload.date}T${payload.time}:00+03:00`;
+      const end = new Date(new Date(startDateTime).getTime() + 30 * 60 * 1000);
+      const calendarEvent = await createCalendarEvent({
+        summary: `${bookingType === "consultation" ? "استشارة" : "مقابلة إشراف أولية"} — ${bookingData.studentName}`,
+        description: `موعد عبر منصة سلوكيرا مع ${supervisor.name}. رقم الحجز: ${referenceNumber}`,
+        startDateTime,
+        endDateTime: end.toISOString(),
+        attendeeEmails: supervisor.email
+          ? [bookingData.studentEmail, supervisor.email]
+          : [bookingData.studentEmail],
+        timeZone: "Asia/Riyadh",
+      });
+      meetLink = calendarEvent.meetLink;
+      await bookingRef.update({
+        meetLink,
+        googleEventId: calendarEvent.googleEventId,
+      });
+    } catch (error) {
+      console.error("Google Calendar event error:", error);
+    }
+
     try {
       await sendBookingConfirmationEmail({
         studentName: bookingData.studentName,
@@ -170,7 +197,7 @@ export async function createBooking(
         supervisorName: supervisor.name,
         date: payload.date,
         time: payload.time,
-        meetLink: "",
+        meetLink,
         managementToken,
         locale,
       });
@@ -187,7 +214,7 @@ export async function createBooking(
           supervisorEmail: supervisor.email,
           date: payload.date,
           time: payload.time,
-          meetLink: "",
+          meetLink,
           managementToken,
           referenceNumber,
           locale: "ar",
@@ -268,6 +295,14 @@ export async function cancelBookingByToken(
 
       return data;
     });
+
+    if (booking.googleEventId) {
+      try {
+        await cancelCalendarEvent(booking.googleEventId);
+      } catch (error) {
+        console.error("Calendar cancellation error:", error);
+      }
+    }
 
     try {
       await sendCancellationEmail(
