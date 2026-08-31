@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 
 export default function LoginPage() {
@@ -14,12 +17,38 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("portal") === "admin") {
       setPortal("admin");
     }
   }, []);
+
+  const handlePasswordReset = async () => {
+    setError("");
+    setResetMessage("");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("اكتبي بريد الإدارة أولًا ثم اضغطي نسيت كلمة المرور");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      setResetMessage(
+        "أرسلنا رابط إعادة تعيين كلمة المرور. افحصي الوارد والبريد غير المرغوب فيه.",
+      );
+    } catch (resetError: any) {
+      const code = resetError?.code || "";
+      setError(
+        code.includes("invalid-email")
+          ? "صيغة البريد الإلكتروني غير صحيحة"
+          : code.includes("too-many-requests")
+            ? "تم إرسال محاولات كثيرة؛ انتظري قليلًا ثم حاولي مجددًا"
+            : "تعذر إرسال رابط إعادة التعيين. تأكدي من بريد الإدارة وحاولي مجددًا.",
+      );
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +187,8 @@ export default function LoginPage() {
         .submit-btn { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 12px; padding: 15px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; box-shadow: 0 4px 16px rgba(13,64,252,0.3); }
         .submit-btn:hover:not(:disabled) { background: #0929b4; transform: translateY(-1px); }
         .submit-btn:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; transform: none; }
+        .reset-btn { display:block;margin:12px auto 0;border:0;background:transparent;color:var(--primary);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:5px; }
+        .reset-message { background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:#047857;margin-bottom:20px;line-height:1.7; }
         .login-footer { text-align: center; margin-top: 32px; font-size: 12px; color: #94A3B8; }
         .login-footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
       `}</style>
@@ -249,10 +280,20 @@ export default function LoginPage() {
               </div>
 
               {step && !error && <div className="step-box">⏳ {step}</div>}
+              {resetMessage && (
+                <div className="reset-message">✓ {resetMessage}</div>
+              )}
               {error && <div className="error-box">⚠️ {error}</div>}
 
               <button type="submit" disabled={loading} className="submit-btn">
                 {loading ? step || "جارٍ الدخول..." : "تسجيل الدخول →"}
+              </button>
+              <button
+                type="button"
+                className="reset-btn"
+                onClick={handlePasswordReset}
+              >
+                نسيت كلمة المرور؟
               </button>
             </form>
 
