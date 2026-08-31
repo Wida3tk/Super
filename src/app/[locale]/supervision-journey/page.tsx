@@ -32,8 +32,8 @@ const journeySteps = [
   ],
   [
     "06",
-    "توثيق الإنجاز",
-    "تقارير ومحاضر وتقييمات دورية وملف منظم يدعم متطلبات التقديم للبورد.",
+    "الجاهزية للتقديم",
+    "نراجع الساعات والتقارير والنماذج معك، ونبقى إلى جانبك حتى جاهزية ملف الرخصة.",
   ],
 ];
 
@@ -65,10 +65,10 @@ const benefits = [
 ];
 
 const plans = [
-  { credential: "BCBA", experience: "خبرة 1–5 سنوات", price: "690" },
-  { credential: "BCBA", experience: "خبرة 6+ سنوات", price: "843.33" },
-  { credential: "QBA", experience: "خبرة 1–5 سنوات", price: "590.33" },
-  { credential: "QBA", experience: "خبرة 6+ سنوات", price: "743.67" },
+  { credential: "BCBA", experience: "خبرة 1–5 سنوات", price: "517.5" },
+  { credential: "BCBA", experience: "خبرة 6+ سنوات", price: "632.5" },
+  { credential: "QBA", experience: "خبرة 1–5 سنوات", price: "442.75" },
+  { credential: "QBA", experience: "خبرة 6+ سنوات", price: "557.75" },
 ];
 
 export default async function SupervisionJourneyPage({ params }: Props) {
@@ -127,12 +127,12 @@ export default async function SupervisionJourneyPage({ params }: Props) {
           <span>ساعة خبرة ميدانية حسب الرخصة</span>
         </div>
         <div className="stat">
-          <strong>فردي + جماعي</strong>
+          <strong>فردي وجماعي</strong>
           <span>صيغة إشراف مرنة</span>
         </div>
         <div className="stat">
-          <strong>ملف موحّد</strong>
-          <span>للساعات والتقييمات والوثائق</span>
+          <strong>نظام ذكي للساعات</strong>
+          <span>يحسب التقدم والنسب والمتبقي تلقائيًا</span>
         </div>
         <div className="stat">
           <strong>عن بُعد</strong>
@@ -142,8 +142,8 @@ export default async function SupervisionJourneyPage({ params }: Props) {
 
       <section className="section" style={{ paddingBottom: 20 }}>
         <div className="section-head">
-          <div className="section-kicker">مساران، وحسبة واضحة لكل متدرب</div>
-          <h2>اختر الرخصة التي تعمل للوصول إليها</h2>
+          <div className="section-kicker">مساران مهنيان بحسب مؤهلك</div>
+          <h2>اختر الرخصة المناسبة لمؤهلك وطموحك</h2>
           <p>
             من أول يوم يربط النظام حساب المتدرب والمشرف بأهداف المسار، ويتابع
             ساعات الخبرة والإشراف المباشر كلًا على حدة.
@@ -151,7 +151,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         </div>
         <div className="path-grid">
           <article className="path-card">
-            <span className="path-badge">مسار مساعد محلل السلوك</span>
+            <span className="path-badge">لحملة البكالوريوس</span>
             <h3>رخصة مساعد محلل سلوك</h3>
             <div className="path-code">QASP-S</div>
             <div className="path-numbers">
@@ -170,7 +170,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
             </p>
           </article>
           <article className="path-card featured">
-            <span className="path-badge">مسار محلل السلوك</span>
+            <span className="path-badge">لحملة الماجستير والدكتوراه</span>
             <h3>رخصة محلل سلوك</h3>
             <div className="path-code">QBA</div>
             <div className="path-numbers">
@@ -193,8 +193,8 @@ export default async function SupervisionJourneyPage({ params }: Props) {
 
       <section className="section" id="journey">
         <div className="section-head">
-          <div className="section-kicker">من أول لقاء إلى اكتمال الملف</div>
-          <h2>كيف تسير رحلة الإشراف؟</h2>
+          <div className="section-kicker">معك خطوة بخطوة حتى الرخصة</div>
+          <h2>رحلة إشراف متكاملة حتى جاهزيتك للتقديم</h2>
           <p>
             خطوات واضحة تمنحك رؤية كاملة لما سيحدث، وما الذي ستحصل عليه في كل
             مرحلة.
@@ -236,38 +236,36 @@ export default async function SupervisionJourneyPage({ params }: Props) {
       <section className="section">
         <div className="requirements">
           <article className="require-card">
-            <h2>الإشراف الذي يبني الكفاءة</h2>
+            <h2>ما الذي نتابعه خلال الإشراف؟</h2>
             <p>
-              الهدف ليس جمع الأرقام فقط؛ بل تطوير قدرتك على التقييم، تحليل
-              البيانات، تصميم التدخلات، تدريب الفرق والأسر، واتخاذ قرارات مهنية
-              قائمة على الأدلة.
+              رحلة منظمة تجمع بناء المهارة بالتطبيق والتوثيق، حتى تعرف في كل شهر
+              ما أنجزته وما الذي يحتاج متابعة.
             </p>
             <div className="require-list">
               <div className="require-item">
-                تقييم كفاءة أولي يتكرر دوريًا لمتابعة النمو المهني.
+                تقييم أولي وخطة شخصية تُراجع مع تقدمك.
               </div>
               <div className="require-item">
-                جلسات منتظمة وتغذية راجعة ومهام مرتبطة بالممارسة.
+                لقاءات فردية وجماعية وتغذية راجعة على التطبيق.
               </div>
               <div className="require-item">
-                متابعة الساعات المباشرة وغير المباشرة ونسبة الإشراف.
+                حساب المباشر وغير المباشر ونسبة الإشراف تلقائيًا.
               </div>
               <div className="require-item">
-                محاضر اجتماعات وتقارير وخطة إشراف قابلة للمتابعة.
+                سجل منظم للمحاضر والوثائق والتقييمات ونماذج البورد.
               </div>
             </div>
           </article>
           <aside className="note-card">
-            <h3>متطلبات الساعات تختلف حسب المسار</h3>
+            <h3>أهم متطلبات الجاهزية للرخصة</h3>
             <p>
-              في سلوكيرا نتابع مسار مساعد محلل السلوك على هدف 1500 ساعة خبرة
-              ميدانية و50 ساعة إشراف مباشر، ومسار محلل السلوك على هدف 2000 ساعة
-              خبرة ميدانية و100 ساعة إشراف مباشر.
+              المؤهل المناسب للمسار، إكمال الساعات الدراسية المعتمدة، توقيع عقد
+              الإشراف قبل بدء احتساب الخبرة، وتوثيق الساعات في النماذج المطلوبة.
             </p>
             <p>
-              لا تُعامل ساعات الإشراف كأنها إجمالي الرحلة؛ بل يحسب النظام تقدم
-              الخبرة الميدانية وتقدم الإشراف المباشر في مؤشرين مستقلين، مع
-              متابعة النسبة الشهرية وتوزيع الأنشطة.
+              يتابع النظام نسبة الإشراف الشهرية، توازن الساعات المباشرة وغير
+              المباشرة، حد الإشراف الجماعي، والتقييمات الدورية؛ ويعتمد المشرف
+              الأنشطة المؤهلة أولًا بأول.
             </p>
             <p>
               <b>
@@ -300,8 +298,8 @@ export default async function SupervisionJourneyPage({ params }: Props) {
           <div className="section-kicker">خيارات مالية واضحة</div>
           <h2>اختر الخبرة المناسبة لميزانيتك</h2>
           <p>
-            خطة تقسيط لمدة 18 شهرًا تشمل 4 ساعات إشراف شهريًا، وفق فئة اعتماد
-            المشرف وخبرته.
+            تتوفر خطط مرنة بحسب المسار وعدد الساعات. الأسعار أدناه لخطة 12 شهرًا
+            تشمل 4 ساعات إشراف شهريًا.
           </p>
         </div>
         <div className="pricing">
@@ -315,12 +313,15 @@ export default async function SupervisionJourneyPage({ params }: Props) {
               <div className="price">
                 {plan.price} <small>ريال / شهريًا</small>
               </div>
+              <div style={{ marginTop: 9, fontSize: 11, color: "#64748B" }}>
+                خطة 12 شهرًا
+              </div>
             </article>
           ))}
         </div>
         <p className="price-note">
-          تُراجع تفاصيل الخطة ونطاق الخدمة والملاءمة المهنية خلال المقابلة
-          الأولية وقبل التعاقد.
+          تتوفر مدد أخرى، ومنها خطط أطول، بحسب الرخصة والساعات المتبقية. تُحدد
+          الخطة الأنسب بعد المقابلة الأولية وقبل التعاقد.
         </p>
       </section>
 
