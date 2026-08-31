@@ -379,7 +379,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
               <div className="section-card">
                 <div className="section-head">
                   <div className="section-icon">💬</div>
-                  <span className="section-title">آراء الطلاب</span>
+                  <span className="section-title">التقييمات وآراء العملاء</span>
                 </div>
                 <div className="section-body">
                   {reviews.length === 0 ? (
