@@ -64,11 +64,18 @@ const benefits = [
   ],
 ];
 
-const plans = [
+const assistantPlans = [
   { credential: "BCBA", experience: "خبرة 1–5 سنوات", price: "517.5" },
   { credential: "BCBA", experience: "خبرة 6+ سنوات", price: "632.5" },
   { credential: "QBA", experience: "خبرة 1–5 سنوات", price: "442.75" },
   { credential: "QBA", experience: "خبرة 6+ سنوات", price: "557.75" },
+];
+
+const analystPlans = [
+  { credential: "BCBA", experience: "خبرة 1–5 سنوات", price: "690" },
+  { credential: "BCBA", experience: "خبرة 6+ سنوات", price: "843.33" },
+  { credential: "QBA", experience: "خبرة 1–5 سنوات", price: "590.33" },
+  { credential: "QBA", experience: "خبرة 6+ سنوات", price: "743.67" },
 ];
 
 export default async function SupervisionJourneyPage({ params }: Props) {
@@ -86,6 +93,17 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         .requirements{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:stretch}.require-card{background:#001442;color:#fff;border-radius:22px;padding:30px}.require-card h2{font-size:28px;margin-bottom:14px}.require-card p{color:rgba(255,255,255,.66);line-height:1.9}.require-list{margin-top:20px;display:grid;gap:12px}.require-item{padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.7}.note-card{background:#fff;border:1px solid #E1E9F5;border-radius:22px;padding:30px}.note-card h3{font-size:20px;margin-bottom:14px}.note-card p{color:#64748B;font-size:13px;line-height:1.9;margin-bottom:12px}.source-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.source-links a{font-size:11px;color:#0D40FC;text-decoration:none;background:#EEF4FF;border-radius:8px;padding:7px 10px}
         .pricing{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.price-card{background:#fff;border:1px solid #DDE6F3;border-radius:18px;padding:22px;text-align:center}.price-credential{display:inline-flex;background:#EAF0FF;color:#0D40FC;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800}.price-card h3{font-size:14px;margin:15px 0 8px}.price{font-size:28px;font-weight:900;color:#001442}.price small{font-size:11px;color:#64748B;font-weight:500}.price-note{text-align:center;color:#64748B;font-size:13px;margin-top:18px}.final-cta{max-width:1100px;margin:0 auto 70px;padding:48px 24px;border-radius:26px;text-align:center;color:#fff;background:linear-gradient(135deg,#0D40FC,#001442);box-shadow:0 18px 50px rgba(13,64,252,.2)}.final-cta h2{font-size:31px;margin-bottom:10px}.final-cta p{color:rgba(255,255,255,.7);margin-bottom:24px}.footer{background:#001442;color:rgba(255,255,255,.45);padding:28px;text-align:center;font-size:12px}.footer img{width:100px;filter:brightness(0) invert(1);margin-bottom:10px}
         @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr);margin:-20px 16px 0}.stat+.stat{border-right:0}.journey,.benefits{grid-template-columns:repeat(2,1fr)}.requirements{grid-template-columns:1fr}.pricing{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.nav{padding:0 16px}.back{display:none}.hero{padding:64px 18px}.hero p{font-size:14px}.stats{grid-template-columns:1fr 1fr}.path-grid,.journey,.benefits,.pricing{grid-template-columns:1fr}.section{padding:58px 18px}.section h2{font-size:26px}.nav-cta{font-size:11px;padding:8px 10px}}
+      `}</style>
+      <style>{`
+        .path-toggle{position:absolute;opacity:0;pointer-events:none}
+        .path-tabs{max-width:760px;margin:46px auto 0;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#E8EFFA;border:1px solid #D7E2F2;border-radius:18px}
+        .path-tab{padding:15px 18px;border-radius:13px;text-align:center;color:#64748B;font-size:14px;font-weight:800;cursor:pointer;transition:all .2s}
+        .path-tab strong{display:block;font-size:16px;color:inherit}.path-tab span{display:block;font-size:11px;font-weight:600;margin-top:2px}
+        .path-panel,.pricing-panel{display:none}
+        #path-assistant:checked~.path-tabs label[for="path-assistant"],#path-analyst:checked~.path-tabs label[for="path-analyst"]{background:#fff;color:#0D40FC;box-shadow:0 6px 18px rgba(1,20,66,.1)}
+        #path-assistant:checked~.section .assistant-panel,#path-assistant:checked~.section .assistant-pricing,#path-analyst:checked~.section .analyst-panel,#path-analyst:checked~.section .analyst-pricing{display:block}
+        .path-panel .path-card{max-width:760px;margin:auto}.duration-chip{display:inline-flex;margin-right:8px;padding:5px 11px;border-radius:99px;background:#ECFDF5;color:#047857;font-size:11px;font-weight:800}.featured .duration-chip{background:#55D7FF1c;color:#7EE4FF}
+        @media(max-width:560px){.path-tabs{margin:28px 16px 0}.path-tab{padding:12px 8px}.path-tab strong{font-size:13px}}
       `}</style>
 
       <nav className="nav">
@@ -140,6 +158,34 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         </div>
       </div>
 
+      <input
+        className="path-toggle"
+        type="radio"
+        name="path"
+        id="path-assistant"
+        defaultChecked
+      />
+      <input
+        className="path-toggle"
+        type="radio"
+        name="path"
+        id="path-analyst"
+      />
+      <div
+        className="path-tabs"
+        role="tablist"
+        aria-label="اختيار مسار الإشراف"
+      >
+        <label className="path-tab" htmlFor="path-assistant">
+          <strong>مساعد محلل سلوك</strong>
+          <span>خطة 12 شهرًا</span>
+        </label>
+        <label className="path-tab" htmlFor="path-analyst">
+          <strong>محلل سلوك</strong>
+          <span>خطة 18 شهرًا</span>
+        </label>
+      </div>
+
       <section className="section" style={{ paddingBottom: 20 }}>
         <div className="section-head">
           <div className="section-kicker">مساران مهنيان بحسب مؤهلك</div>
@@ -149,9 +195,10 @@ export default async function SupervisionJourneyPage({ params }: Props) {
             ساعات الخبرة والإشراف المباشر كلًا على حدة.
           </p>
         </div>
-        <div className="path-grid">
+        <div className="path-panel assistant-panel">
           <article className="path-card">
             <span className="path-badge">لحملة البكالوريوس</span>
+            <span className="duration-chip">12 شهرًا</span>
             <h3>رخصة مساعد محلل سلوك</h3>
             <div className="path-code">QASP-S</div>
             <div className="path-numbers">
@@ -169,8 +216,11 @@ export default async function SupervisionJourneyPage({ params }: Props) {
               تقدمه المنفصل نحو هدف الإشراف المباشر.
             </p>
           </article>
+        </div>
+        <div className="path-panel analyst-panel">
           <article className="path-card featured">
             <span className="path-badge">لحملة الماجستير والدكتوراه</span>
+            <span className="duration-chip">18 شهرًا</span>
             <h3>رخصة محلل سلوك</h3>
             <div className="path-code">QBA</div>
             <div className="path-numbers">
@@ -298,31 +348,50 @@ export default async function SupervisionJourneyPage({ params }: Props) {
           <div className="section-kicker">خيارات مالية واضحة</div>
           <h2>اختر الخبرة المناسبة لميزانيتك</h2>
           <p>
-            تتوفر خطط مرنة بحسب المسار وعدد الساعات. الأسعار أدناه لخطة 12 شهرًا
-            تشمل 4 ساعات إشراف شهريًا.
+            تتغير مدة الخطة والأسعار بحسب المسار الذي اخترته أعلاه، وتشمل الخطة
+            4 ساعات إشراف شهريًا.
           </p>
         </div>
-        <div className="pricing">
-          {plans.map((plan) => (
-            <article
-              className="price-card"
-              key={`${plan.credential}-${plan.experience}`}
-            >
-              <span className="price-credential">{plan.credential}</span>
-              <h3>{plan.experience}</h3>
-              <div className="price">
-                {plan.price} <small>ريال / شهريًا</small>
-              </div>
-              <div style={{ marginTop: 9, fontSize: 11, color: "#64748B" }}>
-                خطة 12 شهرًا
-              </div>
-            </article>
-          ))}
+        <div className="pricing-panel assistant-pricing">
+          <div className="pricing">
+            {assistantPlans.map((plan) => (
+              <article
+                className="price-card"
+                key={`assistant-${plan.credential}-${plan.experience}`}
+              >
+                <span className="price-credential">{plan.credential}</span>
+                <h3>{plan.experience}</h3>
+                <div className="price">
+                  {plan.price} <small>ريال / شهريًا</small>
+                </div>
+                <div style={{ marginTop: 9, fontSize: 11, color: "#64748B" }}>
+                  خطة 12 شهرًا
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="price-note">مسار مساعد محلل السلوك — خطة 12 شهرًا.</p>
         </div>
-        <p className="price-note">
-          تتوفر مدد أخرى، ومنها خطط أطول، بحسب الرخصة والساعات المتبقية. تُحدد
-          الخطة الأنسب بعد المقابلة الأولية وقبل التعاقد.
-        </p>
+        <div className="pricing-panel analyst-pricing">
+          <div className="pricing">
+            {analystPlans.map((plan) => (
+              <article
+                className="price-card"
+                key={`analyst-${plan.credential}-${plan.experience}`}
+              >
+                <span className="price-credential">{plan.credential}</span>
+                <h3>{plan.experience}</h3>
+                <div className="price">
+                  {plan.price} <small>ريال / شهريًا</small>
+                </div>
+                <div style={{ marginTop: 9, fontSize: 11, color: "#64748B" }}>
+                  خطة 18 شهرًا
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="price-note">مسار محلل السلوك — خطة 18 شهرًا.</p>
+        </div>
       </section>
 
       <section className="final-cta">

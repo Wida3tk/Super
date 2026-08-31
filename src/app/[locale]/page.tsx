@@ -155,7 +155,7 @@ export default async function HomePage({ params }: HomePageProps) {
         /* ── HERO ── */
         .hero {
           background: linear-gradient(160deg, #f0f5ff 0%, var(--off-white) 60%);
-          padding: 80px 48px 72px;
+          padding: 80px 48px 30px;
           text-align: center;
           border-bottom: 1px solid var(--gray-100);
           position: relative;
@@ -224,7 +224,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .hero-stat:not(:last-child) { border-left: 1px solid var(--gray-100); }
         .hero-stat-num { font-size: 24px; font-weight: 800; color: var(--deep); }
         .hero-stat-lbl { font-size: 11px; color: var(--gray-400); font-weight: 500; margin-top: 2px; }
-        .services{max-width:1080px;margin:30px auto 0;position:relative;z-index:3;padding:0 24px 10px}.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.service-card{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:24px;box-shadow:0 10px 28px rgba(1,20,66,.08);display:flex;gap:16px;align-items:flex-start}.service-icon{width:48px;height:48px;border-radius:14px;background:#EEF4FF;color:var(--primary);display:grid;place-items:center;font-size:22px;flex:none}.service-card.consult .service-icon{background:#ECFDF5;color:#047857}.service-card h2{font-size:18px;margin-bottom:5px}.service-card p{font-size:13px;color:var(--gray-600);line-height:1.7}.service-link{display:inline-block;margin-top:12px;color:var(--primary);font-size:13px;font-weight:800;text-decoration:none}.consult .service-link{color:#047857}.sup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sup-actions .sup-btn{font-size:12px;padding:10px}.sup-btn.consult{background:#fff;color:#047857;border:1px solid #A7F3D0;box-shadow:none}
+        .services{max-width:1080px;margin:0 auto;position:relative;z-index:3;padding:0 24px 54px}.services-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.service-card{background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:24px;box-shadow:0 10px 28px rgba(1,20,66,.08);display:flex;gap:16px;align-items:flex-start}.service-icon{width:48px;height:48px;border-radius:14px;background:#EEF4FF;color:var(--primary);display:grid;place-items:center;font-size:22px;flex:none}.service-card.consult .service-icon{background:#ECFDF5;color:#047857}.service-card h2{font-size:18px;margin-bottom:5px}.service-card p{font-size:13px;color:var(--gray-600);line-height:1.7}.service-link{display:inline-block;margin-top:12px;color:var(--primary);font-size:13px;font-weight:800;text-decoration:none}.consult .service-link{color:#047857}.sup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sup-actions .sup-btn{font-size:12px;padding:10px}.sup-btn.consult{background:#fff;color:#047857;border:1px solid #A7F3D0;box-shadow:none}
 
         /* ── SUPERVISORS ── */
         .section { max-width: 1200px; margin: 0 auto; padding: 56px 40px; }
@@ -364,7 +364,7 @@ export default async function HomePage({ params }: HomePageProps) {
           .section { padding: 40px 20px; }
           .how-section { padding: 48px 24px; }
           .footer { padding: 24px 20px; }
-          .services-grid{grid-template-columns:1fr}.services{margin-top:22px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
+          .services-grid{grid-template-columns:1fr}.services{margin-top:0;padding-bottom:42px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
         }
       `}</style>
 
