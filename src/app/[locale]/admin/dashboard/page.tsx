@@ -105,8 +105,7 @@ export default async function AdminDashboardPage({ params }: Props) {
   const traineeProgress = activeTrainees
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
-      const targetHours =
-        t.fieldworkTargetHours || credentialRules(t.license || "QASP-S").total;
+      const targetHours = credentialRules(t.license || "QASP-S").total;
       const pct = Math.round(((snap?.totalHours || 0) / targetHours) * 100);
       return {
         ...t,

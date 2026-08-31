@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const requiredHours = license === "QASP-S" ? 1500 : 2000;
+  const requiredHours = license === "QASP-S" ? 1000 : 2000;
   const supervisionTargetHours = license === "QASP-S" ? 50 : 100;
   const ref = await adminDb.collection("trainees").add({
     name,

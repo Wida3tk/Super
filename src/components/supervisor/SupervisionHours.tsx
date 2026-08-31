@@ -672,8 +672,7 @@ function TraineeCard({
   onSelect: () => void;
 }) {
   const total = snapshot?.totalHours || 0;
-  const targetHours =
-    trainee.fieldworkTargetHours || credentialRules(trainee.license).total;
+  const targetHours = credentialRules(trainee.license).total;
   const pct = Math.min(Math.round((total / targetHours) * 100), 100);
   const groupPct = snapshot?.groupPercentage || 0;
   const isGroupWarn = groupPct > 25;
@@ -947,9 +946,7 @@ export default function SupervisionHours({
               <p style={{ fontSize: 12, color: COLORS.gray500 }}>
                 {selectedTrainee.license} ·{" "}
                 {credentialRules(selectedTrainee.license).label} ·{" "}
-                {selectedTrainee.fieldworkTargetHours ||
-                  credentialRules(selectedTrainee.license).total}{" "}
-                ساعة خبرة ·{" "}
+                {credentialRules(selectedTrainee.license).total} ساعة خبرة ·{" "}
                 {selectedTrainee.supervisionTargetHours ||
                   credentialRules(selectedTrainee.license)
                     .supervisionTarget}{" "}

@@ -73,7 +73,7 @@ export async function addTrainee(data: {
   phone: string;
   license: License;
 }): Promise<string> {
-  const requiredHours = data.license === "QASP-S" ? 1500 : 2000;
+  const requiredHours = data.license === "QASP-S" ? 1000 : 2000;
   const supervisionTargetHours = data.license === "QASP-S" ? 50 : 100;
   const ref = await addDoc(collection(db, "trainees"), {
     ...data,

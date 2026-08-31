@@ -337,7 +337,7 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
                   style={{ fontSize: 11, color: COLORS.gray500, marginTop: 2 }}
                 >
                   {l === "QASP-S"
-                    ? "1000 أو 1500 ساعة خبرة · 50 ساعة إشراف"
+                    ? "1000 ساعة خبرة · 50 ساعة إشراف"
                     : "2000 ساعة خبرة · 100 ساعة إشراف"}
                 </div>
               </div>
@@ -767,14 +767,11 @@ async function exportToExcel(
         الإيميل: t.email,
         الجوال: t.phone,
         الرخصة: t.license,
-        "الساعات المطلوبة":
-          t.fieldworkTargetHours || credentialRules(t.license).total,
+        "الساعات المطلوبة": credentialRules(t.license).total,
         فردية: t.totalIndividualHours || 0,
         جماعية: t.totalGroupHours || 0,
         الإجمالي: t.totalHours || 0,
-        المتبقي:
-          (t.fieldworkTargetHours || credentialRules(t.license).total) -
-          (t.totalHours || 0),
+        المتبقي: credentialRules(t.license).total - (t.totalHours || 0),
         "المشرف الحالي": sup?.name || "—",
         الحالة: STATUS_LABELS[t.status],
       };
@@ -1231,9 +1228,7 @@ export default function AdminSupervisionPanel({
                     const sup = supervisors.find(
                       (s) => s.id === t.currentSupervisorId,
                     );
-                    const targetHours =
-                      t.fieldworkTargetHours ||
-                      credentialRules(t.license).total;
+                    const targetHours = credentialRules(t.license).total;
                     const pct = Math.min(
                       Math.round(((t.totalHours || 0) / targetHours) * 100),
                       100,

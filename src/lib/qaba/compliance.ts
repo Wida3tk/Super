@@ -9,10 +9,10 @@ export function credentialRules(
   if (credential === "QASP-S")
     return {
       label: "مساعد محلل سلوك",
-      total: 1500,
+      total: 1000,
       supervisionTarget: 50,
-      minIndirect: 900,
-      maxDirect: 600,
+      minIndirect: 600,
+      maxDirect: 400,
       monthlyMin: 20,
       monthlyMax: 140,
       supervisionRate: 0.05,

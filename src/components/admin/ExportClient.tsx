@@ -71,9 +71,7 @@ export default function ExportClient({
       if (type === "trainees") {
         data = trainees.map((t) => {
           const sup = supervisors.find((s) => s.id === t.currentSupervisorId);
-          const targetHours =
-            t.fieldworkTargetHours ||
-            credentialRules(t.license || "QASP-S").total;
+          const targetHours = credentialRules(t.license || "QASP-S").total;
           return {
             الاسم: t.name,
             الإيميل: t.email,

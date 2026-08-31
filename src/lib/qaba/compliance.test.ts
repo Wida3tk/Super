@@ -3,7 +3,7 @@ import { buildCompliance, credentialRules } from "./compliance";
 
 describe("QABA compliance", () => {
   it("uses the configured analyst and assistant pathways", () => {
-    expect(credentialRules("QASP-S").total).toBe(1500);
+    expect(credentialRules("QASP-S").total).toBe(1000);
     expect(credentialRules("QASP-S").supervisionTarget).toBe(50);
     expect(credentialRules("QBA").total).toBe(2000);
     expect(credentialRules("QBA").supervisionTarget).toBe(100);

@@ -141,7 +141,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
 
       <div className="stats">
         <div className="stat">
-          <strong>1000 أو 1500 أو 2000</strong>
+          <strong>1000 أو 2000</strong>
           <span>ساعة خبرة ميدانية حسب الرخصة</span>
         </div>
         <div className="stat">
@@ -203,7 +203,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
             <div className="path-code">QASP-S</div>
             <div className="path-numbers">
               <div className="path-number">
-                <strong>1000 أو 1500</strong>
+                <strong>1000</strong>
                 <span>ساعة خبرة ميدانية</span>
               </div>
               <div className="path-number">

@@ -117,7 +117,7 @@ export default function TraineeFieldworkDashboard({
   const supervisionPct = total ? (supervision / total) * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
   const pathway = credentialRules(trainee.license || "QASP-S");
-  const requiredHours = Number(trainee.fieldworkTargetHours || pathway.total);
+  const requiredHours = pathway.total;
   const supervisionTargetHours = Number(
     trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
