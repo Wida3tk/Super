@@ -94,10 +94,6 @@ export default async function HomePage({ params }: HomePageProps) {
   const consultantProviders = supervisors.filter(
     (provider) => provider.accountType === "consultant",
   );
-  const bookableProviderCount = supervisors.filter(
-    (provider) => (availableDatesByProvider[provider.id]?.length || 0) > 0,
-  ).length;
-
   return (
     <>
       <style>{`
@@ -354,18 +350,29 @@ export default async function HomePage({ params }: HomePageProps) {
         @media(max-width:600px){ .footer { flex-direction: column; gap: 12px; text-align: center; } }
         .footer-copy { font-size: 12px; color: rgba(255,255,255,0.25); }
 
+        /* ── CONVERSION HERO ── */
+        .hero{padding:64px 48px 58px;text-align:right}
+        .hero::before{top:-160px;right:-80px;left:auto;transform:none;width:760px;height:760px}
+        .hero-layout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.92fr);gap:58px;align-items:center;position:relative;z-index:1}
+        .hero-copy{text-align:right}.hero-badge{margin-bottom:20px}.hero h1{font-size:clamp(36px,4.4vw,58px);margin-bottom:16px}.hero-sub{font-size:clamp(16px,1.6vw,19px);line-height:1.8;max-width:650px;margin-bottom:24px}
+        .hero-actions{justify-content:flex-start;margin-bottom:22px}.hero-cta{margin-bottom:0}.hero-trust{display:flex;gap:16px;flex-wrap:wrap;color:var(--gray-600);font-size:12px;font-weight:600}.hero-trust span{display:inline-flex;align-items:center;gap:6px}.hero-trust span::before{content:'✓';display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#DCFCE7;color:#047857;font-size:11px;font-weight:900}
+        .hero-stats{display:flex;margin-top:22px}.hero-stat{flex:1;padding:15px 12px}.portal-note{margin-top:15px;padding:0;border:0;background:transparent;text-align:right}.portal-note a{color:var(--primary);font-weight:800;text-decoration:none}
+        .path-panel{background:linear-gradient(145deg,#001442 0%,#06277C 100%);border-radius:28px;padding:26px;color:#fff;box-shadow:0 24px 60px rgba(0,20,66,.22);position:relative;overflow:hidden}.path-panel::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(85,215,255,.12);left:-80px;top:-100px}.path-eyebrow{font-size:12px;color:var(--neon);font-weight:800;margin-bottom:7px;position:relative;z-index:1}.path-title{font-size:23px;font-weight:800;margin-bottom:18px;position:relative;z-index:1}.path-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative;z-index:1}.path-option{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:16px;min-height:142px}.path-option.highlight{background:#fff;color:var(--deep);border-color:#fff}.path-tag{display:inline-block;font-size:10px;font-weight:800;color:var(--neon);background:rgba(85,215,255,.12);border-radius:20px;padding:4px 8px;margin-bottom:10px}.highlight .path-tag{color:var(--primary);background:#EEF4FF}.path-option h3{font-size:16px;margin-bottom:8px}.path-option strong{display:block;font-size:27px;line-height:1;color:var(--neon);margin-bottom:5px}.highlight strong{color:var(--primary)}.path-option p{font-size:11px;line-height:1.55;color:rgba(255,255,255,.67)}.highlight p{color:var(--gray-600)}
+        .guides{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);position:relative;z-index:1}.guide-copy{font-size:12px;line-height:1.6;color:rgba(255,255,255,.75)}.guide-copy strong{display:block;color:#fff;font-size:13px}.guide-avatars{display:flex;direction:ltr}.guide-avatars img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:3px solid #09286F;margin-left:-10px;background:#fff}.guide-avatars img:last-child{margin-left:0}.services{padding-top:28px}
+
         @media(max-width:768px){
           .nav { padding: 0 20px; }
           .nav-lookup { display:none; }
           .nav-login { padding:7px 9px;font-size:10px; }
           .nav-lang{display:none}.nav{height:auto;min-height:68px;padding-top:8px;padding-bottom:8px}.nav-right{flex-wrap:wrap;justify-content:flex-start}
-          .hero { padding: 56px 24px 48px; }
-          .hero-stats { flex-direction: column; }
+          .hero { padding: 40px 20px 42px; }
+          .hero-layout{grid-template-columns:1fr;gap:32px}.hero-copy{text-align:center}.hero-sub{margin-left:auto;margin-right:auto}.hero-actions{justify-content:center}.hero-trust{justify-content:center}.path-panel{padding:20px;border-radius:22px}.portal-note{text-align:center}.hero-stat-num{font-size:20px}
           .section { padding: 40px 20px; }
           .how-section { padding: 48px 24px; }
           .footer { padding: 24px 20px; }
           .services-grid{grid-template-columns:1fr}.services{margin-top:0;padding-bottom:42px}.service-card{padding:18px}.sup-actions{grid-template-columns:1fr}
         }
+        @media(max-width:480px){.path-options{grid-template-columns:1fr}.hero h1{font-size:36px}.hero-cta{width:100%;justify-content:center}.guides{align-items:flex-start}.guide-avatars img{width:34px;height:34px}}
       `}</style>
 
       <div dir="rtl">
@@ -396,44 +403,91 @@ export default async function HomePage({ params }: HomePageProps) {
 
         {/* HERO */}
         <section className="hero">
-          <div className="hero-badge">
-            <div className="hero-badge-dot"></div>
-            إشراف واستشارات مهنية في تحليل السلوك وإدارة السلوك التنظيمي عن بُعد
-          </div>
-          <h1>
-            الواجهة الموحّدة <span>للإشراف</span>
-          </h1>
-          <p className="hero-sub">
-            مكان واحد لاختيار المشرف، حجز المقابلة الأولية، الاستشارات المهنية،
-            ومتابعة رحلة الإشراف
-          </p>
-          <div className="hero-actions">
-            <a href="#supervisors" className="hero-cta">
-              احجز مقابلة أولية ←
-            </a>
-            <a href="#consultants" className="hero-cta secondary">
-              احجز استشارة
-            </a>
-          </div>
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <div className="hero-stat-num">
-                {supervisors.length > 0 ? `+${supervisors.length}` : "٣+"}
+          <div className="hero-layout">
+            <div className="hero-copy">
+              <div className="hero-badge">
+                <div className="hero-badge-dot"></div>
+                إشراف مهني منظّم حتى الوصول إلى الرخصة
               </div>
-              <div className="hero-stat-lbl">مقدم خدمة</div>
+              <h1>
+                ابدأ رحلة الإشراف <span>بثقة ووضوح</span>
+              </h1>
+              <p className="hero-sub">
+                اختر المسار المناسب لمؤهلك، تعرّف على مشرفك في مقابلة أولية،
+                وتابع ساعاتك وتقدمك من مكان واحد.
+              </p>
+              <div className="hero-actions">
+                <a href="#supervisors" className="hero-cta">
+                  احجز مقابلتك بـ50 ريال ←
+                </a>
+                <Link
+                  href={`/${locale}/supervision-journey`}
+                  className="hero-cta secondary"
+                >
+                  استكشف المسارات
+                </Link>
+              </div>
+              <div className="hero-trust">
+                <span>مشرفون مؤهلون</span>
+                <span>فردي وجماعي</span>
+                <span>متابعة ذكية للساعات</span>
+              </div>
+              <div className="hero-stats">
+                <div className="hero-stat">
+                  <div className="hero-stat-num">
+                    {supervisorProviders.length > 0
+                      ? `+${supervisorProviders.length}`
+                      : "+17"}
+                  </div>
+                  <div className="hero-stat-lbl">مشرفًا للاختيار</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="hero-stat-num">12 و18</div>
+                  <div className="hero-stat-lbl">شهرًا حسب المسار</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="hero-stat-num">50 ر.س</div>
+                  <div className="hero-stat-lbl">للمقابلة الأولية</div>
+                </div>
+              </div>
+              <div className="portal-note">
+                لديك حساب؟{" "}
+                <Link href={`/${locale}/login`}>ادخل إلى بوابتك</Link>
+              </div>
             </div>
-            <div className="hero-stat">
-              <div className="hero-stat-num">١٠٠٪</div>
-              <div className="hero-stat-lbl">جلسات أونلاين</div>
-            </div>
-            <div className="hero-stat">
-              <div className="hero-stat-num">{bookableProviderCount}</div>
-              <div className="hero-stat-lbl">متاحون للحجز الآن</div>
-            </div>
-          </div>
-          <div className="portal-note">
-            لديك حساب قائم؟ ادخل إلى بوابتك لمتابعة الساعات، خطط الإشراف،
-            التقييمات ومحاضر الاجتماعات.
+
+            <aside className="path-panel" aria-label="مسارات الإشراف">
+              <div className="path-eyebrow">أي رخصة تعمل للوصول إليها؟</div>
+              <div className="path-title">اختر مسارك ونرتّب لك الرحلة</div>
+              <div className="path-options">
+                <div className="path-option highlight">
+                  <span className="path-tag">لحملة البكالوريوس</span>
+                  <h3>مساعد محلل سلوك</h3>
+                  <strong>12 شهرًا</strong>
+                  <p>1500 ساعة خبرة ميدانية و50 ساعة إشراف مباشر.</p>
+                </div>
+                <div className="path-option">
+                  <span className="path-tag">للماجستير والدكتوراه</span>
+                  <h3>محلل سلوك</h3>
+                  <strong>18 شهرًا</strong>
+                  <p>2000 ساعة خبرة ميدانية و100 ساعة إشراف مباشر.</p>
+                </div>
+              </div>
+              <div className="guides">
+                <div className="guide-copy">
+                  <strong>مشرفك معك حتى الرخصة</strong>
+                  ابدأ بمقابلة تعريفية واختر الشخص الأنسب لك.
+                </div>
+                <div className="guide-avatars" aria-label="نماذج من المشرفين">
+                  <img
+                    src="/providers/mona-aboulhol.png"
+                    alt="د. منى أبو الهول"
+                  />
+                  <img src="/providers/nouf-alzarir.png" alt="د. نوف الزرير" />
+                  <img src="/providers/mohamed-magdy.png" alt="محمد مجدي" />
+                </div>
+              </div>
+            </aside>
           </div>
         </section>
 
