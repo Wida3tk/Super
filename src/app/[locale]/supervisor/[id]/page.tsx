@@ -106,8 +106,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
 
         .nav{background:var(--deep);height:64px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(1,20,66,0.2);}
         .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
-        .brand-logo{font-size:22px;font-weight:900;color:var(--primary);}
-        .brand-sub{font-size:10px;font-weight:600;color:var(--neon);letter-spacing:0.15em;opacity:.8;}
+        .brand-logo-img{width:118px;height:46px;object-fit:contain;filter:brightness(0) invert(1);}
         .nav-back{color:var(--neon);text-decoration:none;font-size:13px;font-weight:500;padding:6px 14px;border-radius:8px;border:1px solid rgba(85,215,255,0.25);transition:all .18s;}
         .nav-back:hover{background:rgba(85,215,255,0.1);}
 
@@ -189,10 +188,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
       <div dir="rtl">
         <nav className="nav">
           <Link href={`/${locale}`} className="nav-brand">
-            <div>
-              <div className="brand-logo">سلوكيرا</div>
-              <div className="brand-sub">SULUKERA</div>
-            </div>
+            <img src="/logo.svg" alt="سلوكيرا" className="brand-logo-img" />
           </Link>
           <Link href={`/${locale}`} className="nav-back">
             ← العودة للرئيسية

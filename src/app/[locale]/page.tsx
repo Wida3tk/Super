@@ -149,6 +149,7 @@ export default async function HomePage({ params }: HomePageProps) {
         .nav-lang:hover { background: rgba(13,64,252,0.08); }
         .nav-login { color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:8px 13px;border-radius:9px;background:var(--primary);box-shadow:0 3px 10px rgba(13,64,252,.2);white-space:nowrap }
         .nav-login.trainee{background:#fff;color:var(--primary);border:1px solid rgba(13,64,252,.25);box-shadow:none}.nav-login.signup{background:var(--deep)}
+        .nav-journey{color:var(--deep);text-decoration:none;font-size:12px;font-weight:700;padding:8px 12px;border-radius:9px;background:#EEF4FF;border:1px solid #C9D7FF;white-space:nowrap}.nav-journey:hover{background:#DDE8FF;color:var(--primary)}
         .portal-note{max-width:760px;margin:18px auto 0;padding:12px 16px;border-radius:12px;background:#ffffffb8;border:1px solid var(--gray-200);font-size:12px;color:var(--gray-600)}
 
         /* ── HERO ── */
@@ -372,6 +373,12 @@ export default async function HomePage({ params }: HomePageProps) {
         <nav className="nav">
           <img src="/logo.svg" alt="سلوكيرا" className="nav-logo" />
           <div className="nav-right">
+            <Link
+              href={`/${locale}/supervision-journey`}
+              className="nav-journey"
+            >
+              تعرّف على رحلة الإشراف
+            </Link>
             <Link href={`/${locale}/register`} className="nav-login signup">
               تسجيل جديد
             </Link>
