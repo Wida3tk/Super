@@ -137,7 +137,7 @@ export default async function AdminDashboardPage({ params }: Props) {
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
         @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'IBM Plex Sans Arabic', sans-serif; }
-        body { background: #F1F5F9; direction: rtl; color: #0F172A; }
+        body { background: #F4F8FC; direction: rtl; color: #0F172A; }
         .layout { display: flex; min-height: 100vh; }
         .main { flex: 1; overflow: auto; }
 
@@ -154,7 +154,18 @@ export default async function AdminDashboardPage({ params }: Props) {
         .topbar-title { font-size: 16px; font-weight: 700; color: #0F172A; }
         .topbar-date { font-size: 11px; color: #94A3B8; margin-top: 1px; }
 
-        .content { padding: 24px 28px; max-width: 1400px; }
+        .content { padding: 24px 28px 48px; max-width: 1460px; }
+
+        .welcome {
+          position: relative; overflow: hidden;
+          display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;
+          padding: 28px 30px; margin-bottom: 20px; border-radius: 22px;
+          background: linear-gradient(125deg, #001442 0%, #082B84 62%, #0D40FC 100%);
+          box-shadow: 0 18px 44px rgba(0,20,66,.18); color: #fff;
+        }
+        .welcome::before { content:''; position:absolute; width:280px; height:280px; border-radius:50%; left:-70px; top:-155px; background:rgba(85,215,255,.13); }
+        .welcome::after { content:''; position:absolute; width:170px; height:170px; border-radius:50%; left:155px; bottom:-145px; border:28px solid rgba(255,255,255,.05); }
+        .welcome-copy,.welcome-actions{position:relative;z-index:1}.welcome-kicker{font-size:11px;color:#55D7FF;font-weight:700;margin-bottom:7px}.welcome h1{font-size:25px;line-height:1.35;margin-bottom:7px}.welcome p{font-size:13px;line-height:1.7;color:rgba(255,255,255,.66);max-width:650px}.welcome-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}.quick-action{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border-radius:11px;text-decoration:none;font-size:12px;font-weight:700;color:#001442;background:#fff;border:1px solid rgba(255,255,255,.5);box-shadow:0 5px 15px rgba(0,0,0,.12)}.quick-action.secondary{color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);box-shadow:none}.priority-line{display:flex;align-items:center;gap:7px;margin-top:14px;font-size:11px;color:rgba(255,255,255,.72)}.priority-dot{width:7px;height:7px;border-radius:50%;background:#55D7FF;box-shadow:0 0 0 5px rgba(85,215,255,.12)}
 
         /* Alert Cards */
         .alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
@@ -162,7 +173,7 @@ export default async function AdminDashboardPage({ params }: Props) {
           background: #fff; border-radius: 16px; padding: 18px 20px;
           border: 1px solid #E2E8F0;
           display: flex; align-items: center; gap: 14px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
           transition: transform 0.15s, box-shadow 0.15s;
           text-decoration: none; color: inherit;
         }
@@ -181,7 +192,7 @@ export default async function AdminDashboardPage({ params }: Props) {
         .stat-card {
           background: #fff; border-radius: 16px; padding: 18px 20px;
           border: 1px solid #E2E8F0;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
           position: relative; overflow: hidden;
         }
         .stat-card::before {
@@ -190,7 +201,7 @@ export default async function AdminDashboardPage({ params }: Props) {
           border-radius: 0 16px 0 80px;
           opacity: 0.06;
         }
-        .stat-icon { font-size: 28px; margin-bottom: 10px; }
+        .stat-icon { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:21px;margin-bottom:14px;background:#F4F7FB; }
         .stat-val { font-size: 30px; font-weight: 800; color: #0F172A; line-height: 1; }
         .stat-label { font-size: 12px; color: #64748B; margin-top: 4px; font-weight: 500; }
         .stat-note { font-size: 11px; color: #94A3B8; margin-top: 3px; }
@@ -201,7 +212,7 @@ export default async function AdminDashboardPage({ params }: Props) {
         .card {
           background: #fff; border-radius: 16px;
           border: 1px solid #E2E8F0;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          box-shadow: 0 10px 30px rgba(15,23,42,0.05);
           overflow: hidden;
         }
         .card-head {
@@ -239,7 +250,7 @@ export default async function AdminDashboardPage({ params }: Props) {
         .sup-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0D40FC, #55D7FF); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
         .sup-hours { font-size: 20px; font-weight: 800; color: #0D40FC; min-width: 36px; text-align: center; }
 
-        @media(max-width:1100px){.alerts{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:1fr 1fr;}.bottom{grid-template-columns:1fr;}}
+        @media(max-width:1100px){.welcome{grid-template-columns:1fr}.welcome-actions{justify-content:flex-start}.alerts{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:1fr 1fr;}.bottom{grid-template-columns:1fr;}}
         @media(max-width:700px){.alerts{grid-template-columns:1fr;}.stats{grid-template-columns:1fr 1fr;}}
       `}</style>
 
@@ -301,6 +312,39 @@ export default async function AdminDashboardPage({ params }: Props) {
           </div>
 
           <div className="content">
+            <section className="welcome">
+              <div className="welcome-copy">
+                <div className="welcome-kicker">مركز قيادة سلوكيرا</div>
+                <h1>أهلًا بك، كل ما يحتاج انتباهك في مكان واحد</h1>
+                <p>
+                  تابعي رحلة المتدربين، راقبي جودة الإشراف، وأنجزي خطوات اليوم
+                  من لوحة واضحة ومترابطة.
+                </p>
+                <div className="priority-line">
+                  <span className="priority-dot" />
+                  {readyToAssign.length > 0
+                    ? `${readyToAssign.length} بانتظار الإسناد الآن`
+                    : "لا توجد حالات عاجلة للإسناد الآن"}
+                </div>
+              </div>
+              <div className="welcome-actions">
+                <Link
+                  className="quick-action"
+                  href={`/${locale}/admin/onboarding`}
+                >
+                  <i className="ti ti-user-check" aria-hidden="true" />
+                  متابعة البوردنق
+                </Link>
+                <Link
+                  className="quick-action secondary"
+                  href={`/${locale}/admin/trainees`}
+                >
+                  <i className="ti ti-users" aria-hidden="true" />
+                  ملفات المتدربين
+                </Link>
+              </div>
+            </section>
+
             {/* تنبيهات */}
             <div className="alerts">
               <Link

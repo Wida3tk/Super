@@ -121,33 +121,40 @@ export default function AdminSidebar({
       style={{
         width: 220,
         flexShrink: 0,
-        background: "#fff",
-        borderLeft: "1px solid #E2E8F0",
+        background: "linear-gradient(180deg, #001442 0%, #021B56 100%)",
+        borderLeft: "1px solid rgba(255,255,255,.08)",
         display: "flex",
         flexDirection: "column",
         height: "100vh",
         position: "sticky",
         top: 0,
         overflowY: "auto",
-        boxShadow: "2px 0 8px rgba(0,0,0,0.03)",
+        boxShadow: "-8px 0 30px rgba(0,20,66,.12)",
       }}
     >
       {/* Logo */}
       <div
-        style={{ padding: "18px 16px 14px", borderBottom: "1px solid #F1F5F9" }}
+        style={{
+          padding: "22px 18px 18px",
+          borderBottom: "1px solid rgba(255,255,255,.08)",
+        }}
       >
         <img
           src="/logo.svg"
           alt="سلوكيرا"
-          style={{ height: 28, width: "auto" }}
+          style={{
+            height: 32,
+            width: "auto",
+            filter: "brightness(0) invert(1)",
+          }}
         />
         <div
           style={{
             fontSize: 10,
-            color: "#94A3B8",
+            color: "#55D7FF",
             marginTop: 6,
-            background: "#F8FAFC",
-            border: "1px solid #E2E8F0",
+            background: "rgba(85,215,255,.08)",
+            border: "1px solid rgba(85,215,255,.16)",
             padding: "2px 8px",
             borderRadius: 99,
             display: "inline-block",
@@ -160,13 +167,13 @@ export default function AdminSidebar({
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "10px 10px" }}>
+      <nav style={{ flex: 1, padding: "12px 10px" }}>
         {sections.map((section) => (
           <div key={section.title} style={{ marginBottom: "4px" }}>
             <div
               style={{
                 fontSize: 10,
-                color: "#CBD5E1",
+                color: "rgba(85,215,255,.58)",
                 padding: "8px 8px 4px",
                 letterSpacing: "0.08em",
                 fontWeight: 600,
@@ -189,19 +196,21 @@ export default function AdminSidebar({
                     borderRadius: 10,
                     fontSize: 13,
                     textDecoration: "none",
-                    color: active ? "#0D40FC" : "#64748B",
-                    background: active ? "#EEF2FF" : "transparent",
-                    fontWeight: active ? 600 : 400,
+                    color: active ? "#fff" : "rgba(255,255,255,.65)",
+                    background: active
+                      ? "linear-gradient(135deg,#0D40FC,#315DFF)"
+                      : "transparent",
+                    fontWeight: active ? 700 : 400,
                     marginBottom: 2,
                     transition: "all 0.15s",
                     border: active
-                      ? "1px solid #C7D2FE"
+                      ? "1px solid rgba(85,215,255,.35)"
                       : "1px solid transparent",
                   }}
                   onMouseOver={(e) => {
                     if (!active)
                       (e.currentTarget as HTMLElement).style.background =
-                        "#F8FAFC";
+                        "rgba(255,255,255,.07)";
                   }}
                   onMouseOut={(e) => {
                     if (!active)
@@ -216,7 +225,7 @@ export default function AdminSidebar({
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
                       style={{
-                        background: "#EF4444",
+                        background: "#FF5D6C",
                         color: "#fff",
                         fontSize: 10,
                         fontWeight: 700,
@@ -237,7 +246,12 @@ export default function AdminSidebar({
       </nav>
 
       {/* Bottom */}
-      <div style={{ padding: "10px", borderTop: "1px solid #F1F5F9" }}>
+      <div
+        style={{
+          padding: "12px 10px",
+          borderTop: "1px solid rgba(255,255,255,.08)",
+        }}
+      >
         <Link
           href={`/${locale}`}
           style={{
@@ -247,12 +261,13 @@ export default function AdminSidebar({
             padding: "9px 10px",
             borderRadius: 10,
             fontSize: 13,
-            color: "#94A3B8",
+            color: "rgba(255,255,255,.55)",
             textDecoration: "none",
             transition: "all 0.15s",
           }}
           onMouseOver={(e) => {
-            (e.currentTarget as HTMLElement).style.background = "#F8FAFC";
+            (e.currentTarget as HTMLElement).style.background =
+              "rgba(255,255,255,.07)";
           }}
           onMouseOut={(e) => {
             (e.currentTarget as HTMLElement).style.background = "transparent";
