@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
+import { credentialRules } from "@/lib/qaba/compliance";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -104,11 +105,16 @@ export default async function AdminDashboardPage({ params }: Props) {
   const traineeProgress = activeTrainees
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
-      const pct =
-        t.requiredHours > 0
-          ? Math.round(((snap?.totalHours || 0) / t.requiredHours) * 100)
-          : 0;
-      return { ...t, pct, totalHours: snap?.totalHours || 0, snap };
+      const targetHours =
+        t.fieldworkTargetHours || credentialRules(t.license || "QASP-S").total;
+      const pct = Math.round(((snap?.totalHours || 0) / targetHours) * 100);
+      return {
+        ...t,
+        pct,
+        targetHours,
+        totalHours: snap?.totalHours || 0,
+        snap,
+      };
     })
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 5);

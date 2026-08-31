@@ -10,6 +10,7 @@ import type {
 } from "@/types";
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import AdminAgreementModal from "@/components/admin/AdminAgreementModal";
+import { credentialRules } from "@/lib/qaba/compliance";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -335,7 +336,9 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
                 <div
                   style={{ fontSize: 11, color: COLORS.gray500, marginTop: 2 }}
                 >
-                  {l === "QASP-S" ? "50 ساعة" : "100 ساعة"}
+                  {l === "QASP-S"
+                    ? "1500 ساعة خبرة · 50 ساعة إشراف"
+                    : "2000 ساعة خبرة · 100 ساعة إشراف"}
                 </div>
               </div>
             ))}
@@ -764,11 +767,14 @@ async function exportToExcel(
         الإيميل: t.email,
         الجوال: t.phone,
         الرخصة: t.license,
-        "الساعات المطلوبة": t.requiredHours,
+        "الساعات المطلوبة":
+          t.fieldworkTargetHours || credentialRules(t.license).total,
         فردية: t.totalIndividualHours || 0,
         جماعية: t.totalGroupHours || 0,
         الإجمالي: t.totalHours || 0,
-        المتبقي: t.requiredHours - (t.totalHours || 0),
+        المتبقي:
+          (t.fieldworkTargetHours || credentialRules(t.license).total) -
+          (t.totalHours || 0),
         "المشرف الحالي": sup?.name || "—",
         الحالة: STATUS_LABELS[t.status],
       };
@@ -1225,8 +1231,11 @@ export default function AdminSupervisionPanel({
                     const sup = supervisors.find(
                       (s) => s.id === t.currentSupervisorId,
                     );
+                    const targetHours =
+                      t.fieldworkTargetHours ||
+                      credentialRules(t.license).total;
                     const pct = Math.min(
-                      Math.round(((t.totalHours || 0) / t.requiredHours) * 100),
+                      Math.round(((t.totalHours || 0) / targetHours) * 100),
                       100,
                     );
                     const statusStyle = STATUS_COLORS[t.status];
@@ -1337,7 +1346,7 @@ export default function AdminSupervisionPanel({
                             <span
                               style={{ fontSize: 11, color: COLORS.gray500 }}
                             >
-                              {t.totalHours || 0}/{t.requiredHours}
+                              {t.totalHours || 0}/{targetHours}
                             </span>
                           </div>
                         </td>

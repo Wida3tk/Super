@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
+import { credentialRules } from "@/lib/qaba/compliance";
 import {
   AttendanceRecord,
   FinancialPlan,
@@ -110,14 +111,21 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
+  const directSupervision = sum(["supervision_direct"]);
   const supervision = sum(["supervision_direct", "supervision_indirect"]);
   const total = direct + indirect;
   const supervisionPct = total ? (supervision / total) * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
-  const requiredHours = Number(
-    trainee.requiredHours || (trainee.license === "QBA" ? 2000 : 1000),
+  const pathway = credentialRules(trainee.license || "QASP-S");
+  const requiredHours = Number(trainee.fieldworkTargetHours || pathway.total);
+  const supervisionTargetHours = Number(
+    trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
   const progress = Math.min(100, (total / requiredHours) * 100);
+  const supervisionProgress = Math.min(
+    100,
+    (directSupervision / supervisionTargetHours) * 100,
+  );
   const pendingCount = activities.filter(
     (a) => a.status === "submitted",
   ).length;
@@ -339,6 +347,9 @@ export default function TraineeFieldworkDashboard({
             <div className="hero-sub">
               وثّق خبراتك، راقب توازن الساعات، واستفد من التغذية الراجعة
               الإشرافية لتطوير كفاءتك المهنية.
+              <br />
+              مسارك: {pathway.label} · {requiredHours} ساعة خبرة ميدانية ·{" "}
+              {supervisionTargetHours} ساعة إشراف مباشر
             </div>
             <button className="primary" onClick={() => setOpen(true)}>
               ＋ إضافة ساعات جديدة
@@ -352,6 +363,19 @@ export default function TraineeFieldworkDashboard({
                 <div
                   className="progress-fill"
                   style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="progress-label" style={{ marginTop: 11 }}>
+                <span>
+                  الإشراف المباشر: {directSupervision.toFixed(1)} من{" "}
+                  {supervisionTargetHours} ساعة
+                </span>
+                <b>{supervisionProgress.toFixed(0)}%</b>
+              </div>
+              <div className="progress-track">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${supervisionProgress}%` }}
                 />
               </div>
             </div>
@@ -427,8 +451,10 @@ export default function TraineeFieldworkDashboard({
                 <b>{indirect.toFixed(2)}</b>
               </div>
               <div className="card">
-                <span className="muted">إشراف</span>
-                <b>{supervision.toFixed(2)}</b>
+                <span className="muted">الإشراف المباشر المستهدف</span>
+                <b>
+                  {directSupervision.toFixed(1)} / {supervisionTargetHours}
+                </b>
               </div>
               <div className="card">
                 <span className="muted">نسبة الإشراف</span>

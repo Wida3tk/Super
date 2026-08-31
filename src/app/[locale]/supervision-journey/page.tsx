@@ -81,11 +81,11 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         *{box-sizing:border-box;margin:0;padding:0;font-family:'IBM Plex Sans Arabic',sans-serif}body{background:#F5FAFF;color:#001442}.nav{height:72px;padding:0 max(24px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #E5ECF6;position:sticky;top:0;z-index:20}.logo{width:116px;height:48px;object-fit:contain}.nav-actions{display:flex;align-items:center;gap:10px}.back,.nav-cta{text-decoration:none;font-size:13px;font-weight:700;padding:9px 15px;border-radius:10px}.back{color:#475569}.nav-cta{background:#0D40FC;color:#fff;box-shadow:0 5px 14px rgba(13,64,252,.2)}
         .hero{position:relative;overflow:hidden;background:linear-gradient(140deg,#001442 0%,#082577 58%,#0D40FC 140%);padding:90px 24px 82px;color:#fff;text-align:center}.hero:before,.hero:after{content:'';position:absolute;border-radius:50%;background:rgba(85,215,255,.09)}.hero:before{width:440px;height:440px;top:-260px;right:-80px}.hero:after{width:340px;height:340px;bottom:-260px;left:5%}.eyebrow{display:inline-flex;padding:7px 16px;border:1px solid rgba(85,215,255,.35);background:rgba(85,215,255,.1);color:#8BE4FF;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:22px}.hero h1{font-size:clamp(36px,6vw,64px);line-height:1.2;margin-bottom:18px}.hero h1 span{color:#55D7FF}.hero p{max-width:780px;margin:auto;color:rgba(255,255,255,.72);font-size:17px;line-height:1.9}.hero-actions{display:flex;justify-content:center;gap:12px;margin-top:30px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:12px;padding:13px 24px;font-size:14px;font-weight:800}.btn-primary{background:#fff;color:#0D40FC;box-shadow:0 12px 28px rgba(0,0,0,.18)}.btn-ghost{color:#fff;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06)}
         .stats{max-width:1000px;margin:-34px auto 0;position:relative;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid #E4ECF8;border-radius:18px;box-shadow:0 16px 40px rgba(1,20,66,.1);overflow:hidden}.stat{padding:22px;text-align:center}.stat+.stat{border-right:1px solid #E7EDF6}.stat strong{display:block;color:#0D40FC;font-size:22px}.stat span{font-size:11px;color:#64748B}
-        .section{max-width:1180px;margin:0 auto;padding:80px 24px}.section-head{text-align:center;max-width:720px;margin:0 auto 38px}.section-kicker{color:#0D40FC;font-size:12px;font-weight:800;margin-bottom:8px}.section h2{font-size:32px;margin-bottom:10px}.section-head p{color:#64748B;line-height:1.8}.journey{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.step{background:#fff;border:1px solid #E1E9F5;border-radius:18px;padding:24px;box-shadow:0 5px 18px rgba(1,20,66,.04)}.step-num{display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:12px;background:#EAF0FF;color:#0D40FC;font-weight:900;margin-bottom:18px}.step h3{font-size:18px;margin-bottom:8px}.step p{color:#64748B;font-size:13px;line-height:1.8}
+        .section{max-width:1180px;margin:0 auto;padding:80px 24px}.section-head{text-align:center;max-width:720px;margin:0 auto 38px}.section-kicker{color:#0D40FC;font-size:12px;font-weight:800;margin-bottom:8px}.section h2{font-size:32px;margin-bottom:10px}.section-head p{color:#64748B;line-height:1.8}.path-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.path-card{position:relative;overflow:hidden;background:#fff;border:1px solid #DDE7F5;border-radius:22px;padding:28px;box-shadow:0 9px 28px rgba(1,20,66,.06)}.path-card.featured{background:linear-gradient(145deg,#001442,#082B83);color:#fff;border-color:#082B83}.path-badge{display:inline-flex;padding:5px 11px;border-radius:99px;background:#EAF0FF;color:#0D40FC;font-size:11px;font-weight:800;margin-bottom:15px}.featured .path-badge{background:#ffffff18;color:#7EE4FF}.path-card h3{font-size:24px;margin-bottom:6px}.path-code{font-size:12px;color:#64748B;margin-bottom:20px}.featured .path-code{color:#A8BCE9}.path-numbers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.path-number{padding:16px;border-radius:14px;background:#F5F8FD;border:1px solid #E4EAF4}.featured .path-number{background:#ffffff0d;border-color:#ffffff18}.path-number strong{display:block;font-size:25px;color:#0D40FC}.featured .path-number strong{color:#55D7FF}.path-number span{font-size:11px;color:#64748B}.featured .path-number span{color:#C5D2EF}.path-card p{font-size:13px;line-height:1.8;color:#64748B;margin-top:16px}.featured p{color:#C5D2EF}.journey{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.step{background:#fff;border:1px solid #E1E9F5;border-radius:18px;padding:24px;box-shadow:0 5px 18px rgba(1,20,66,.04)}.step-num{display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:12px;background:#EAF0FF;color:#0D40FC;font-weight:900;margin-bottom:18px}.step h3{font-size:18px;margin-bottom:8px}.step p{color:#64748B;font-size:13px;line-height:1.8}
         .benefits-wrap{background:#ECF5FF}.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.benefit{background:#fff;border-radius:16px;padding:22px;border:1px solid #DCE8F8}.benefit-icon{color:#10B981;font-weight:900;font-size:20px;margin-bottom:10px}.benefit h3{font-size:16px;margin-bottom:6px}.benefit p{font-size:12px;color:#64748B;line-height:1.75}
         .requirements{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:stretch}.require-card{background:#001442;color:#fff;border-radius:22px;padding:30px}.require-card h2{font-size:28px;margin-bottom:14px}.require-card p{color:rgba(255,255,255,.66);line-height:1.9}.require-list{margin-top:20px;display:grid;gap:12px}.require-item{padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px;line-height:1.7}.note-card{background:#fff;border:1px solid #E1E9F5;border-radius:22px;padding:30px}.note-card h3{font-size:20px;margin-bottom:14px}.note-card p{color:#64748B;font-size:13px;line-height:1.9;margin-bottom:12px}.source-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.source-links a{font-size:11px;color:#0D40FC;text-decoration:none;background:#EEF4FF;border-radius:8px;padding:7px 10px}
         .pricing{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.price-card{background:#fff;border:1px solid #DDE6F3;border-radius:18px;padding:22px;text-align:center}.price-credential{display:inline-flex;background:#EAF0FF;color:#0D40FC;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800}.price-card h3{font-size:14px;margin:15px 0 8px}.price{font-size:28px;font-weight:900;color:#001442}.price small{font-size:11px;color:#64748B;font-weight:500}.price-note{text-align:center;color:#64748B;font-size:13px;margin-top:18px}.final-cta{max-width:1100px;margin:0 auto 70px;padding:48px 24px;border-radius:26px;text-align:center;color:#fff;background:linear-gradient(135deg,#0D40FC,#001442);box-shadow:0 18px 50px rgba(13,64,252,.2)}.final-cta h2{font-size:31px;margin-bottom:10px}.final-cta p{color:rgba(255,255,255,.7);margin-bottom:24px}.footer{background:#001442;color:rgba(255,255,255,.45);padding:28px;text-align:center;font-size:12px}.footer img{width:100px;filter:brightness(0) invert(1);margin-bottom:10px}
-        @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr);margin:-20px 16px 0}.stat+.stat{border-right:0}.journey,.benefits{grid-template-columns:repeat(2,1fr)}.requirements{grid-template-columns:1fr}.pricing{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.nav{padding:0 16px}.back{display:none}.hero{padding:64px 18px}.hero p{font-size:14px}.stats{grid-template-columns:1fr 1fr}.journey,.benefits,.pricing{grid-template-columns:1fr}.section{padding:58px 18px}.section h2{font-size:26px}.nav-cta{font-size:11px;padding:8px 10px}}
+        @media(max-width:850px){.stats{grid-template-columns:repeat(2,1fr);margin:-20px 16px 0}.stat+.stat{border-right:0}.journey,.benefits{grid-template-columns:repeat(2,1fr)}.requirements{grid-template-columns:1fr}.pricing{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.nav{padding:0 16px}.back{display:none}.hero{padding:64px 18px}.hero p{font-size:14px}.stats{grid-template-columns:1fr 1fr}.path-grid,.journey,.benefits,.pricing{grid-template-columns:1fr}.section{padding:58px 18px}.section h2{font-size:26px}.nav-cta{font-size:11px;padding:8px 10px}}
       `}</style>
 
       <nav className="nav">
@@ -123,8 +123,8 @@ export default async function SupervisionJourneyPage({ params }: Props) {
 
       <div className="stats">
         <div className="stat">
-          <strong>حتى 2000</strong>
-          <span>ساعة خبرة ميدانية بحسب المسار</span>
+          <strong>1500 أو 2000</strong>
+          <span>ساعة خبرة ميدانية حسب الرخصة</span>
         </div>
         <div className="stat">
           <strong>فردي + جماعي</strong>
@@ -139,6 +139,57 @@ export default async function SupervisionJourneyPage({ params }: Props) {
           <span>ومتاح حضوريًا لدى بعض المشرفين</span>
         </div>
       </div>
+
+      <section className="section" style={{ paddingBottom: 20 }}>
+        <div className="section-head">
+          <div className="section-kicker">مساران، وحسبة واضحة لكل متدرب</div>
+          <h2>اختر الرخصة التي تعمل للوصول إليها</h2>
+          <p>
+            من أول يوم يربط النظام حساب المتدرب والمشرف بأهداف المسار، ويتابع
+            ساعات الخبرة والإشراف المباشر كلًا على حدة.
+          </p>
+        </div>
+        <div className="path-grid">
+          <article className="path-card">
+            <span className="path-badge">مسار مساعد محلل السلوك</span>
+            <h3>رخصة مساعد محلل سلوك</h3>
+            <div className="path-code">QASP-S</div>
+            <div className="path-numbers">
+              <div className="path-number">
+                <strong>1500</strong>
+                <span>ساعة خبرة ميدانية</span>
+              </div>
+              <div className="path-number">
+                <strong>50</strong>
+                <span>ساعة إشراف مباشر مع مشرفينا</span>
+              </div>
+            </div>
+            <p>
+              يتابع المتدرب الساعات المباشرة وغير المباشرة، بينما يعرض النظام
+              تقدمه المنفصل نحو هدف الإشراف المباشر.
+            </p>
+          </article>
+          <article className="path-card featured">
+            <span className="path-badge">مسار محلل السلوك</span>
+            <h3>رخصة محلل سلوك</h3>
+            <div className="path-code">QBA</div>
+            <div className="path-numbers">
+              <div className="path-number">
+                <strong>2000</strong>
+                <span>ساعة خبرة ميدانية</span>
+              </div>
+              <div className="path-number">
+                <strong>100</strong>
+                <span>ساعة إشراف مباشر مع مشرفينا</span>
+              </div>
+            </div>
+            <p>
+              رحلة أطول تُقسّم إلى تقدم شهري واضح، مع متابعة نسبة الإشراف وتوزيع
+              الأنشطة والتقييمات الدورية.
+            </p>
+          </article>
+        </div>
+      </section>
 
       <section className="section" id="journey">
         <div className="section-head">
@@ -209,13 +260,14 @@ export default async function SupervisionJourneyPage({ params }: Props) {
           <aside className="note-card">
             <h3>متطلبات الساعات تختلف حسب المسار</h3>
             <p>
-              في مسار BACB، تذكر المتطلبات الحالية 2000 ساعة Supervised
-              Fieldwork أو 1500 ساعة Concentrated Supervised Fieldwork، مع
-              تفاصيل شهرية ونسب إشراف محددة.
+              في سلوكيرا نتابع مسار مساعد محلل السلوك على هدف 1500 ساعة خبرة
+              ميدانية و50 ساعة إشراف مباشر، ومسار محلل السلوك على هدف 2000 ساعة
+              خبرة ميدانية و100 ساعة إشراف مباشر.
             </p>
             <p>
-              وفي مسار QABA-QBA أصبحت المتطلبات 2000 ساعة لمن يبدأ وفق المتطلبات
-              الجديدة، مع ترتيبات انتقالية لبعض من بدأ قبل 1 يناير 2026.
+              لا تُعامل ساعات الإشراف كأنها إجمالي الرحلة؛ بل يحسب النظام تقدم
+              الخبرة الميدانية وتقدم الإشراف المباشر في مؤشرين مستقلين، مع
+              متابعة النسبة الشهرية وتوزيع الأنشطة.
             </p>
             <p>
               <b>

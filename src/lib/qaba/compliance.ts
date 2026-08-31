@@ -4,25 +4,13 @@ export type QabaCredential = "QASP-S" | "QBA";
 
 export function credentialRules(
   credential: QabaCredential,
-  fieldworkStartDate?: string,
+  _fieldworkStartDate?: string,
 ) {
-  const legacyQba =
-    credential === "QBA" &&
-    Boolean(fieldworkStartDate) &&
-    fieldworkStartDate! < "2026-01-01";
   if (credential === "QASP-S")
     return {
-      total: 1000,
-      minIndirect: 600,
-      maxDirect: 400,
-      monthlyMin: 20,
-      monthlyMax: 140,
-      supervisionRate: 0.05,
-      maxGroupRate: 0.5,
-    };
-  if (legacyQba)
-    return {
+      label: "مساعد محلل سلوك",
       total: 1500,
+      supervisionTarget: 50,
       minIndirect: 900,
       maxDirect: 600,
       monthlyMin: 20,
@@ -31,7 +19,9 @@ export function credentialRules(
       maxGroupRate: 0.5,
     };
   return {
+    label: "محلل سلوك",
     total: 2000,
+    supervisionTarget: 100,
     minIndirect: 1200,
     maxDirect: 800,
     monthlyMin: 20,

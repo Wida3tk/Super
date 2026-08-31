@@ -136,6 +136,8 @@ export interface Trainee {
   phone: string;
   license: License;
   requiredHours: number;
+  fieldworkTargetHours?: number;
+  supervisionTargetHours?: number;
   status: TraineeStatus;
   onboardingStage?: OnboardingStage; // فقط لو status = onboarding
   currentSupervisorId?: string;

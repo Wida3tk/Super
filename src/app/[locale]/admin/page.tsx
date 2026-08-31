@@ -1,21 +1,27 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import AdminSidebar from '@/components/admin/layout/AdminSidebar';
-import LogoutButton from '@/components/LogoutButton';
-import Link from 'next/link';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import AdminSidebar from "@/components/admin/layout/AdminSidebar";
+import LogoutButton from "@/components/LogoutButton";
+import Link from "next/link";
+import { credentialRules } from "@/lib/qaba/compliance";
 
-interface Props { params: Promise<{ locale: string }>; }
+interface Props {
+  params: Promise<{ locale: string }>;
+}
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
+  const sessionCookie = cookieStore.get("__session")?.value;
   if (!sessionCookie) return null;
   try {
-    const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
+    const { adminAuth, adminDb } = await import("@/lib/firebase/admin");
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) return null;
+    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase())
+      return null;
     return { adminDb };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export default async function AdminDashboardPage({ params }: Props) {
@@ -25,47 +31,91 @@ export default async function AdminDashboardPage({ params }: Props) {
   const { adminDb } = auth;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
-  const [traineesSnap, supervisorsSnap, sessionsSnap, snapshotsSnap, activitySnap, notifsSnap] = await Promise.all([
-    adminDb.collection('trainees').get(),
-    adminDb.collection('supervisors').get(),
-    adminDb.collection('sessions').where('month', '==', currentMonth).get(),
-    adminDb.collection('monthlySnapshots').where('month', '==', currentMonth).get(),
-    adminDb.collection('activityLog').orderBy('createdAt', 'desc').limit(8).get(),
-    adminDb.collection('notifications').where('read', '==', false).get(),
+  const [
+    traineesSnap,
+    supervisorsSnap,
+    sessionsSnap,
+    snapshotsSnap,
+    activitySnap,
+    notifsSnap,
+  ] = await Promise.all([
+    adminDb.collection("trainees").get(),
+    adminDb.collection("supervisors").get(),
+    adminDb.collection("sessions").where("month", "==", currentMonth).get(),
+    adminDb
+      .collection("monthlySnapshots")
+      .where("month", "==", currentMonth)
+      .get(),
+    adminDb
+      .collection("activityLog")
+      .orderBy("createdAt", "desc")
+      .limit(8)
+      .get(),
+    adminDb.collection("notifications").where("read", "==", false).get(),
   ]);
 
-  const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const snapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-  const activities = activitySnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+  const trainees = traineesSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const supervisors = supervisorsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const sessions = sessionsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const snapshots = snapshotsSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
+  const activities = activitySnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
   const notifCount = notifsSnap.size;
 
-  const activeTrainees = trainees.filter(t => t.status === 'active');
-  const onboardingTrainees = trainees.filter(t => t.status === 'onboarding');
-  const readyToAssign = trainees.filter(t => t.status === 'onboarding' && t.onboardingStage === 'contracting');
+  const activeTrainees = trainees.filter((t) => t.status === "active");
+  const onboardingTrainees = trainees.filter((t) => t.status === "onboarding");
+  const readyToAssign = trainees.filter(
+    (t) => t.status === "onboarding" && t.onboardingStage === "contracting",
+  );
   const totalHours = snapshots.reduce((a, s) => a + (s.totalHours || 0), 0);
-  const weekSessions = sessions.filter(s => s.date >= weekAgo);
-  const over25 = snapshots.filter(s => (s.groupPercentage || 0) > 25);
-  const atRisk = trainees.filter(t => {
-    if (t.status !== 'active') return false;
-    const snap = snapshots.find(s => s.traineeId === t.id);
+  const weekSessions = sessions.filter((s) => s.date >= weekAgo);
+  const over25 = snapshots.filter((s) => (s.groupPercentage || 0) > 25);
+  const atRisk = trainees.filter((t) => {
+    if (t.status !== "active") return false;
+    const snap = snapshots.find((s) => s.traineeId === t.id);
     return snap && (snap.absenceCount || 0) >= 3;
   });
 
-  const traineeProgress = activeTrainees.map(t => {
-    const snap = snapshots.find(s => s.traineeId === t.id);
-    const pct = t.requiredHours > 0 ? Math.round(((snap?.totalHours || 0) / t.requiredHours) * 100) : 0;
-    return { ...t, pct, totalHours: snap?.totalHours || 0, snap };
-  }).sort((a, b) => b.pct - a.pct).slice(0, 6);
+  const traineeProgress = activeTrainees
+    .map((t) => {
+      const snap = snapshots.find((s) => s.traineeId === t.id);
+      const targetHours =
+        t.fieldworkTargetHours || credentialRules(t.license || "QASP-S").total;
+      const pct = Math.round(((snap?.totalHours || 0) / targetHours) * 100);
+      return {
+        ...t,
+        pct,
+        targetHours,
+        totalHours: snap?.totalHours || 0,
+        snap,
+      };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 6);
 
   const timeAgo = (iso: string) => {
-    if (!iso) return '';
+    if (!iso) return "";
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 2) return 'الآن';
+    if (mins < 2) return "الآن";
     if (mins < 60) return `منذ ${mins} دقيقة`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `منذ ${hrs} ساعة`;
@@ -73,10 +123,13 @@ export default async function AdminDashboardPage({ params }: Props) {
   };
 
   const activityIcon = (type: string) => {
-    if (type === 'session') return { icon: '⏱️', bg: '#EEF2FF', color: '#4F46E5' };
-    if (type === 'trainee_added') return { icon: '👤', bg: '#F0FDF4', color: '#16A34A' };
-    if (type === 'assigned') return { icon: '🔗', bg: '#FFF7ED', color: '#EA580C' };
-    return { icon: '📋', bg: '#F8FAFC', color: '#64748B' };
+    if (type === "session")
+      return { icon: "⏱️", bg: "#EEF2FF", color: "#4F46E5" };
+    if (type === "trainee_added")
+      return { icon: "👤", bg: "#F0FDF4", color: "#16A34A" };
+    if (type === "assigned")
+      return { icon: "🔗", bg: "#FFF7ED", color: "#EA580C" };
+    return { icon: "📋", bg: "#F8FAFC", color: "#64748B" };
   };
 
   return (
@@ -200,15 +253,48 @@ export default async function AdminDashboardPage({ params }: Props) {
             <div className="topbar-left">
               <div className="topbar-title">لوحة التحكم</div>
               <div className="topbar-date">
-                {new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date().toLocaleDateString("ar-SA", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <Link href={`/${locale}/admin/notifications`}
-                style={{ position: 'relative', width: 38, height: 38, borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
-                <i className="ti ti-bell" style={{ fontSize: 18, color: '#64748B' }} aria-hidden="true" />
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <Link
+                href={`/${locale}/admin/notifications`}
+                style={{
+                  position: "relative",
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textDecoration: "none",
+                }}
+              >
+                <i
+                  className="ti ti-bell"
+                  style={{ fontSize: 18, color: "#64748B" }}
+                  aria-hidden="true"
+                />
                 {notifCount > 0 && (
-                  <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: '#EF4444', border: '1.5px solid #fff' }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#EF4444",
+                      border: "1.5px solid #fff",
+                    }}
+                  />
                 )}
               </Link>
               <LogoutButton locale={locale} />
@@ -216,37 +302,87 @@ export default async function AdminDashboardPage({ params }: Props) {
           </div>
 
           <div className="content">
-
             {/* تنبيهات */}
             <div className="alerts">
-              <Link href={`/${locale}/admin/onboarding`} className="alert-card" style={{ borderColor: readyToAssign.length > 0 ? '#FCA5A5' : '#E2E8F0' }}>
-                <div className="alert-icon-wrap" style={{ background: readyToAssign.length > 0 ? '#FEF2F2' : '#F8FAFC' }}>
+              <Link
+                href={`/${locale}/admin/onboarding`}
+                className="alert-card"
+                style={{
+                  borderColor: readyToAssign.length > 0 ? "#FCA5A5" : "#E2E8F0",
+                }}
+              >
+                <div
+                  className="alert-icon-wrap"
+                  style={{
+                    background:
+                      readyToAssign.length > 0 ? "#FEF2F2" : "#F8FAFC",
+                  }}
+                >
                   <span>🎯</span>
                 </div>
                 <div>
-                  <div className="alert-count" style={{ color: readyToAssign.length > 0 ? '#DC2626' : '#64748B' }}>{readyToAssign.length}</div>
+                  <div
+                    className="alert-count"
+                    style={{
+                      color: readyToAssign.length > 0 ? "#DC2626" : "#64748B",
+                    }}
+                  >
+                    {readyToAssign.length}
+                  </div>
                   <div className="alert-label">جاهزون للإسناد</div>
                   <div className="alert-sub">أكملوا مرحلة التعاقد</div>
                 </div>
               </Link>
 
-              <Link href={`/${locale}/admin/trainees`} className="alert-card" style={{ borderColor: over25.length > 0 ? '#FCD34D' : '#E2E8F0' }}>
-                <div className="alert-icon-wrap" style={{ background: over25.length > 0 ? '#FFFBEB' : '#F8FAFC' }}>
+              <Link
+                href={`/${locale}/admin/trainees`}
+                className="alert-card"
+                style={{
+                  borderColor: over25.length > 0 ? "#FCD34D" : "#E2E8F0",
+                }}
+              >
+                <div
+                  className="alert-icon-wrap"
+                  style={{
+                    background: over25.length > 0 ? "#FFFBEB" : "#F8FAFC",
+                  }}
+                >
                   <span>⚠️</span>
                 </div>
                 <div>
-                  <div className="alert-count" style={{ color: over25.length > 0 ? '#D97706' : '#64748B' }}>{over25.length}</div>
+                  <div
+                    className="alert-count"
+                    style={{ color: over25.length > 0 ? "#D97706" : "#64748B" }}
+                  >
+                    {over25.length}
+                  </div>
                   <div className="alert-label">تجاوزوا 25% جماعية</div>
                   <div className="alert-sub">يحتاجون مراجعة</div>
                 </div>
               </Link>
 
-              <Link href={`/${locale}/admin/trainees`} className="alert-card" style={{ borderColor: atRisk.length > 0 ? '#FCA5A5' : '#E2E8F0' }}>
-                <div className="alert-icon-wrap" style={{ background: atRisk.length > 0 ? '#FEF2F2' : '#F8FAFC' }}>
+              <Link
+                href={`/${locale}/admin/trainees`}
+                className="alert-card"
+                style={{
+                  borderColor: atRisk.length > 0 ? "#FCA5A5" : "#E2E8F0",
+                }}
+              >
+                <div
+                  className="alert-icon-wrap"
+                  style={{
+                    background: atRisk.length > 0 ? "#FEF2F2" : "#F8FAFC",
+                  }}
+                >
                   <span>🚨</span>
                 </div>
                 <div>
-                  <div className="alert-count" style={{ color: atRisk.length > 0 ? '#DC2626' : '#64748B' }}>{atRisk.length}</div>
+                  <div
+                    className="alert-count"
+                    style={{ color: atRisk.length > 0 ? "#DC2626" : "#64748B" }}
+                  >
+                    {atRisk.length}
+                  </div>
                   <div className="alert-label">متدربون في خطر</div>
                   <div className="alert-sub">3+ غيابات هذا الشهر</div>
                 </div>
@@ -255,100 +391,235 @@ export default async function AdminDashboardPage({ params }: Props) {
 
             {/* إحصائيات */}
             <div className="stats">
-              <div className="stat-card" style={{ borderTop: '3px solid #0D40FC' }}>
+              <div
+                className="stat-card"
+                style={{ borderTop: "3px solid #0D40FC" }}
+              >
                 <div className="stat-icon">⏱️</div>
-                <div className="stat-val" style={{ color: '#0D40FC' }}>{totalHours}</div>
+                <div className="stat-val" style={{ color: "#0D40FC" }}>
+                  {totalHours}
+                </div>
                 <div className="stat-label">ساعات الشهر</div>
                 <div className="stat-note">إجمالي كل المشرفين</div>
               </div>
-              <div className="stat-card" style={{ borderTop: '3px solid #10B981' }}>
+              <div
+                className="stat-card"
+                style={{ borderTop: "3px solid #10B981" }}
+              >
                 <div className="stat-icon">👥</div>
-                <div className="stat-val" style={{ color: '#10B981' }}>{activeTrainees.length}</div>
+                <div className="stat-val" style={{ color: "#10B981" }}>
+                  {activeTrainees.length}
+                </div>
                 <div className="stat-label">متدربون نشطون</div>
                 <div className="stat-note">من أصل {trainees.length}</div>
               </div>
-              <div className="stat-card" style={{ borderTop: '3px solid #8B5CF6' }}>
+              <div
+                className="stat-card"
+                style={{ borderTop: "3px solid #8B5CF6" }}
+              >
                 <div className="stat-icon">📋</div>
-                <div className="stat-val" style={{ color: '#8B5CF6' }}>{weekSessions.length}</div>
+                <div className="stat-val" style={{ color: "#8B5CF6" }}>
+                  {weekSessions.length}
+                </div>
                 <div className="stat-label">جلسات هذا الأسبوع</div>
                 <div className="stat-note">فردية وجماعية</div>
               </div>
-              <div className="stat-card" style={{ borderTop: '3px solid #F59E0B' }}>
+              <div
+                className="stat-card"
+                style={{ borderTop: "3px solid #F59E0B" }}
+              >
                 <div className="stat-icon">🎓</div>
-                <div className="stat-val" style={{ color: '#F59E0B' }}>{onboardingTrainees.length}</div>
+                <div className="stat-val" style={{ color: "#F59E0B" }}>
+                  {onboardingTrainees.length}
+                </div>
                 <div className="stat-label">قيد البوردنق</div>
-                <div className="stat-note">منهم {readyToAssign.length} جاهز للإسناد</div>
+                <div className="stat-note">
+                  منهم {readyToAssign.length} جاهز للإسناد
+                </div>
               </div>
             </div>
 
             {/* Bottom */}
             <div className="bottom">
-
               {/* Feed */}
               <div className="card">
                 <div className="card-head">
                   <div className="card-title">
-                    <div className="card-title-icon" style={{ background: '#EEF2FF' }}>
-                      <i className="ti ti-activity" style={{ fontSize: 15, color: '#4F46E5' }} aria-hidden="true" />
+                    <div
+                      className="card-title-icon"
+                      style={{ background: "#EEF2FF" }}
+                    >
+                      <i
+                        className="ti ti-activity"
+                        style={{ fontSize: 15, color: "#4F46E5" }}
+                        aria-hidden="true"
+                      />
                     </div>
                     آخر النشاطات
                   </div>
-                  <span style={{ fontSize: 11, color: '#94A3B8', background: '#F1F5F9', padding: '3px 8px', borderRadius: 99 }}>{activities.length} حدث</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#94A3B8",
+                      background: "#F1F5F9",
+                      padding: "3px 8px",
+                      borderRadius: 99,
+                    }}
+                  >
+                    {activities.length} حدث
+                  </span>
                 </div>
                 <div className="card-body">
                   {activities.length === 0 ? (
-                    <div style={{ padding: '2.5rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: 36, marginBottom: 8, opacity: 0.3 }}>📭</div>
-                      <div style={{ color: '#94A3B8', fontSize: 13 }}>لا توجد نشاطات بعد</div>
-                      <div style={{ color: '#CBD5E1', fontSize: 12, marginTop: 4 }}>ستظهر هنا عند تسجيل الجلسات وإضافة المتدربين</div>
-                    </div>
-                  ) : activities.map(a => {
-                    const cfg = activityIcon(a.type);
-                    return (
-                      <div key={a.id} className="feed-item">
-                        <div className="feed-avatar" style={{ background: cfg.bg }}>
-                          {cfg.icon}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div className="feed-text">{a.message}</div>
-                          <div className="feed-time">{timeAgo(a.createdAt)}</div>
-                        </div>
+                    <div style={{ padding: "2.5rem", textAlign: "center" }}>
+                      <div
+                        style={{ fontSize: 36, marginBottom: 8, opacity: 0.3 }}
+                      >
+                        📭
                       </div>
-                    );
-                  })}
+                      <div style={{ color: "#94A3B8", fontSize: 13 }}>
+                        لا توجد نشاطات بعد
+                      </div>
+                      <div
+                        style={{ color: "#CBD5E1", fontSize: 12, marginTop: 4 }}
+                      >
+                        ستظهر هنا عند تسجيل الجلسات وإضافة المتدربين
+                      </div>
+                    </div>
+                  ) : (
+                    activities.map((a) => {
+                      const cfg = activityIcon(a.type);
+                      return (
+                        <div key={a.id} className="feed-item">
+                          <div
+                            className="feed-avatar"
+                            style={{ background: cfg.bg }}
+                          >
+                            {cfg.icon}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div className="feed-text">{a.message}</div>
+                            <div className="feed-time">
+                              {timeAgo(a.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
               {/* اليمين */}
               <div className="right-col">
-
                 {/* تقدم المتدربين */}
                 <div className="card">
                   <div className="card-head">
                     <div className="card-title">
-                      <div className="card-title-icon" style={{ background: '#F0FDF4' }}>
-                        <i className="ti ti-target" style={{ fontSize: 15, color: '#16A34A' }} aria-hidden="true" />
+                      <div
+                        className="card-title-icon"
+                        style={{ background: "#F0FDF4" }}
+                      >
+                        <i
+                          className="ti ti-target"
+                          style={{ fontSize: 15, color: "#16A34A" }}
+                          aria-hidden="true"
+                        />
                       </div>
                       تقدم نحو الرخصة
                     </div>
-                    <span style={{ fontSize: 11, color: '#0D40FC', background: '#EEF2FF', padding: '3px 8px', borderRadius: 99, fontWeight: 600 }}>الشهر الحالي</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "#0D40FC",
+                        background: "#EEF2FF",
+                        padding: "3px 8px",
+                        borderRadius: 99,
+                        fontWeight: 600,
+                      }}
+                    >
+                      الشهر الحالي
+                    </span>
                   </div>
                   <div className="card-body">
                     {traineeProgress.length === 0 ? (
-                      <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>لا يوجد متدربون نشطون</div>
-                    ) : traineeProgress.map(t => (
-                      <div key={t.id} className="prog-item">
-                        <div className="prog-avatar">{t.name?.slice(0, 2)}</div>
-                        <div className="prog-name">{t.name}</div>
-                        <div className="prog-bar-wrap">
-                          <div className="prog-fill" style={{ width: `${t.pct}%`, background: t.pct >= 100 ? '#10B981' : t.pct >= 75 ? '#0D40FC' : t.pct >= 50 ? '#8B5CF6' : '#F59E0B' }} />
-                        </div>
-                        <div className="prog-pct" style={{ color: t.pct >= 100 ? '#10B981' : '#64748B' }}>{t.pct}%</div>
-                        {t.pct >= 100 && <span className="badge" style={{ background: '#F0FDF4', color: '#16A34A' }}>✓</span>}
-                        {t.pct >= 85 && t.pct < 100 && <span className="badge" style={{ background: '#FFF7ED', color: '#EA580C' }}>قريب</span>}
-                        {(t.snap?.absenceCount || 0) >= 3 && <span className="badge" style={{ background: '#FEF2F2', color: '#DC2626' }}>خطر</span>}
+                      <div
+                        style={{
+                          padding: "1.5rem",
+                          textAlign: "center",
+                          color: "#94A3B8",
+                          fontSize: 12,
+                        }}
+                      >
+                        لا يوجد متدربون نشطون
                       </div>
-                    ))}
+                    ) : (
+                      traineeProgress.map((t) => (
+                        <div key={t.id} className="prog-item">
+                          <div className="prog-avatar">
+                            {t.name?.slice(0, 2)}
+                          </div>
+                          <div className="prog-name">{t.name}</div>
+                          <div className="prog-bar-wrap">
+                            <div
+                              className="prog-fill"
+                              style={{
+                                width: `${t.pct}%`,
+                                background:
+                                  t.pct >= 100
+                                    ? "#10B981"
+                                    : t.pct >= 75
+                                      ? "#0D40FC"
+                                      : t.pct >= 50
+                                        ? "#8B5CF6"
+                                        : "#F59E0B",
+                              }}
+                            />
+                          </div>
+                          <div
+                            className="prog-pct"
+                            style={{
+                              color: t.pct >= 100 ? "#10B981" : "#64748B",
+                            }}
+                          >
+                            {t.pct}%
+                          </div>
+                          {t.pct >= 100 && (
+                            <span
+                              className="badge"
+                              style={{
+                                background: "#F0FDF4",
+                                color: "#16A34A",
+                              }}
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {t.pct >= 85 && t.pct < 100 && (
+                            <span
+                              className="badge"
+                              style={{
+                                background: "#FFF7ED",
+                                color: "#EA580C",
+                              }}
+                            >
+                              قريب
+                            </span>
+                          )}
+                          {(t.snap?.absenceCount || 0) >= 3 && (
+                            <span
+                              className="badge"
+                              style={{
+                                background: "#FEF2F2",
+                                color: "#DC2626",
+                              }}
+                            >
+                              خطر
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -356,43 +627,95 @@ export default async function AdminDashboardPage({ params }: Props) {
                 <div className="card">
                   <div className="card-head">
                     <div className="card-title">
-                      <div className="card-title-icon" style={{ background: '#EFF6FF' }}>
-                        <i className="ti ti-chart-bar" style={{ fontSize: 15, color: '#2563EB' }} aria-hidden="true" />
+                      <div
+                        className="card-title-icon"
+                        style={{ background: "#EFF6FF" }}
+                      >
+                        <i
+                          className="ti ti-chart-bar"
+                          style={{ fontSize: 15, color: "#2563EB" }}
+                          aria-hidden="true"
+                        />
                       </div>
                       إنتاجية المشرفين
                     </div>
-                    <Link href={`/${locale}/admin/supervisors`} style={{ fontSize: 11, color: '#0D40FC', textDecoration: 'none', fontWeight: 500 }}>
+                    <Link
+                      href={`/${locale}/admin/supervisors`}
+                      style={{
+                        fontSize: 11,
+                        color: "#0D40FC",
+                        textDecoration: "none",
+                        fontWeight: 500,
+                      }}
+                    >
                       عرض الكل ←
                     </Link>
                   </div>
                   <div className="card-body">
-                    {supervisors.map(sup => {
-                      const supSnaps = snapshots.filter(s => s.supervisorId === sup.id);
-                      const total = supSnaps.reduce((a, s) => a + (s.totalHours || 0), 0);
-                      const count = activeTrainees.filter(t => t.currentSupervisorId === sup.id).length;
+                    {supervisors.map((sup) => {
+                      const supSnaps = snapshots.filter(
+                        (s) => s.supervisorId === sup.id,
+                      );
+                      const total = supSnaps.reduce(
+                        (a, s) => a + (s.totalHours || 0),
+                        0,
+                      );
+                      const count = activeTrainees.filter(
+                        (t) => t.currentSupervisorId === sup.id,
+                      ).length;
                       return (
                         <div key={sup.id} className="sup-row">
-                          <div className="sup-avatar">{sup.name?.slice(0, 2)}</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1E293B' }}>{sup.name}</div>
-                            <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{count} متدرب نشط</div>
+                          <div className="sup-avatar">
+                            {sup.name?.slice(0, 2)}
                           </div>
-                          <div style={{ textAlign: 'center' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                color: "#1E293B",
+                              }}
+                            >
+                              {sup.name}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "#94A3B8",
+                                marginTop: 1,
+                              }}
+                            >
+                              {count} متدرب نشط
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "center" }}>
                             <div className="sup-hours">{total}</div>
-                            <div style={{ fontSize: 10, color: '#94A3B8' }}>ساعة</div>
+                            <div style={{ fontSize: 10, color: "#94A3B8" }}>
+                              ساعة
+                            </div>
                           </div>
                         </div>
                       );
                     })}
                     {supervisors.length === 0 && (
-                      <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94A3B8', fontSize: 12 }}>لا يوجد مشرفون</div>
+                      <div
+                        style={{
+                          padding: "1.5rem",
+                          textAlign: "center",
+                          color: "#94A3B8",
+                          fontSize: 12,
+                        }}
+                      >
+                        لا يوجد مشرفون
+                      </div>
                     )}
                   </div>
                 </div>
-
               </div>
             </div>
-
           </div>
         </div>
       </div>

@@ -30,28 +30,33 @@ import type {
 // helpers
 // ===========================
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7); // "2026-05"
-const getSnapshotId = (supervisorId: string, traineeId: string, month: string) =>
-  `${supervisorId}_${traineeId}_${month}`;
+const getSnapshotId = (
+  supervisorId: string,
+  traineeId: string,
+  month: string,
+) => `${supervisorId}_${traineeId}_${month}`;
 
 // ===========================
 // المتدربون — Trainees
 // ===========================
 
 /** جلب كل متدربي مشرف معين */
-export async function getTraineesBySupervisor(supervisorId: string): Promise<Trainee[]> {
+export async function getTraineesBySupervisor(
+  supervisorId: string,
+): Promise<Trainee[]> {
   const q = query(
     collection(db, "trainees"),
     where("currentSupervisorId", "==", supervisorId),
-    where("status", "==", "active")
+    where("status", "==", "active"),
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Trainee));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Trainee);
 }
 
 /** جلب كل المتدربين (للأدمن) */
 export async function getAllTrainees(): Promise<Trainee[]> {
   const snap = await getDocs(collection(db, "trainees"));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Trainee));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Trainee);
 }
 
 /** جلب متدرب واحد */
@@ -68,10 +73,13 @@ export async function addTrainee(data: {
   phone: string;
   license: License;
 }): Promise<string> {
-  const requiredHours = data.license === "QASP-S" ? 1000 : 2000;
+  const requiredHours = data.license === "QASP-S" ? 1500 : 2000;
+  const supervisionTargetHours = data.license === "QASP-S" ? 50 : 100;
   const ref = await addDoc(collection(db, "trainees"), {
     ...data,
     requiredHours,
+    fieldworkTargetHours: requiredHours,
+    supervisionTargetHours,
     status: "onboarding",
     onboardingStage: "initial_interview",
     currentSupervisorId: null,
@@ -87,7 +95,7 @@ export async function addTrainee(data: {
 /** تحديث مرحلة البوردنق */
 export async function updateOnboardingStage(
   traineeId: string,
-  stage: OnboardingStage
+  stage: OnboardingStage,
 ): Promise<void> {
   await updateDoc(doc(db, "trainees", traineeId), {
     onboardingStage: stage,
@@ -98,7 +106,7 @@ export async function updateOnboardingStage(
 /** تحديث حالة المتدرب */
 export async function updateTraineeStatus(
   traineeId: string,
-  status: TraineeStatus
+  status: TraineeStatus,
 ): Promise<void> {
   await updateDoc(doc(db, "trainees", traineeId), {
     status,
@@ -158,7 +166,7 @@ export async function transferTrainee(data: {
   const oldAssignQ = query(
     collection(db, "assignments"),
     where("traineeId", "==", data.traineeId),
-    where("supervisorId", "==", data.oldSupervisorId)
+    where("supervisorId", "==", data.oldSupervisorId),
   );
   const oldAssignSnap = await getDocs(oldAssignQ);
   const traineeSnap = await getDoc(doc(db, "trainees", data.traineeId));
@@ -360,45 +368,45 @@ export async function addSession(data: {
 /** جلب جلسات متدرب مع مشرف معين */
 export async function getSessionsByTrainee(
   traineeId: string,
-  supervisorId?: string
+  supervisorId?: string,
 ): Promise<Session[]> {
   let q = query(
     collection(db, "sessions"),
     where("traineeIds", "array-contains", traineeId),
-    orderBy("date", "desc")
+    orderBy("date", "desc"),
   );
   if (supervisorId) {
     q = query(
       collection(db, "sessions"),
       where("traineeIds", "array-contains", traineeId),
       where("supervisorId", "==", supervisorId),
-      orderBy("date", "desc")
+      orderBy("date", "desc"),
     );
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Session));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Session);
 }
 
 /** جلب جلسات مشرف في شهر معين */
 export async function getSessionsBySupervisorMonth(
   supervisorId: string,
-  month: string
+  month: string,
 ): Promise<Session[]> {
   const q = query(
     collection(db, "sessions"),
     where("supervisorId", "==", supervisorId),
     where("month", "==", month),
-    orderBy("date", "desc")
+    orderBy("date", "desc"),
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Session));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Session);
 }
 
 /** حذف جلسة (المشرف في نفس الشهر فقط) */
 export async function deleteSession(
   sessionId: string,
   requesterId: string,
-  isAdmin: boolean
+  isAdmin: boolean,
 ): Promise<void> {
   const sessionSnap = await getDoc(doc(db, "sessions", sessionId));
   if (!sessionSnap.exists()) throw new Error("الجلسة غير موجودة");
@@ -428,7 +436,7 @@ export async function updateWorkHours(
   supervisorId: string,
   traineeId: string,
   month: string,
-  workHours: number
+  workHours: number,
 ): Promise<void> {
   const snapshotId = getSnapshotId(supervisorId, traineeId, month);
   const snapshotRef = doc(db, "monthlySnapshots", snapshotId);
@@ -445,7 +453,7 @@ export async function updateWorkHours(
 export async function getMonthlySnapshot(
   supervisorId: string,
   traineeId: string,
-  month: string
+  month: string,
 ): Promise<MonthlySnapshot | null> {
   const snapshotId = getSnapshotId(supervisorId, traineeId, month);
   const snap = await getDoc(doc(db, "monthlySnapshots", snapshotId));
@@ -456,15 +464,15 @@ export async function getMonthlySnapshot(
 /** جلب كل snapshots مشرف لشهر معين */
 export async function getSnapshotsBySupervisorMonth(
   supervisorId: string,
-  month: string
+  month: string,
 ): Promise<MonthlySnapshot[]> {
   const q = query(
     collection(db, "monthlySnapshots"),
     where("supervisorId", "==", supervisorId),
-    where("month", "==", month)
+    where("month", "==", month),
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as MonthlySnapshot));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MonthlySnapshot);
 }
 
 // ===========================
@@ -476,7 +484,7 @@ export async function lockMonth(
   supervisorId: string,
   traineeId: string,
   month: string,
-  adminId: string
+  adminId: string,
 ): Promise<void> {
   const snapshotId = getSnapshotId(supervisorId, traineeId, month);
   await updateDoc(doc(db, "monthlySnapshots", snapshotId), {
@@ -491,7 +499,7 @@ export async function unlockMonth(
   supervisorId: string,
   traineeId: string,
   month: string,
-  adminId: string
+  adminId: string,
 ): Promise<void> {
   const snapshotId = getSnapshotId(supervisorId, traineeId, month);
   await updateDoc(doc(db, "monthlySnapshots", snapshotId), {
@@ -511,7 +519,7 @@ export async function autoLockPreviousMonth(): Promise<void> {
   const q = query(
     collection(db, "monthlySnapshots"),
     where("month", "==", prevMonth),
-    where("lockedAt", "==", null)
+    where("lockedAt", "==", null),
   );
   const snap = await getDocs(q);
   const batch = writeBatch(db);
@@ -532,7 +540,7 @@ export async function autoLockPreviousMonth(): Promise<void> {
 export async function isMonthLocked(
   supervisorId: string,
   traineeId: string,
-  month: string
+  month: string,
 ): Promise<boolean> {
   const snapshot = await getMonthlySnapshot(supervisorId, traineeId, month);
   if (!snapshot) return false;

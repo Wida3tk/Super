@@ -10,6 +10,7 @@ import type {
   WarningReason,
 } from "@/types";
 import TraineeMonthlyView from "./TraineeMonthlyView";
+import { credentialRules } from "@/lib/qaba/compliance";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -671,7 +672,9 @@ function TraineeCard({
   onSelect: () => void;
 }) {
   const total = snapshot?.totalHours || 0;
-  const pct = Math.min(Math.round((total / trainee.requiredHours) * 100), 100);
+  const targetHours =
+    trainee.fieldworkTargetHours || credentialRules(trainee.license).total;
+  const pct = Math.min(Math.round((total / targetHours) * 100), 100);
   const groupPct = snapshot?.groupPercentage || 0;
   const isGroupWarn = groupPct > 25;
 
@@ -754,7 +757,7 @@ function TraineeCard({
             />
           </div>
           <span style={{ fontSize: 11, color: COLORS.gray500, minWidth: 60 }}>
-            {total}/{trainee.requiredHours} ساعة
+            {total}/{targetHours} ساعة
           </span>
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
@@ -942,8 +945,15 @@ export default function SupervisionHours({
                 {selectedTrainee.name}
               </p>
               <p style={{ fontSize: 12, color: COLORS.gray500 }}>
-                {selectedTrainee.license} · {selectedTrainee.requiredHours} ساعة
-                مطلوبة
+                {selectedTrainee.license} ·{" "}
+                {credentialRules(selectedTrainee.license).label} ·{" "}
+                {selectedTrainee.fieldworkTargetHours ||
+                  credentialRules(selectedTrainee.license).total}{" "}
+                ساعة خبرة ·{" "}
+                {selectedTrainee.supervisionTargetHours ||
+                  credentialRules(selectedTrainee.license)
+                    .supervisionTarget}{" "}
+                ساعة إشراف مطلوبة
               </p>
             </div>
           </div>
