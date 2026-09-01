@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 interface Props {
-  supervisor: { id: string; name: string; email: string; isActive: boolean };
+  supervisor: { id: string; authUid?: string; name: string; email: string; isActive: boolean };
   onClose: () => void;
 }
 
@@ -21,7 +21,7 @@ export default function ManageSupervisorAuth({ supervisor, onClose }: Props) {
       const res = await fetch('/api/admin/manage-supervisor-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: supervisor.id, action, ...extra }),
+        body: JSON.stringify({ uid: supervisor.authUid || supervisor.id, supervisorId: supervisor.id, action, ...extra }),
       });
       const data = await res.json();
       if (data.success) {

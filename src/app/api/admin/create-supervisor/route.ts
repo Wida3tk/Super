@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
         ratingAverage: 0,
         createdAt: new Date().toISOString(),
         accountType: accountType === "consultant" ? "consultant" : "supervisor",
+        authUid: userRecord.uid,
+        availableSeats: 0,
       });
 
     return NextResponse.json({ success: true, uid: userRecord.uid });

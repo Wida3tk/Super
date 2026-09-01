@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { uid, action, newEmail, newPassword } = await request.json();
+    const { uid, supervisorId, action, newEmail, newPassword } = await request.json();
     if (!uid || !action) return NextResponse.json({ error: 'MISSING' }, { status: 400 });
 
     if (action === 'resetPassword') {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       if (!newEmail) return NextResponse.json({ error: 'MISSING_EMAIL' }, { status: 400 });
       await adminAuth.updateUser(uid, { email: newEmail });
       // تحديث الإيميل في Firestore أيضاً
-      await adminDb.collection('supervisors').doc(uid).update({
+      await adminDb.collection('supervisors').doc(supervisorId || uid).update({
         email: newEmail,
         updatedAt: new Date().toISOString(),
       });
@@ -37,13 +37,13 @@ export async function POST(request: NextRequest) {
 
     if (action === 'disable') {
       await adminAuth.updateUser(uid, { disabled: true });
-      await adminDb.collection('supervisors').doc(uid).update({ isActive: false });
+      await adminDb.collection('supervisors').doc(supervisorId || uid).update({ isActive: false });
       return NextResponse.json({ success: true, message: 'تم تعطيل الحساب' });
     }
 
     if (action === 'enable') {
       await adminAuth.updateUser(uid, { disabled: false });
-      await adminDb.collection('supervisors').doc(uid).update({ isActive: true });
+      await adminDb.collection('supervisors').doc(supervisorId || uid).update({ isActive: true });
       return NextResponse.json({ success: true, message: 'تم تفعيل الحساب' });
     }
 

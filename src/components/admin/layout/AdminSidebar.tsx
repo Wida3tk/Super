@@ -57,7 +57,7 @@ export default function AdminSidebar({
         {
           href: `${base}/supervisors`,
           icon: "ti-chart-bar",
-          label: "إنتاجية المشرفين",
+          label: "حسابات المشرفين",
           emoji: "📊",
         },
         {

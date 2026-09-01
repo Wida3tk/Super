@@ -18,16 +18,23 @@ export default async function SupervisorsPage({ params }: Props) {
       adminDb.collection('supervisors').get(),
       adminDb.collection('bookings').get(),
     ]);
-    const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    const supervisors = await Promise.all(supervisorsSnap.docs.map(async d => {
+      const data = d.data() as any;
+      let authUid = data.authUid || '';
+      if (!authUid && data.email) {
+        try { authUid = (await adminAuth.getUserByEmail(String(data.email).toLowerCase())).uid; } catch {}
+      }
+      return { id: d.id, ...data, authUid };
+    })) as any[];
     const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const stats = {
-      sessionsBySupervisor: supervisors.map((s: any) => ({
-        supervisorId: s.id, name: s.name, count: s.totalSessions || 0, isActive: s.isActive,
-      })),
-    };
+    const today = new Date().toISOString().slice(0, 10);
+    const supervisorsWithOperations = supervisors.map((supervisor: any) => ({
+      ...supervisor,
+      upcomingBookings: bookings.filter((booking: any) => booking.supervisorId === supervisor.id && booking.status === 'confirmed' && booking.date >= today).length,
+    }));
     return (
-      <AdminPageLayout locale={locale} title="إنتاجية المشرفين">
-        <SupervisorTabs supervisors={supervisors as any} />
+      <AdminPageLayout locale={locale} title="حسابات المشرفين">
+        <SupervisorTabs supervisors={supervisorsWithOperations as any} />
       </AdminPageLayout>
     );
   } catch { redirect(`/${locale}/login`); }
