@@ -113,7 +113,6 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
-  const directSupervision = sum(["supervision_direct"]);
   const supervision = sum(["supervision_direct", "supervision_indirect"]);
   const total = direct + indirect;
   const supervisionPct = total ? (supervision / total) * 100 : 0;
@@ -126,7 +125,7 @@ export default function TraineeFieldworkDashboard({
   const progress = Math.min(100, (total / requiredHours) * 100);
   const supervisionProgress = Math.min(
     100,
-    (directSupervision / supervisionTargetHours) * 100,
+    (supervision / supervisionTargetHours) * 100,
   );
   const pendingCount = activities.filter(
     (a) => a.status === "submitted",
@@ -405,7 +404,7 @@ export default function TraineeFieldworkDashboard({
               </div>
               <div className="progress-label" style={{ marginTop: 11 }}>
                 <span>
-                  الإشراف المباشر: {directSupervision.toFixed(1)} من{" "}
+                  ساعات الإشراف: {supervision.toFixed(1)} من{" "}
                   {supervisionTargetHours} ساعة
                 </span>
                 <b>{supervisionProgress.toFixed(0)}%</b>
@@ -502,7 +501,7 @@ export default function TraineeFieldworkDashboard({
               <div className="card">
                 <span className="muted">الإشراف المباشر المستهدف</span>
                 <b>
-                  {directSupervision.toFixed(1)} / {supervisionTargetHours}
+                  {supervision.toFixed(1)} / {supervisionTargetHours}
                 </b>
               </div>
               <div className="card">

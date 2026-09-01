@@ -1,7 +1,7 @@
 // src/types/index.ts
 
 export type BookingStatus =
-  "confirmed" | "cancelled" | "rescheduled" | "completed";
+  "confirmed" | "cancelled" | "rescheduled" | "completed" | "closed";
 
 export interface Supervisor {
   id: string;
@@ -41,6 +41,7 @@ export interface Booking {
   reminderSent?: boolean;
   createdAt: string;
   bookingType?: "initial_interview" | "consultation";
+  meetingStatus?: "pending" | "completed" | "missed";
   consultationType?: "behavior_analysis" | "organizational_behavior";
 }
 
@@ -94,12 +95,14 @@ export type TraineeStatus =
   | "active" // نشط
   | "paused" // مؤجل
   | "withdrawn" // منسحب
+  | "terminated" // منتهي بقرار إداري
   | "completed"; // مكتمل
 
 // مرحلة الانضمام والإسناد
 export type OnboardingStage =
   | "initial_interview" // مقابلة أولية
   | "awaiting_decisions" // بانتظار قرار الطرفين
+  | "interview_declined" // لم يرغب أحد الطرفين بالاستمرار
   | "admin_review" // مراجعة الإدارة
   | "contracting" // التعاقد والموافقات
   | "ready_assignment"; // جاهز للإسناد
@@ -152,6 +155,11 @@ export interface Trainee {
   totalIndividualHours: number;
   totalGroupHours: number;
   totalHours: number;
+  approvedDirectHours?: number;
+  approvedIndirectHours?: number;
+  approvedFieldworkHours?: number;
+  approvedSupervisionHours?: number;
+  approvedGroupSupervisionHours?: number;
   authUid?: string;
   accountStatus?: "invited" | "active";
 }

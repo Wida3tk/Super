@@ -46,19 +46,30 @@ export default function AdminSidebar({
       ],
     },
     {
-      title: "الإشراف",
+      title: "المشرفون",
       items: [
-        {
-          href: `${base}/trainees`,
-          icon: "ti-users",
-          label: "المتدربون",
-          emoji: "👥",
-        },
         {
           href: `${base}/supervisors`,
           icon: "ti-chart-bar",
           label: "حسابات المشرفين",
           emoji: "📊",
+        },
+        {
+          href: `${base}/bookings`,
+          icon: "ti-calendar",
+          label: "المواعيد والحجوزات",
+          emoji: "📋",
+        },
+      ],
+    },
+    {
+      title: "المتدربون",
+      items: [
+        {
+          href: `${base}/trainees`,
+          icon: "ti-users",
+          label: "إدارة المتدربين",
+          emoji: "👥",
         },
         {
           href: `${base}/onboarding`,
@@ -72,28 +83,22 @@ export default function AdminSidebar({
           label: "إدارة الأشهر",
           emoji: "📅",
         },
-      ],
-    },
-    {
-      title: "النظام",
-      items: [
-        {
-          href: `${base}/accounts`,
-          icon: "ti-user-cog",
-          label: "حسابات المسجلين",
-          emoji: "👤",
-        },
         {
           href: `${base}/trainee-requests`,
           icon: "ti-file-description",
           label: "طلبات المتدربين",
           emoji: "📨",
         },
+      ],
+    },
+    {
+      title: "التشغيل والنظام",
+      items: [
         {
-          href: `${base}/bookings`,
-          icon: "ti-calendar",
-          label: "الحجوزات",
-          emoji: "📋",
+          href: `${base}/accounts`,
+          icon: "ti-user-cog",
+          label: "حسابات المسجلين",
+          emoji: "👤",
         },
         {
           href: `${base}/export`,

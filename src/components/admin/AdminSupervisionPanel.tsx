@@ -50,6 +50,7 @@ const STATUS_LABELS: Record<TraineeStatus, string> = {
   active: "نشط",
   paused: "مؤجل",
   withdrawn: "منسحب",
+  terminated: "منتهي بقرار إداري",
   completed: "مكتمل",
 };
 
@@ -58,12 +59,14 @@ const STATUS_COLORS: Record<TraineeStatus, { bg: string; color: string }> = {
   active: { bg: "#EAF3DE", color: "#3B6D11" },
   paused: { bg: "#FAEEDA", color: "#854F0B" },
   withdrawn: { bg: "#F1EFE8", color: "#5F5E5A" },
+  terminated: { bg: "#FEE2E2", color: "#991B1B" },
   completed: { bg: "#E1F5EE", color: "#0F6E56" },
 };
 
 const ONBOARDING_STAGES: { key: OnboardingStage; label: string }[] = [
   { key: "initial_interview", label: "مقابلة أولية" },
   { key: "awaiting_decisions", label: "بانتظار قرار الطرفين" },
+  { key: "interview_declined", label: "لم يتم الاتفاق بعد المقابلة" },
   { key: "admin_review", label: "مراجعة الإدارة" },
   { key: "contracting", label: "التعاقد والموافقات" },
   { key: "ready_assignment", label: "جاهز للإسناد" },
@@ -772,8 +775,8 @@ async function exportToExcel(
         "الساعات المطلوبة": credentialRules(t.license).total,
         فردية: t.totalIndividualHours || 0,
         جماعية: t.totalGroupHours || 0,
-        الإجمالي: t.totalHours || 0,
-        المتبقي: credentialRules(t.license).total - (t.totalHours || 0),
+        الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,
+        المتبقي: credentialRules(t.license).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
         "المشرف الحالي": sup?.name || "—",
         الحالة: STATUS_LABELS[t.status],
       };
@@ -1252,7 +1255,7 @@ export default function AdminSupervisionPanel({
                     );
                     const targetHours = credentialRules(t.license).total;
                     const pct = Math.min(
-                      Math.round(((t.totalHours || 0) / targetHours) * 100),
+                      Math.round((((t.approvedFieldworkHours ?? t.totalHours) || 0) / targetHours) * 100),
                       100,
                     );
                     const statusStyle = STATUS_COLORS[t.status];
@@ -1363,7 +1366,7 @@ export default function AdminSupervisionPanel({
                             <span
                               style={{ fontSize: 11, color: COLORS.gray500 }}
                             >
-                              {t.totalHours || 0}/{targetHours}
+                              {(t.approvedFieldworkHours ?? t.totalHours) || 0}/{targetHours}
                             </span>
                           </div>
                         </td>

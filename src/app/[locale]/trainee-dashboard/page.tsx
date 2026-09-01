@@ -34,7 +34,6 @@ export default async function TraineeDashboardPage({
     adminDb
       .collection("fieldworkActivities")
       .where("traineeId", "==", trainee.id)
-      .limit(300)
       .get(),
     trainee.currentSupervisorId
       ? adminDb.collection("supervisors").doc(trainee.currentSupervisorId).get()

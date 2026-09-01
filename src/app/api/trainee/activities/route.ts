@@ -43,7 +43,6 @@ export async function GET() {
   const snap = await adminDb
     .collection("fieldworkActivities")
     .where("traineeId", "==", trainee.id)
-    .limit(300)
     .get();
   const activities = snap.docs
     .map((doc) => ({ id: doc.id, ...doc.data() }) as any)
@@ -108,6 +107,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "MONTH_LOCKED" }, { status: 409 });
   const fieldworkStart = clean((trainee as any).fieldworkStartDate, 10);
   const courseworkStart = clean((trainee as any).courseworkStartDate, 10);
+  if (!fieldworkStart || !courseworkStart)
+    return NextResponse.json({ error: "ELIGIBILITY_DATES_REQUIRED" }, { status: 409 });
   if (
     (fieldworkStart && date < fieldworkStart) ||
     (courseworkStart && date < courseworkStart)
@@ -181,22 +182,51 @@ export async function PATCH(req: NextRequest) {
   if (locked.exists && locked.data()?.locked)
     return NextResponse.json({ error: "MONTH_LOCKED" }, { status: 409 });
   if (action === "update") {
+    const date = clean(body.date, 10);
+    const startTime = clean(body.startTime, 5);
+    const endTime = clean(body.endTime, 5);
     const duration = durationBetween(
-      clean(body.startTime, 5),
-      clean(body.endTime, 5),
+      startTime,
+      endTime,
     );
-    if (duration <= 0 || duration > 16 || !TYPES.has(body.activityType))
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || duration <= 0 || duration > 16 || !TYPES.has(body.activityType))
       return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
+    const isSupervision = String(body.activityType).startsWith("supervision_");
+    if (!isSupervision && !CATEGORIES.has(body.activityCategory))
+      return NextResponse.json({ error: "ACTIVITY_CATEGORY_REQUIRED" }, { status: 400 });
+    if (isSupervision && (!['in_person', 'video'].includes(body.setting) || !['individual', 'group'].includes(body.format)))
+      return NextResponse.json({ error: "SUPERVISION_DETAILS_REQUIRED" }, { status: 400 });
+    const targetMonthApproval = await adminDb.collection("monthlyApprovals")
+      .doc(`${trainee.id}_${date.slice(0, 7)}`).get();
+    if (targetMonthApproval.exists && targetMonthApproval.data()?.locked)
+      return NextResponse.json({ error: "MONTH_LOCKED" }, { status: 409 });
+    const fieldworkStart = clean((trainee as any).fieldworkStartDate, 10);
+    const courseworkStart = clean((trainee as any).courseworkStartDate, 10);
+    if (!fieldworkStart || !courseworkStart)
+      return NextResponse.json({ error: "ELIGIBILITY_DATES_REQUIRED" }, { status: 409 });
+    if (date < fieldworkStart || date < courseworkStart)
+      return NextResponse.json({ error: "BEFORE_ELIGIBLE_START" }, { status: 400 });
+    const sameDay = await adminDb.collection("fieldworkActivities")
+      .where("traineeId", "==", trainee.id).where("date", "==", date).limit(100).get();
+    const overlaps = sameDay.docs.some((doc) => {
+      if (doc.id === id || doc.data().status === "rejected") return false;
+      const row = doc.data();
+      return startTime < row.endTime && endTime > row.startTime;
+    });
+    if (overlaps) return NextResponse.json({ error: "TIME_OVERLAP" }, { status: 409 });
     await ref.update({
-      date: clean(body.date, 10),
-      month: clean(body.date, 10).slice(0, 7),
-      startTime: clean(body.startTime, 5),
-      endTime: clean(body.endTime, 5),
+      date,
+      month: date.slice(0, 7),
+      startTime,
+      endTime,
       duration,
       activityType: body.activityType,
-      activityCategory: CATEGORIES.has(body.activityCategory)
+      activityCategory: !isSupervision && CATEGORIES.has(body.activityCategory)
         ? body.activityCategory
         : null,
+      setting: isSupervision ? body.setting : null,
+      format: isSupervision ? body.format : null,
+      observedWithClient: isSupervision ? Boolean(body.observedWithClient) : false,
       centerName: clean(body.centerName, 200),
       clientCode: clean(body.clientCode, 80),
       planGoalId: clean(body.planGoalId, 100),

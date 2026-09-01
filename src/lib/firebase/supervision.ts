@@ -320,7 +320,7 @@ export async function addSession(data: {
         batch.update(doc(db, "trainees", traineeId), {
           totalIndividualHours: newIndTotal,
           totalGroupHours: newGrpTotal,
-          totalHours: newIndTotal + newGrpTotal,
+          totalSupervisionSessionHours: newIndTotal + newGrpTotal,
           updatedAt: now,
         });
       }

@@ -3,13 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
+import { syncTraineeFieldworkTotals } from '@/lib/fieldwork/syncTotals';
 
 export async function GET() {
   const supervisor = await getAuthenticatedSupervisor();
   if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const snap = await adminDb.collection('fieldworkActivities')
-    .where('supervisorId', '==', supervisor.id).limit(300).get();
-  return NextResponse.json({ activities: snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)).filter(a => a.status === 'submitted') });
+    .where('supervisorId', '==', supervisor.id).where('status', '==', 'submitted').limit(500).get();
+  return NextResponse.json({ activities: snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)) });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -29,5 +30,6 @@ export async function PATCH(req: NextRequest) {
     status: statuses[action], reviewerNote: String(note || '').trim().slice(0, 1000),
     reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), reviewedBy: supervisor.id,
   });
+  await syncTraineeFieldworkTotals(String(snap.data()?.traineeId || ""));
   return NextResponse.json({ success: true });
 }

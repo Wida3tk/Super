@@ -47,7 +47,11 @@ export async function POST(req: NextRequest) {
   const credentialExpiresAt = String(
     (supervisor as any).credentialExpiresAt || "",
   );
-  if (credentialExpiresAt && credentialExpiresAt < `${month}-01`)
+  const monthEnd = new Date(`${month}-01T00:00:00Z`);
+  monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+  monthEnd.setUTCDate(0);
+  const monthEndDate = monthEnd.toISOString().slice(0, 10);
+  if (credentialExpiresAt && credentialExpiresAt < monthEndDate)
     return NextResponse.json(
       { error: "SUPERVISOR_CREDENTIAL_EXPIRED" },
       { status: 409 },
@@ -69,16 +73,21 @@ export async function POST(req: NextRequest) {
     trainee.fieldworkStartDate,
   );
   const check = result.months.find((m) => m.month === month);
+  const hasRequiredIndividualContact = activities.some((activity) =>
+    activity.status === "approved" &&
+    activity.activityType.startsWith("supervision_") &&
+    activity.format === "individual" &&
+    activity.duration >= 1
+  );
   if (
     !check ||
     !check.validHoursBand ||
     !check.meetsSupervision ||
     !check.meetsGroupLimit ||
-    !check.meetsDirectLimit ||
-    !check.meetsIndirectMinimum
+    !hasRequiredIndividualContact
   )
     return NextResponse.json(
-      { error: "MONTH_NOT_COMPLIANT", compliance: check || null },
+      { error: "MONTH_NOT_COMPLIANT", compliance: check || null, hasRequiredIndividualContact },
       { status: 409 },
     );
   const pending = activities.filter((a) =>

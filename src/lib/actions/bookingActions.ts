@@ -77,6 +77,7 @@ export async function createBooking(
     meetLink: "",
     googleEventId: "",
     status: "confirmed",
+    meetingStatus: "pending",
     referenceNumber,
     managementToken,
     availabilitySlotId: payload.availabilitySlotId,
@@ -121,7 +122,8 @@ export async function createBooking(
       if (
         existingBookings.docs.some(
           (doc) =>
-            (doc.data().bookingType || "initial_interview") === bookingType,
+            (doc.data().bookingType || "initial_interview") === bookingType &&
+            (!doc.data().meetingStatus || doc.data().meetingStatus === "pending"),
         )
       )
         throw new Error("ALREADY_HAS_BOOKING");

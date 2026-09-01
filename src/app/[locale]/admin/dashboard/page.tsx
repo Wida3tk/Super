@@ -87,7 +87,7 @@ export default async function AdminDashboardPage({ params }: Props) {
   const readyToAssign = trainees.filter(
     (t) => t.status === "onboarding" && t.onboardingStage === "contracting",
   );
-  const totalHours = snapshots.reduce((a, s) => a + (s.totalHours || 0), 0);
+  const totalHours = trainees.reduce((sum, trainee) => sum + Number(trainee.approvedFieldworkHours ?? trainee.totalHours ?? 0), 0);
   const weekSessions = sessions.filter((s) => s.date >= weekAgo);
 
   // تنبيهات
@@ -106,12 +106,13 @@ export default async function AdminDashboardPage({ params }: Props) {
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
       const targetHours = credentialRules(t.license || "QASP-S").total;
-      const pct = Math.round(((snap?.totalHours || 0) / targetHours) * 100);
+      const approvedHours = Number(t.approvedFieldworkHours ?? t.totalHours ?? 0);
+      const pct = Math.round((approvedHours / targetHours) * 100);
       return {
         ...t,
         pct,
         targetHours,
-        totalHours: snap?.totalHours || 0,
+        totalHours: approvedHours,
         snap,
       };
     })

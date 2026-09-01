@@ -52,6 +52,8 @@ export function buildCompliance(
     .filter((a) => a.format === "group")
     .reduce((n, a) => n + a.duration, 0);
   const fieldwork = direct + indirect;
+  const directRate = fieldwork ? direct / fieldwork : 0;
+  const indirectRate = fieldwork ? indirect / fieldwork : 0;
   const byMonth = new Map<
     string,
     {
@@ -95,8 +97,23 @@ export function buildCompliance(
         v.fieldwork > 0 && v.supervision / v.fieldwork >= rules.supervisionRate,
       meetsGroupLimit:
         v.supervision === 0 || v.group / v.supervision <= rules.maxGroupRate,
-      meetsDirectLimit: v.fieldwork > 0 && v.direct / v.fieldwork <= 0.4,
-      meetsIndirectMinimum: v.fieldwork > 0 && v.indirect / v.fieldwork >= 0.6,
+      // QABA applies the 40/60 distribution to the accumulated fieldwork.
+      // Keep monthly ratios for coaching, but do not reject an otherwise valid
+      // month because its local activity mix differs from the cumulative mix.
+      meetsDirectLimit: directRate <= 0.4,
+      meetsIndirectMinimum: indirectRate >= 0.6,
     }));
-  return { rules, direct, indirect, supervision, group, fieldwork, months };
+  return {
+    rules,
+    direct,
+    indirect,
+    supervision,
+    group,
+    fieldwork,
+    directRate,
+    indirectRate,
+    meetsDirectLimit: directRate <= 0.4,
+    meetsIndirectMinimum: indirectRate >= 0.6,
+    months,
+  };
 }

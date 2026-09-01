@@ -47,4 +47,21 @@ describe("QABA compliance", () => {
     expect(result.supervision).toBe(1);
     expect(result.months[0].meetsSupervision).toBe(true);
   });
+
+  it("applies the 40/60 activity distribution cumulatively, not per month", () => {
+    const activity = (id: string, month: string, activityType: "direct" | "indirect", duration: number) => ({
+      id, traineeId: "t", supervisorId: "s", date: `${month}-01`, month,
+      startTime: "08:00", endTime: "09:00", duration, activityType,
+      description: "x", status: "approved", createdAt: "", updatedAt: "",
+    });
+    const result = buildCompliance([
+      activity("1", "2026-07", "indirect", 60),
+      activity("2", "2026-08", "direct", 40),
+    ] as any, "QASP-S");
+    expect(result.directRate).toBe(0.4);
+    expect(result.indirectRate).toBe(0.6);
+    expect(result.meetsDirectLimit).toBe(true);
+    expect(result.meetsIndirectMinimum).toBe(true);
+    expect(result.months.every((month) => month.meetsDirectLimit && month.meetsIndirectMinimum)).toBe(true);
+  });
 });

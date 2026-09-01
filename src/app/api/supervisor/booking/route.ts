@@ -1,27 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminAuth } from '@/lib/firebase/admin';
-import { cookies } from 'next/headers';
-
-async function getAuthenticatedSupervisor() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
-  if (!sessionCookie) return null;
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const email = decoded.email?.toLowerCase() || '';
-    const allSnap = await adminDb.collection('supervisors').get();
-    const match = allSnap.docs.find(d => (d.data().email || '').toLowerCase() === email);
-    if (!match) return null;
-    return { id: match.id, ...match.data() } as any;
-  } catch { return null; }
-}
+import { adminDb } from '@/lib/firebase/admin';
+import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function PATCH(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
   if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { bookingId, meetingStatus } = await req.json();
-  if (!bookingId || !meetingStatus) {
+  if (!bookingId || !['pending', 'completed', 'missed'].includes(meetingStatus)) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
@@ -33,9 +20,17 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  await adminDb.collection('bookings').doc(bookingId).update({
-    meetingStatus,
-    meetingStatusUpdatedAt: new Date().toISOString(),
+  await adminDb.runTransaction(async (transaction) => {
+    const ref = adminDb.collection('bookings').doc(bookingId);
+    const current = await transaction.get(ref);
+    if (!current.exists || current.data()?.supervisorId !== supervisor.id) throw new Error('FORBIDDEN');
+    const previousStatus = current.data()?.meetingStatus || 'pending';
+    transaction.update(ref, { meetingStatus, meetingStatusUpdatedAt: new Date().toISOString() });
+    if (meetingStatus === 'missed' && previousStatus !== 'missed' && (current.data()?.bookingType || 'initial_interview') === 'initial_interview') {
+      transaction.update(adminDb.collection('supervisors').doc(supervisor.id), {
+        availableSeats: FieldValue.increment(1),
+      });
+    }
   });
 
   return NextResponse.json({ success: true });

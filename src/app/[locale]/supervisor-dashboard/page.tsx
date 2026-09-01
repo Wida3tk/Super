@@ -1,7 +1,7 @@
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminDb } from "@/lib/firebase/admin";
+import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { redirect } from "next/navigation";
 import AvailabilityManager from "@/components/supervisor/AvailabilityManager";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import LogoutButton from "@/components/LogoutButton";
 import SeatsManager from "@/components/supervisor/SeatsManager";
@@ -12,27 +12,9 @@ interface Props {
   params: Promise<{ locale: string }>;
 }
 
-async function getAuthenticatedSupervisor() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__session")?.value;
-  if (!sessionCookie) return null;
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const email = decoded.email?.toLowerCase() || "";
-    const allSnap = await adminDb.collection("supervisors").get();
-    const match = allSnap.docs.find(
-      (d) => (d.data().email || "").toLowerCase() === email,
-    );
-    if (!match) return null;
-    return { id: match.id, ...match.data() } as any;
-  } catch {
-    return null;
-  }
-}
-
 export default async function SupervisorDashboardPage({ params }: Props) {
   const { locale } = await params;
-  const supervisor = await getAuthenticatedSupervisor();
+  const supervisor = (await getAuthenticatedSupervisor()) as any;
   if (!supervisor) redirect(`/${locale}/login`);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -76,7 +58,8 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     adminDb
       .collection("fieldworkActivities")
       .where("supervisorId", "==", supervisor.id)
-      .limit(300)
+      .where("status", "==", "submitted")
+      .limit(500)
       .get(),
   ]);
 

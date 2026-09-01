@@ -71,11 +71,17 @@ export async function PATCH(req: NextRequest) {
   const ref = adminDb.collection("trainees").doc(traineeId);
 
   if (action === "updateStatus") {
+    const allowedStatuses = new Set(["onboarding", "active", "paused", "withdrawn", "terminated", "completed"]);
+    if (!allowedStatuses.has(String(data.status)))
+      return NextResponse.json({ error: "INVALID_STATUS" }, { status: 400 });
     await ref.update({
       status: data.status,
       updatedAt: new Date().toISOString(),
     });
   } else if (action === "updateOnboarding") {
+    const allowedStages = new Set(["initial_interview", "awaiting_decisions", "interview_declined", "admin_review", "contracting", "ready_assignment"]);
+    if (!allowedStages.has(String(data.stage)))
+      return NextResponse.json({ error: "INVALID_ONBOARDING_STAGE" }, { status: 400 });
     await ref.update({
       onboardingStage: data.stage,
       updatedAt: new Date().toISOString(),
@@ -85,12 +91,17 @@ export async function PATCH(req: NextRequest) {
     if (!traineeBefore.exists)
       return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
     const traineeData = traineeBefore.data() as any;
-    if (traineeData.currentSupervisorId && traineeData.currentSupervisorId !== data.supervisorId) {
-      return NextResponse.json({ error: "ACTIVE_SUPERVISOR_EXISTS", detail: "لدى المتدرب مشرف نشط. استخدم إجراء نقل المتدرب بدل الإسناد المباشر." }, { status: 409 });
+    const assignmentStart = /^\d{4}-\d{2}-\d{2}$/.test(String(data.startDate || ""))
+      ? String(data.startDate)
+      : new Date().toISOString().slice(0, 10);
+    const supervisorId = String(data.supervisorId || "");
+    const supervisorRecord = await adminDb.collection("supervisors").doc(supervisorId).get();
+    if (!supervisorRecord.exists || supervisorRecord.data()?.isActive === false || supervisorRecord.data()?.accountType === "consultant") {
+      return NextResponse.json({ error: "INVALID_ACTIVE_SUPERVISOR" }, { status: 400 });
     }
-    if (traineeData.status === "onboarding" && !["contracting", "ready_assignment"].includes(String(traineeData.onboardingStage))) {
-      return NextResponse.json({ error: "NOT_READY_FOR_ASSIGNMENT", detail: "يجب إكمال موافقة الطرفين ومراجعة الإدارة والتعاقد قبل الإسناد." }, { status: 409 });
-    }
+    // Administrators are intentionally allowed to override continuation and
+    // onboarding state. The override is recorded in assignments/activity log.
+    const isTransfer = Boolean(traineeData.currentSupervisorId && traineeData.currentSupervisorId !== supervisorId);
     const normalizedEmail = String(traineeData.email || "")
       .trim()
       .toLowerCase();
@@ -171,22 +182,35 @@ export async function PATCH(req: NextRequest) {
     }
     const batch = adminDb.batch();
     batch.update(ref, {
-      currentSupervisorId: data.supervisorId,
+      currentSupervisorId: supervisorId,
       status: "active",
       onboardingStage: null,
       assignmentStatus: "active",
       authUid: authUser.uid,
       accountStatus: selfRegistered ? "active" : "invited",
+      fieldworkStartDate: traineeData.fieldworkStartDate || assignmentStart,
+      courseworkStartDate: traineeData.courseworkStartDate || data.courseworkStartDate || assignmentStart,
       updatedAt: new Date().toISOString(),
     });
+    if (isTransfer) {
+      const activeAssignments = await adminDb.collection("assignments")
+        .where("traineeId", "==", traineeId).where("status", "==", "active").get();
+      activeAssignments.docs.forEach((assignment) => batch.update(assignment.ref, {
+        status: "completed",
+        endDate: assignmentStart,
+        endedBy: "admin",
+        updatedAt: new Date().toISOString(),
+      }));
+    }
     const assignRef = adminDb.collection("assignments").doc();
     batch.set(assignRef, {
       traineeId,
-      supervisorId: data.supervisorId,
-      startDate: data.startDate,
+      supervisorId,
+      startDate: assignmentStart,
       notes: data.notes || "",
       createdAt: new Date().toISOString(),
       createdBy: "admin",
+      adminOverride: true,
       status: "active",
     });
     await batch.commit();
@@ -194,7 +218,7 @@ export async function PATCH(req: NextRequest) {
       const { logActivity } = await import("@/lib/activityLog");
       const supSnap = await adminDb
         .collection("supervisors")
-        .doc(data.supervisorId)
+        .doc(supervisorId)
         .get();
       const traineeSnap = await adminDb
         .collection("trainees")
@@ -202,16 +226,16 @@ export async function PATCH(req: NextRequest) {
         .get();
       const supName = supSnap.exists
         ? (supSnap.data() as any).name
-        : data.supervisorId;
+        : supervisorId;
       const traineeName = traineeSnap.exists
         ? (traineeSnap.data() as any).name
         : traineeId;
       await logActivity({
         type: "assigned",
         message: `تم إسناد ${traineeName} للمشرف ${supName}`,
-        supervisorId: data.supervisorId,
+        supervisorId,
         traineeId,
-        meta: { startDate: data.startDate },
+        meta: { startDate: assignmentStart, adminOverride: true, isTransfer },
       });
       if (!selfRegistered) {
         const { sendTraineeInvitationEmail } =
@@ -270,21 +294,29 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { supervisorId, traineeId, month, action } = await req.json();
-  const snapshotId = `${supervisorId}_${traineeId}_${month}`;
-  const ref = adminDb.collection("monthlySnapshots").doc(snapshotId);
+  if (!traineeId || !/^\d{4}-\d{2}$/.test(String(month)))
+    return NextResponse.json({ error: "INVALID_DATA" }, { status: 400 });
+  const ref = adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`);
 
   if (action === "lock") {
-    await ref.update({
+    await ref.set({
+      traineeId,
+      supervisorId: supervisorId || null,
+      month,
+      locked: true,
       lockedAt: new Date().toISOString(),
       lockedBy: "admin",
       updatedAt: new Date().toISOString(),
-    });
+      adminOverride: true,
+    }, { merge: true });
   } else if (action === "unlock") {
-    await ref.update({
+    await ref.set({
+      locked: false,
       lockedAt: null,
       lockedBy: null,
       updatedAt: new Date().toISOString(),
-    });
+      reopenedBy: "admin",
+    }, { merge: true });
   }
 
   return NextResponse.json({ success: true });

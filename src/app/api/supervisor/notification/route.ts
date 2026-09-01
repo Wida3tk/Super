@@ -1,24 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebase/admin";
-import { cookies } from "next/headers";
-
-async function getAuthenticatedSupervisor() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__session")?.value;
-  if (!sessionCookie) return null;
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const email = decoded.email?.toLowerCase() || "";
-    const allSnap = await adminDb.collection("supervisors").get();
-    const match = allSnap.docs.find(
-      (d) => (d.data().email || "").toLowerCase() === email,
-    );
-    if (!match) return null;
-    return { id: match.id, ...match.data() } as any;
-  } catch {
-    return null;
-  }
-}
+import { adminDb } from "@/lib/firebase/admin";
+import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 
 // تحديد إشعار كمقروء
 export async function PATCH(req: NextRequest) {
