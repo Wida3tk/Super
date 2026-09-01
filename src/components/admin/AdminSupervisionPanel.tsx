@@ -814,6 +814,7 @@ export default function AdminSupervisionPanel({
   );
   const [exportLoading, setExportLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<string | null>(null);
+  const [syncingTotals, setSyncingTotals] = useState(false);
   const [traineeSearch, setTraineeSearch] = useState("");
   const [traineeStatusFilter, setTraineeStatusFilter] = useState("all");
 
@@ -866,6 +867,24 @@ export default function AdminSupervisionPanel({
   ) => {
     await apiPut({ supervisorId, traineeId, month, action: "unlock" });
     window.location.reload();
+  };
+
+  const handleSyncTotals = async () => {
+    setSyncingTotals(true);
+    try {
+      const response = await fetch("/api/admin/fieldwork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "syncAllTotals" }),
+      });
+      if (!response.ok) throw new Error("تعذرت مزامنة العدادات");
+      const result = await response.json();
+      alert(`تمت مزامنة ساعات ${result.synced || 0} متدرب بنجاح`);
+      window.location.reload();
+    } catch (error: any) {
+      alert(error.message || "تعذرت مزامنة العدادات");
+      setSyncingTotals(false);
+    }
   };
 
   const handleExport = async (type: "supervisors" | "trainees") => {
@@ -1685,6 +1704,25 @@ export default function AdminSupervisionPanel({
                 إعادة فتح أي شهر عند الحاجة.
               </p>
             </div>
+            <button
+              onClick={handleSyncTotals}
+              disabled={syncingTotals}
+              style={{
+                marginRight: "auto",
+                alignSelf: "center",
+                border: 0,
+                borderRadius: 9,
+                padding: "8px 12px",
+                background: COLORS.primary,
+                color: "#fff",
+                fontFamily: "inherit",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: syncingTotals ? "wait" : "pointer",
+              }}
+            >
+              {syncingTotals ? "جاري المزامنة…" : "مزامنة عدادات الساعات"}
+            </button>
           </div>
           <div
             style={{
