@@ -1,5 +1,8 @@
 {
-  "firestore": {
-    "rules": "src/lib/firebase/firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "default",
+      "rules": "src/lib/firebase/firestore.rules"
+    }
+  ]
 }
