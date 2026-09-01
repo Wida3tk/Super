@@ -6,6 +6,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { buildCompliance } from "@/lib/qaba/compliance";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import type { FieldworkActivity } from "@/types";
+import { logActivity } from "@/lib/activityLog";
 
 export async function PATCH(request: NextRequest) {
   const admin = await requireAdmin();
@@ -33,6 +34,13 @@ export async function PATCH(request: NextRequest) {
     updatedAt: now,
   });
   const totals = await syncTraineeFieldworkTotals(String(activity.data()?.traineeId));
+  await logActivity({
+    type: "admin_fieldwork_review",
+    message: `راجعت الإدارة سجل ساعات بالحالة ${status}`,
+    traineeId: String(activity.data()?.traineeId || ""),
+    supervisorId: String(activity.data()?.supervisorId || ""),
+    meta: { activityId, status, adminOverride: true },
+  });
   return NextResponse.json({ success: true, totals });
 }
 
@@ -93,5 +101,12 @@ export async function POST(request: NextRequest) {
     updatedAt: now,
   }, { merge: true });
   await syncTraineeFieldworkTotals(traineeId);
+  await logActivity({
+    type: "admin_month_finalized",
+    message: `اعتمدت الإدارة شهر ${body.month}`,
+    traineeId,
+    supervisorId: trainee.currentSupervisorId || "",
+    meta: { month: body.month, adminOverride: true },
+  });
   return NextResponse.json({ success: true, compliance: summary });
 }

@@ -2,6 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
+import { recordOperationalFailure } from "@/lib/operations/monitoring";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import {
   sendBookingConfirmationEmail,
@@ -190,6 +191,14 @@ export async function createBooking(
       });
     } catch (error) {
       console.error("Google Calendar event error:", error);
+      await recordOperationalFailure({
+        service: "google_calendar",
+        operation: "create_booking_event",
+        entityType: "booking",
+        entityId: bookingRef.id,
+        error,
+        retryPayload: { bookingId: bookingRef.id },
+      }).catch(console.error);
     }
 
     try {
@@ -205,6 +214,14 @@ export async function createBooking(
       });
     } catch (error) {
       console.error("Booking confirmation email error:", error);
+      await recordOperationalFailure({
+        service: "email",
+        operation: "send_booking_confirmation",
+        entityType: "booking",
+        entityId: bookingRef.id,
+        error,
+        retryPayload: { bookingId: bookingRef.id, recipientType: "trainee" },
+      }).catch(console.error);
     }
 
     if (supervisor.email) {
@@ -223,6 +240,14 @@ export async function createBooking(
         });
       } catch (error) {
         console.error("Supervisor notification error:", error);
+        await recordOperationalFailure({
+          service: "email",
+          operation: "send_supervisor_booking_notification",
+          entityType: "booking",
+          entityId: bookingRef.id,
+          error,
+          retryPayload: { bookingId: bookingRef.id, recipientType: "supervisor" },
+        }).catch(console.error);
       }
     }
 

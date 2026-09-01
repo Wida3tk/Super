@@ -78,6 +78,12 @@ export async function PATCH(req: NextRequest) {
       status: data.status,
       updatedAt: new Date().toISOString(),
     });
+    await logActivity({
+      type: "admin_status_override",
+      message: `عدّلت الإدارة حالة المتدرب إلى ${data.status}`,
+      traineeId,
+      meta: { status: data.status, adminOverride: true },
+    });
   } else if (action === "updateOnboarding") {
     const allowedStages = new Set(["initial_interview", "awaiting_decisions", "interview_declined", "admin_review", "contracting", "ready_assignment"]);
     if (!allowedStages.has(String(data.stage)))

@@ -95,6 +95,12 @@ export default function AdminSidebar({
       title: "التشغيل والنظام",
       items: [
         {
+          href: `${base}/operations`,
+          icon: "ti-activity-heartbeat",
+          label: "المراقبة وسجل التدقيق",
+          emoji: "🛡️",
+        },
+        {
           href: `${base}/accounts`,
           icon: "ti-user-cog",
           label: "حسابات المسجلين",
