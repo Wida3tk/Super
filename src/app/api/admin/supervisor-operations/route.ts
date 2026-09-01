@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
   const supervisor = await supervisorRef.get();
   if (!supervisor.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (body.action === "seats") {
+    if (supervisor.data()?.accountType === "consultant") return NextResponse.json({ error: "CONSULTANTS_HAVE_NO_SEATS" }, { status: 409 });
     const seats = Number(body.seats);
     if (!Number.isInteger(seats) || seats < 0 || seats > 10000) return NextResponse.json({ error: "Invalid seats" }, { status: 400 });
     await supervisorRef.update({ availableSeats: seats, updatedAt: new Date().toISOString() });

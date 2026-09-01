@@ -9,7 +9,7 @@ interface Supervisor {
   id: string; name: string; email: string;
   bio?: string; specialization?: string;
   photo?: string; isActive: boolean; totalSessions?: number;
-  availableSeats?: number; upcomingBookings?: number; authUid?: string;
+  availableSeats?: number; upcomingBookings?: number; authUid?: string; accountType?: string;
 }
 
 export default function SupervisorTabs({ supervisors }: { supervisors: Supervisor[] }) {
@@ -41,8 +41,8 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
       `}</style>
 
       <section className="accounts-hero">
-        <div><h2>الحساب والصفحة التعريفية في مكان واحد</h2><p>أنشئ حساب المشرف، حدّث ملفه العام، وتابع جاهزية المقاعد والمقابلات.</p></div>
-        <div className="account-stats"><div className="account-stat"><b>{supervisors.length}</b><span>إجمالي الحسابات</span></div><div className="account-stat"><b>{activeCount}</b><span>حساب نشط</span></div><div className="account-stat"><b>{supervisors.reduce((sum, item) => sum + Number(item.availableSeats || 0), 0)}</b><span>مقاعد متاحة</span></div></div>
+        <div><h2>الحساب والصفحة التعريفية في مكان واحد</h2><p>تابع المواعيد للجميع، ومقاعد المشرفين فقط، وحدّث صفحاتهم العامة.</p></div>
+        <div className="account-stats"><div className="account-stat"><b>{supervisors.length}</b><span>إجمالي الحسابات</span></div><div className="account-stat"><b>{activeCount}</b><span>حساب نشط</span></div><div className="account-stat"><b>{supervisors.filter((item)=>item.accountType!=="consultant").reduce((sum, item) => sum + Number(item.availableSeats || 0), 0)}</b><span>مقاعد المشرفين</span></div></div>
       </section>
 
       <div className="sup-tabs">
@@ -65,7 +65,7 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
               <thead>
                 <tr>
                   <th>المشرف</th><th>البريد</th>
-                  <th className="c">المقاعد</th><th className="c">المقابلات القادمة</th><th className="c">الحالة</th><th className="c">الحساب</th><th className="c">الصفحة</th><th className="c">بوابة المشرف</th>
+                  <th className="c">المقاعد</th><th className="c">المقابلات القادمة</th><th className="c">الحالة</th><th className="c">التشغيل</th><th className="c">الحساب</th><th className="c">الصفحة</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,14 +83,14 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
                       </div>
                     </td>
                     <td style={{color:'#8898AA',fontSize:12}}>{s.email||'—'}</td>
-                    <td className="c" style={{color:'#059669',fontWeight:700}}>{s.availableSeats??0}</td>
+                    <td className="c" style={{color:'#059669',fontWeight:700}}>{s.accountType === 'consultant' ? '—' : (s.availableSeats??0)}</td>
                     <td className="c" style={{color:'#0D40FC',fontWeight:700}}>{s.upcomingBookings??0}</td>
                     <td className="c">
                       <span className={`badge ${s.isActive?'b-ok':'b-off'}`}>
                         {s.isActive?'● نشط':'○ موقوف'}
                       </span>
                     </td>
-                    <td className="c"><a href={`/ar/admin/supervisors/${s.id}`} style={{fontSize:11,color:'#047857',textDecoration:'none',background:'#ECFDF5',padding:'5px 10px',borderRadius:8,border:'1px solid #A7F3D0'}}>المواعيد والمقاعد ←</a></td>
+                    <td className="c"><a href={`/ar/admin/supervisors/${s.id}`} style={{fontSize:11,color:'#047857',textDecoration:'none',background:'#ECFDF5',padding:'5px 10px',borderRadius:8,border:'1px solid #A7F3D0'}}>{s.accountType === 'consultant' ? 'المواعيد ←' : 'المواعيد والمقاعد ←'}</a></td>
                     <td className="c">
                       <button onClick={()=>setAuthSupervisor(s)} style={{background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',color:'#d97706',fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit'}}>
                         🔑 الحساب
