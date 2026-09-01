@@ -7,6 +7,8 @@ export async function POST(req: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!trainee.currentSupervisorId || trainee.status !== "active")
+    return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const { month, attestation } = await req.json();
   if (!/^\d{4}-\d{2}$/.test(String(month)) || attestation !== true)
     return NextResponse.json(

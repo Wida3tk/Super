@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
 import TraineeFieldworkDashboard from "@/components/trainee/TraineeFieldworkDashboard";
 import type { FieldworkActivity } from "@/types";
+import TraineePreAssignmentPortal from "@/components/trainee/TraineePreAssignmentPortal";
 
 export default async function TraineeDashboardPage({
   params,
@@ -12,6 +13,17 @@ export default async function TraineeDashboardPage({
   const { locale } = await params;
   const trainee = await getAuthenticatedTrainee();
   if (!trainee) redirect(`/${locale}/login`);
+  if (!trainee.currentSupervisorId || trainee.status !== "active") {
+    const bookings = await adminDb.collection("bookings")
+      .where("studentEmail", "==", trainee.email).limit(30).get();
+    const booking = (bookings.docs.map(document => ({ id: document.id, ...document.data() } as any))
+      .filter(item => item.bookingType !== "consultation" && item.status !== "cancelled" && item.status !== "closed")
+      .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]) ||
+      (bookings.docs.map(document => ({ id: document.id, ...document.data() } as any))
+        .filter(item => item.bookingType !== "consultation" && item.meetingStatus === "completed")
+        .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]) || null;
+    return <TraineePreAssignmentPortal trainee={trainee} booking={booking} locale={locale} />;
+  }
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [
     activitySnap,

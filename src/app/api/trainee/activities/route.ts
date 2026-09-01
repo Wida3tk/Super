@@ -38,8 +38,9 @@ function durationBetween(start: string, end: string) {
 
 export async function GET() {
   const trainee = await getAuthenticatedTrainee();
-  if (!trainee)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!trainee) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!trainee.currentSupervisorId || trainee.status !== "active")
+    return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const snap = await adminDb
     .collection("fieldworkActivities")
     .where("traineeId", "==", trainee.id)
