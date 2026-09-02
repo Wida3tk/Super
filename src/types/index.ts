@@ -161,7 +161,7 @@ export interface Trainee {
   approvedSupervisionHours?: number;
   approvedGroupSupervisionHours?: number;
   authUid?: string;
-  accountStatus?: "invited" | "active";
+  accountStatus?: "prepared" | "invited" | "active";
 }
 
 export type FieldworkActivityType =

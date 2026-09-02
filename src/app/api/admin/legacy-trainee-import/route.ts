@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const supervisorEmail = normalizeEmail(body.supervisorEmail);
     const dryRun = body.dryRun !== false;
+    const sendInvitations = body.sendInvitations === true;
     const inputs = Array.isArray(body.trainees) ? body.trainees : [];
     if (!supervisorEmail || inputs.length < 1 || inputs.length > 20) {
       return NextResponse.json({ error: "INVALID_IMPORT_PAYLOAD" }, { status: 400 });
@@ -251,7 +252,12 @@ export async function POST(request: NextRequest) {
           currentSupervisorId: supervisor.id,
           assignmentStatus: "active",
           authUid: authUser.uid,
-          accountStatus: existingData.accountStatus === "active" ? "active" : "invited",
+          accountStatus:
+            existingData.accountStatus === "active"
+              ? "active"
+              : sendInvitations
+                ? "invited"
+                : "prepared",
           fieldworkStartDate: existingData.fieldworkStartDate || trainee.startDate,
           courseworkStartDate: existingData.courseworkStartDate || trainee.startDate,
           totalIndividualHours: Number(existingData.totalIndividualHours || 0),
@@ -347,7 +353,7 @@ export async function POST(request: NextRequest) {
       const totals = await syncTraineeFieldworkTotals(traineeRef.id);
       let inviteLink = "";
       let emailSent = false;
-      if (existingData.accountStatus !== "active") {
+      if (sendInvitations && existingData.accountStatus !== "active") {
         inviteLink = appPasswordLink(
           await adminAuth.generatePasswordResetLink(trainee.email),
         );
@@ -384,6 +390,12 @@ export async function POST(request: NextRequest) {
         createdActivities,
         totals,
         emailSent,
+        accountStatus:
+          existingData.accountStatus === "active"
+            ? "active"
+            : sendInvitations
+              ? "invited"
+              : "prepared",
         inviteLink: emailSent ? undefined : inviteLink,
       });
     }

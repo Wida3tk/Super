@@ -54,7 +54,12 @@ export default function LegacyImportClient() {
       const response = await fetch("/api/admin/legacy-trainee-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supervisorEmail, trainees: data, dryRun }),
+        body: JSON.stringify({
+          supervisorEmail,
+          trainees: data,
+          dryRun,
+          sendInvitations: false,
+        }),
       });
       const body = await response.json();
       setResult({ ok: response.ok, status: response.status, ...body });
@@ -67,7 +72,7 @@ export default function LegacyImportClient() {
     <main dir="rtl" style={{ padding: 32, maxWidth: 1100, margin: "0 auto" }}>
       <h1 style={{ color: "#001442", marginBottom: 8 }}>استيراد السجلات السابقة</h1>
       <p style={{ color: "#64748b", marginBottom: 24 }}>
-        أداة إدارية محمية لمطابقة الحسابات وربط المشرف واستيراد الساعات المعتمدة دون تكرار.
+        أداة إدارية محمية لمطابقة الحسابات وربط المشرف واستيراد الساعات المعتمدة دون تكرار. لا تُرسل دعوات أو كلمات مرور عند الاستيراد.
       </p>
       <section style={{ background: "white", border: "1px solid #dbe5f1", borderRadius: 18, padding: 24 }}>
         <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>بريد المشرف</label>
