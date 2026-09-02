@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import { credentialRules } from "@/lib/qaba/compliance";
+import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 
 const value = (input: unknown) => {
   if (!input) return "—";
@@ -32,7 +33,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
     adminDb.collection("progressReports").where("traineeId", "==", id).get(),
     adminDb.collection("competencyAssessments").where("traineeId", "==", id).get(),
   ]);
-  const activities = activitiesSnap.docs.map(d => ({id:d.id,...d.data()} as any)).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  const activities = activitiesSnap.docs.map(d => {const a=d.data() as any;return {id:d.id,date:String(a.date||""),month:String(a.month||a.date||"").slice(0,7),startTime:String(a.startTime||""),endTime:String(a.endTime||""),activityType:String(a.activityType||""),category:String(a.category||""),setting:String(a.setting||""),format:String(a.format||""),duration:Number(a.duration||0),status:String(a.status||""),description:String(a.description||"")};}).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   const target = Number(trainee.supervisionTargetHours || credentialRules(trainee.license || "QASP-S").supervisionTarget);
   const supervision = Number(trainee.approvedSupervisionHours || 0);
   const fieldwork = Number(trainee.approvedFieldworkHours || 0);
@@ -50,7 +51,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,margin:"16px 0"}}>{cards.map(([label,val,color])=><div key={String(label)} style={{background:"white",border:"1px solid #E2E8F0",borderTop:`3px solid ${color}`,borderRadius:15,padding:18}}><b style={{fontSize:22,color:String(color)}}>{String(val)}</b><div style={{fontSize:12,color:"#64748B",marginTop:6}}>{String(label)}</div></div>)}</div>
       <section style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,padding:20,marginBottom:16}}><h3 style={{marginTop:0}}>البيانات الأساسية</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{details.map(([k,v])=><div key={String(k)} style={{background:"#F8FAFC",padding:12,borderRadius:10}}><small style={{color:"#64748B"}}>{String(k)}</small><div style={{fontWeight:700,marginTop:4}}>{value(v)}</div></div>)}</div></section>
       <section style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,padding:20,marginBottom:16}}><h3 style={{marginTop:0}}>ملخص الملف</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[["سجلات الساعات",activities.length],["الحجوزات",bookingsSnap.size],["المستندات",documentsSnap.size],["تقارير التقدم",reportsSnap.size],["تقييمات الكفاءة",assessmentsSnap.size],["الاتفاقية",agreementSnap.exists?"موجودة":"غير موجودة"],["الخطة",planSnap.exists?"موجودة":"غير موجودة"]].map(([k,v])=><div key={String(k)} style={{padding:14,border:"1px solid #E8EDF5",borderRadius:10,textAlign:"center"}}><b style={{fontSize:20}}>{String(v)}</b><div style={{fontSize:11,color:"#64748B"}}>{String(k)}</div></div>)}</div></section>
-      <section style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,overflow:"hidden"}}><h3 style={{padding:"18px 20px",margin:0}}>آخر سجلات الساعات</h3><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:650}}><thead><tr style={{background:"#F8FAFC"}}>{["التاريخ","النوع","المدة","النمط","الحالة","الوصف"].map(h=><th key={h} style={{padding:12,textAlign:"right",fontSize:11,color:"#64748B"}}>{h}</th>)}</tr></thead><tbody>{activities.slice(0,100).map(a=><tr key={a.id} style={{borderTop:"1px solid #EEF2F7"}}><td style={{padding:12}}>{a.date}</td><td style={{padding:12}}>{a.activityType}</td><td style={{padding:12}}>{a.duration}</td><td style={{padding:12}}>{a.format||"—"}</td><td style={{padding:12}}>{a.status}</td><td style={{padding:12,maxWidth:360}}>{a.description||"—"}</td></tr>)}</tbody></table>{!activities.length&&<p style={{padding:20,color:"#64748B"}}>لا توجد ساعات مسجلة.</p>}</div></section>
+      <TraineeMonthlyHours activities={activities} />
     </div>
   </AdminPageLayout>;
 }
