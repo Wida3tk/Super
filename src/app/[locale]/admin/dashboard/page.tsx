@@ -4,6 +4,7 @@ import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
 import { credentialRules } from "@/lib/qaba/compliance";
+import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -119,6 +120,35 @@ export default async function AdminDashboardPage({ params }: Props) {
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 5);
 
+  // حمل كل مشرف (عدد المتدربين) — الأعلى أولًا، ليتضح فورًا أي مشرف يحمل عددًا كبيرًا من المتدربين
+  const supervisorLoad = supervisors
+    .map((sup) => ({
+      ...sup,
+      traineeCount: activeTrainees.filter(
+        (t) => t.currentSupervisorId === sup.id,
+      ).length,
+      hours: snapshots
+        .filter((s) => s.supervisorId === sup.id)
+        .reduce((a, s) => a + (s.totalHours || 0), 0),
+    }))
+    .sort((a, b) => b.traineeCount - a.traineeCount);
+  const maxLoad = Math.max(1, ...supervisorLoad.map((s) => s.traineeCount));
+
+  // توزيع المتدربين على مراحل الرحلة — أعلى 3 مراحل بالاسم، والباقي مجمّع تحت "مراحل أخرى"
+  const stageCounts = LIFECYCLE_STAGES.map((stage) => ({
+    ...stage,
+    count: trainees.filter((t) => resolveLifecycleStage(t) === stage.key)
+      .length,
+  })).sort((a, b) => b.count - a.count);
+  const topStages = stageCounts.filter((s) => s.count > 0).slice(0, 3);
+  const otherStagesCount = trainees.length - topStages.reduce((n, s) => n + s.count, 0);
+  const stageSegments = [
+    ...topStages,
+    ...(otherStagesCount > 0
+      ? [{ key: "other", short: "مراحل أخرى", color: "#CBD5E1", count: otherStagesCount }]
+      : []),
+  ];
+
   const timeAgo = (iso: string) => {
     if (!iso) return "";
     const diff = Date.now() - new Date(iso).getTime();
@@ -171,6 +201,19 @@ export default async function AdminDashboardPage({ params }: Props) {
         .progress-fill{height:100%;border-radius:99px;}
         .tag{font-size:10px;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;white-space:nowrap;}
         .right-col{display:flex;flex-direction:column;gap:16px;}
+        .kpi-band{background:linear-gradient(120deg,#001442,#0A2A8F);border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;}
+        .kpi-item{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:11px;padding:10px 16px;flex:1;min-width:130px;}
+        .kpi-item b{display:block;font-size:22px;color:#fff;line-height:1.1;}
+        .kpi-item span{font-size:11px;color:#B9CBFF;}
+        .load-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid #EEF2F7;}
+        .load-row:last-child{border-bottom:none;}
+        .load-name{font-size:12px;font-weight:500;width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .load-count{font-size:12px;font-weight:700;color:#0D40FC;width:20px;text-align:left;flex-shrink:0;}
+        .donut-wrap{display:flex;align-items:center;gap:18px;}
+        .donut{width:96px;height:96px;border-radius:50%;flex-shrink:0;}
+        .donut-legend{display:flex;flex-direction:column;gap:7px;}
+        .donut-legend-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#475569;}
+        .donut-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
         @media(max-width:900px){.alerts{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:1fr 1fr;}.bottom{grid-template-columns:1fr;}}
       `}</style>
 
@@ -205,6 +248,30 @@ export default async function AdminDashboardPage({ params }: Props) {
               <Link href={`/${locale}/admin/trainees`}>ملفات المتدربين</Link>
               <Link href={`/${locale}/admin/supervisors`}>متابعة المشرفين</Link>
               <Link href={`/${locale}/admin/months`}>السجلات الشهرية</Link>
+            </div>
+
+            {/* شريط الأرقام الحرجة */}
+            <div className="kpi-band">
+              <div className="kpi-item">
+                <b>{activeTrainees.length}</b>
+                <span>متدرب نشط</span>
+              </div>
+              <div className="kpi-item">
+                <b>{supervisors.length}</b>
+                <span>مشرف مسجّل</span>
+              </div>
+              <div className="kpi-item">
+                <b>{readyToAssign.length}</b>
+                <span>جاهزون للإسناد</span>
+              </div>
+              <div className="kpi-item">
+                <b>{over25.length}</b>
+                <span>تجاوزوا 25% جماعية</span>
+              </div>
+              <div className="kpi-item">
+                <b>{maxLoad}</b>
+                <span>أعلى حمل عند مشرف واحد</span>
+              </div>
             </div>
 
             {/* تنبيهات عاجلة */}
@@ -465,7 +532,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                   </div>
                 </div>
 
-                {/* المشرفون */}
+                {/* حمل المشرفين */}
                 <div className="card">
                   <div className="card-head">
                     <div className="card-title">
@@ -474,71 +541,104 @@ export default async function AdminDashboardPage({ params }: Props) {
                         style={{ fontSize: 15 }}
                         aria-hidden="true"
                       />
-                      إنتاجية المشرفين
+                      الحمل حسب المشرف
+                    </div>
+                    <span style={{ fontSize: 11, color: "#8898AA" }}>
+                      {supervisors.length} مشرف
+                    </span>
+                  </div>
+                  <div
+                    className="card-body"
+                    style={{ maxHeight: 280, overflowY: "auto" }}
+                  >
+                    {supervisorLoad.length === 0 ? (
+                      <div
+                        style={{
+                          padding: "1rem",
+                          textAlign: "center",
+                          color: "#8898AA",
+                          fontSize: 12,
+                        }}
+                      >
+                        لا يوجد مشرفون مسجّلون
+                      </div>
+                    ) : (
+                      supervisorLoad.map((sup) => (
+                        <div key={sup.id} className="load-row">
+                          <div className="load-name">{sup.name}</div>
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{
+                                width: `${(sup.traineeCount / maxLoad) * 100}%`,
+                                background:
+                                  sup.traineeCount >= 15 ? "#C2410C" : "#0D40FC",
+                              }}
+                            />
+                          </div>
+                          <span className="load-count">
+                            {sup.traineeCount}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* توزيع مراحل المتدربين */}
+                <div className="card">
+                  <div className="card-head">
+                    <div className="card-title">
+                      <i
+                        className="ti ti-chart-pie"
+                        style={{ fontSize: 15 }}
+                        aria-hidden="true"
+                      />
+                      توزيع مراحل المتدربين
                     </div>
                   </div>
                   <div className="card-body">
-                    {supervisors.map((sup) => {
-                      const supSnaps = snapshots.filter(
-                        (s) => s.supervisorId === sup.id,
-                      );
-                      const total = supSnaps.reduce(
-                        (a, s) => a + (s.totalHours || 0),
-                        0,
-                      );
-                      const count = activeTrainees.filter(
-                        (t) => t.currentSupervisorId === sup.id,
-                      ).length;
-                      return (
-                        <div key={sup.id} className="progress-row">
-                          <div
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: "50%",
-                              background: "#E6F1FB",
-                              color: "#185FA5",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 10,
-                              fontWeight: 600,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {sup.name?.slice(0, 2)}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 500,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {sup.name}
+                    {trainees.length === 0 ? (
+                      <div
+                        style={{
+                          padding: "1rem",
+                          textAlign: "center",
+                          color: "#8898AA",
+                          fontSize: 12,
+                        }}
+                      >
+                        لا يوجد متدربون مسجّلون
+                      </div>
+                    ) : (
+                      <div className="donut-wrap">
+                        <div
+                          className="donut"
+                          style={{
+                            background: `conic-gradient(${(() => {
+                              let acc = 0;
+                              return stageSegments
+                                .map((seg) => {
+                                  const start = acc;
+                                  acc += (seg.count / trainees.length) * 100;
+                                  return `${seg.color} ${start}% ${acc}%`;
+                                })
+                                .join(", ");
+                            })()})`,
+                          }}
+                        />
+                        <div className="donut-legend">
+                          {stageSegments.map((seg) => (
+                            <div className="donut-legend-item" key={seg.key}>
+                              <span
+                                className="donut-dot"
+                                style={{ background: seg.color }}
+                              />
+                              {seg.short} — {seg.count}
                             </div>
-                            <div style={{ fontSize: 11, color: "#8898AA" }}>
-                              {count} متدرب
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 16,
-                              fontWeight: 700,
-                              color: "#0D40FC",
-                            }}
-                          >
-                            {total}
-                          </div>
-                          <div style={{ fontSize: 11, color: "#8898AA" }}>
-                            ساعة
-                          </div>
+                          ))}
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

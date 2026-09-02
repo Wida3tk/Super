@@ -800,6 +800,83 @@ function TraineeCard({
   );
 }
 
+// بطاقة مصغّرة لعرض "الشبكة" — تتيح مسح حالة عدد كبير من المتدربين بنظرة واحدة
+function TraineeRosterCard({
+  trainee,
+  cumulative,
+  target,
+  onSelect,
+}: {
+  trainee: Trainee;
+  cumulative: number;
+  target: number;
+  onSelect: () => void;
+}) {
+  const remaining = Math.max(0, target - cumulative);
+  const accent = !target
+    ? COLORS.gray300
+    : remaining === 0
+      ? COLORS.success
+      : remaining <= target * 0.25
+        ? COLORS.warning
+        : COLORS.danger;
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        background: "#fff",
+        borderRadius: 12,
+        padding: 12,
+        border: `1px solid ${COLORS.gray200}`,
+        borderRight: `3px solid ${accent}`,
+        cursor: "pointer",
+      }}
+      onMouseOver={(e) => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(1,20,66,.08)")}
+      onMouseOut={(e) => (e.currentTarget.style.boxShadow = "none")}
+    >
+      <div
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 9,
+          background: "#E6F1FB",
+          color: "#0C447C",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          fontWeight: 700,
+          marginBottom: 8,
+        }}
+      >
+        {trainee.name.slice(0, 2)}
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: COLORS.deep,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {trainee.name}
+      </div>
+      <div style={{ fontSize: 10, color: COLORS.gray500, marginBottom: 6 }}>
+        {trainee.license}
+      </div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: accent }}>
+        {!target
+          ? "—"
+          : remaining
+            ? `متبقي ${remaining} ساعة`
+            : "بلغت الهدف ✓"}
+      </div>
+    </div>
+  );
+}
+
 // ===========================
 // المكوّن الرئيسي
 // ===========================
@@ -830,6 +907,7 @@ export default function SupervisionHours({
     "name" | "remaining" | "cumulative"
   >("remaining");
   const [traineePage, setTraineePage] = useState(0);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const months = getLast6Months();
 
   // إجمالي ساعات الإشراف المعتمدة تراكمياً لكل متدرب، مقابل الهدف (50 أو 100 ساعة)
@@ -1405,6 +1483,38 @@ export default function SupervisionHours({
               <option value="cumulative">الأكثر ساعات مكتسبة</option>
               <option value="name">الاسم</option>
             </select>
+            <div
+              style={{
+                display: "flex",
+                border: `1px solid ${COLORS.gray300}`,
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+              {(
+                [
+                  ["grid", "شبكة"],
+                  ["list", "قائمة"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setViewMode(key)}
+                  style={{
+                    border: "none",
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    background: viewMode === key ? COLORS.deep : "#fff",
+                    color: viewMode === key ? "#fff" : COLORS.gray500,
+                    fontWeight: viewMode === key ? 700 : 400,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div style={{ padding: "12px 16px" }}>
@@ -1432,16 +1542,36 @@ export default function SupervisionHours({
             </div>
           ) : (
             <>
-              {pagedTrainees.map((t: any) => (
-                <TraineeCard
-                  key={t.id}
-                  trainee={t}
-                  snapshot={getTraineeSnapshot(t.id)}
-                  cumulative={traineeProgress[t.id]?.cumulative || 0}
-                  target={traineeProgress[t.id]?.target || 0}
-                  onSelect={() => setSelectedTrainee(t)}
-                />
-              ))}
+              {viewMode === "grid" ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {pagedTrainees.map((t: any) => (
+                    <TraineeRosterCard
+                      key={t.id}
+                      trainee={t}
+                      cumulative={traineeProgress[t.id]?.cumulative || 0}
+                      target={traineeProgress[t.id]?.target || 0}
+                      onSelect={() => setSelectedTrainee(t)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                pagedTrainees.map((t: any) => (
+                  <TraineeCard
+                    key={t.id}
+                    trainee={t}
+                    snapshot={getTraineeSnapshot(t.id)}
+                    cumulative={traineeProgress[t.id]?.cumulative || 0}
+                    target={traineeProgress[t.id]?.target || 0}
+                    onSelect={() => setSelectedTrainee(t)}
+                  />
+                ))
+              )}
               {visibleTrainees.length > traineePageSize && (
                 <div
                   style={{

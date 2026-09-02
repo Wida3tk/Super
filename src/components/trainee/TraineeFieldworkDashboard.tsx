@@ -7,6 +7,7 @@ import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings"
 import MonthlyHoursInsights from "@/components/trainee/MonthlyHoursInsights";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 import { credentialRules } from "@/lib/qaba/compliance";
+import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import {
   AttendanceRecord,
   FinancialPlan,
@@ -127,6 +128,24 @@ export default function TraineeFieldworkDashboard({
   const supervisionProgress = Math.min(
     100,
     (supervision / supervisionTargetHours) * 100,
+  );
+  const supervisionIndividual = approved
+    .filter(
+      (a) => a.activityType.startsWith("supervision_") && a.format !== "group",
+    )
+    .reduce((n, a) => n + a.duration, 0);
+  const supervisionGroup = approved
+    .filter(
+      (a) => a.activityType.startsWith("supervision_") && a.format === "group",
+    )
+    .reduce((n, a) => n + a.duration, 0);
+  const individualSharePct = supervision
+    ? (supervisionIndividual / supervision) * 100
+    : 0;
+  const groupSharePct = supervision ? (supervisionGroup / supervision) * 100 : 0;
+  const currentStageKey = resolveLifecycleStage(trainee);
+  const currentStageIndex = LIFECYCLE_STAGES.findIndex(
+    (s) => s.key === currentStageKey,
   );
   const pendingCount = activities.filter(
     (a) => a.status === "submitted",
@@ -337,6 +356,25 @@ export default function TraineeFieldworkDashboard({
       .fw-head{display:none!important}.cards{gap:14px!important}.card,.panel{border-radius:18px!important;box-shadow:0 9px 28px #0014420b!important;background:#ffffffeb!important}.card{border-top:3px solid #dce6ff!important;transition:.2s}.card:hover{transform:translateY(-3px);box-shadow:0 14px 30px #0d40fc14!important}.card:nth-child(2){border-top-color:#7668ff!important}.card:nth-child(3){border-top-color:#43bedb!important}.card:nth-child(4){border-top-color:#10b981!important}.card:nth-child(5){border-top-color:#f59e0b!important}.panel h3{font-size:16px;margin-bottom:4px}.bar{border-radius:10px 10px 4px 4px!important}.status{font-weight:600}.motivation-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#ecfdf5,#effaff);border:1px solid #c8f2e2;border-radius:14px;padding:13px 17px;margin-bottom:16px}.motivation-strip b{color:#047857;font-size:13px}.motivation-strip span{font-size:12px;color:#4b6472}
       .compliance-card{padding:16px}.compliance-title{display:flex;align-items:center;gap:10px;margin-bottom:8px}.compliance-title h4{margin:0!important;min-width:0}.compliance-icon{width:29px;height:29px;flex:0 0 29px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:900}.compliance-icon.ok{background:#dcfce7;color:#15803d}.compliance-icon.follow{background:#fff7ed;color:#c2410c}.account-panel{max-width:760px;margin:auto}.account-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f5;padding-bottom:15px}.account-lock{width:28px;height:28px;border-radius:50%;background:#ecfdf5;color:#10b981;display:grid;place-items:center;font-size:9px}.account-form{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.account-form label{font-size:12px;color:#64748b;font-weight:700}.account-form small{font-weight:400}.account-form input{display:block;width:100%;padding:11px;margin-top:6px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.account-message{grid-column:1/-1;padding:10px;border-radius:9px;font-size:12px}.account-message.success{background:#ecfdf5;color:#047857}.account-message.error{background:#fef2f2;color:#b91c1c}.account-save{grid-column:1/-1;justify-self:start}.account-save:disabled{opacity:.6}
       @media(max-width:850px){.welcome-hero{grid-template-columns:1fr;padding:25px}.welcome-hero h1{font-size:25px}.quote-card{display:none}.top-nav{height:58px}.fw-page{padding-top:0!important}}
+      .stage-strip{background:linear-gradient(125deg,#001442,#0D40FC);border-radius:20px;padding:20px 24px;margin-bottom:18px;color:#fff}
+      .stage-strip-head{font-size:12px;color:#8FE8FF;font-weight:700;margin-bottom:14px}
+      .stage-row{display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:2px}
+      .stage-step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:74px;position:relative}
+      .stage-step:not(:last-child)::after{content:'';position:absolute;top:11px;right:50%;width:100%;height:2px;background:rgba(255,255,255,.18);z-index:0}
+      .stage-step.done:not(:last-child)::after{background:#55D7FF}
+      .stage-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;z-index:1;background:rgba(255,255,255,.12);color:rgba(255,255,255,.55);border:2px solid rgba(255,255,255,.2)}
+      .stage-step.done .stage-dot{background:#55D7FF;color:#001442;border-color:#55D7FF}
+      .stage-step.current .stage-dot{background:#fff;color:#0D40FC;border-color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.16)}
+      .stage-label{font-size:9.5px;color:rgba(255,255,255,.55);text-align:center;max-width:76px;line-height:1.4}
+      .stage-step.current .stage-label{color:#fff;font-weight:700}
+      .stage-step.done .stage-label{color:#B9E3FF}
+      .ring-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 4px}
+      .ring-card{background:#fff;border:1px solid #e4e9f1;border-radius:15px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px #0014420a}
+      .ring{width:52px;height:52px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+      .ring-inner{width:39px;height:39px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#001442}
+      .ring-card b{display:block;font-size:12.5px;color:#001442}
+      .ring-card span{font-size:11px;color:#8898AA}
+      @media(max-width:850px){.ring-row{grid-template-columns:1fr}}
     `}</style>
       <style>{`.trainee-tabs{display:flex;gap:5px;background:linear-gradient(120deg,#001442,#082b83);padding:7px;border-radius:16px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none;box-shadow:0 10px 26px #00144218;border:1px solid #ffffff12}.trainee-tabs::-webkit-scrollbar{display:none}.trainee-tabs button{border:0;background:transparent;color:#b9c7e8;padding:10px 13px;border-radius:10px;font:inherit;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:7px;transition:.18s}.trainee-tabs button:hover{background:#ffffff0d;color:#fff}.trainee-tabs button.active{background:#fff;color:#0d40fc;font-weight:700;box-shadow:0 5px 14px #00000024}.tab-icon{width:17px;height:17px;flex:0 0 17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.logout-mini{border:1px solid #d9e1ed;background:#fff;color:#64748b;border-radius:9px;padding:7px 10px;cursor:pointer}.nav-user{display:flex;gap:8px;align-items:center}.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters select{border:1px solid #d9e1ed;border-radius:8px;padding:7px;background:#fff;font:inherit}.row-actions{display:flex;gap:5px}.row-actions button{border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:11px}.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px}.detail-card h4{margin:0 0 8px}.detail-card p{font-size:12px;color:#64748b}.action-btn{border:0;border-radius:8px;padding:7px 10px;background:#eef4ff;color:#0d40fc;cursor:pointer}.action-btn.done{background:#ecfdf5;color:#047857}@media(max-width:800px){.detail-grid{grid-template-columns:1fr}.nav-user .role-pill{display:none}.trainee-tabs button{padding:9px 11px}}`}</style>
       <div className="fw-wrap">
@@ -426,6 +464,24 @@ export default function TraineeFieldworkDashboard({
             </div>
           </aside>
         </section>
+        {currentStageIndex >= 0 && (
+          <section className="stage-strip">
+            <div className="stage-strip-head">رحلتك في منصة سلوكيرا</div>
+            <div className="stage-row">
+              {LIFECYCLE_STAGES.map((stage, index) => (
+                <div
+                  key={stage.key}
+                  className={`stage-step${index < currentStageIndex ? " done" : ""}${index === currentStageIndex ? " current" : ""}`}
+                >
+                  <div className="stage-dot">
+                    {index < currentStageIndex ? "✓" : index + 1}
+                  </div>
+                  <div className="stage-label">{stage.short}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         {(supervisionFile?.notifications || []).length > 0 && (
           <section className="panel" style={{marginBottom:18,borderRight:"4px solid #0D40FC"}}>
             <h3 style={{margin:"0 0 10px"}}>رسائل الإدارة</h3>
@@ -485,6 +541,58 @@ export default function TraineeFieldworkDashboard({
               <button className="primary" onClick={() => setOpen(true)}>
                 + إضافة ساعات
               </button>
+            </div>
+            <div className="ring-row">
+              <div className="ring-card">
+                <div
+                  className="ring"
+                  style={{
+                    background: `conic-gradient(#0D40FC ${supervisionProgress}%, #E7ECF8 0)`,
+                  }}
+                >
+                  <div className="ring-inner">
+                    {supervisionProgress.toFixed(0)}%
+                  </div>
+                </div>
+                <div>
+                  <b>
+                    {supervision.toFixed(1)}/{supervisionTargetHours} ساعة
+                  </b>
+                  <span>إجمالي ساعات الإشراف</span>
+                </div>
+              </div>
+              <div className="ring-card">
+                <div
+                  className="ring"
+                  style={{
+                    background: `conic-gradient(#0D40FC ${individualSharePct}%, #E7ECF8 0)`,
+                  }}
+                >
+                  <div className="ring-inner">
+                    {supervisionIndividual.toFixed(1)}س
+                  </div>
+                </div>
+                <div>
+                  <b>فردي</b>
+                  <span>{individualSharePct.toFixed(0)}% من إجمالي الإشراف</span>
+                </div>
+              </div>
+              <div className="ring-card">
+                <div
+                  className="ring"
+                  style={{
+                    background: `conic-gradient(#7C3AED ${groupSharePct}%, #E7ECF8 0)`,
+                  }}
+                >
+                  <div className="ring-inner">
+                    {supervisionGroup.toFixed(1)}س
+                  </div>
+                </div>
+                <div>
+                  <b>جماعي</b>
+                  <span>{groupSharePct.toFixed(0)}% من إجمالي الإشراف</span>
+                </div>
+              </div>
             </div>
             <section className="cards">
               <div className="card">
