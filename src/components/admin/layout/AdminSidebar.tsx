@@ -75,7 +75,7 @@ export default function AdminSidebar({
         {
           href: `${base}/onboarding`,
           icon: "ti-user-check",
-          label: "طلبات الانضمام والإسناد",
+          label: "طلبات التسجيل الجديدة",
           emoji: "🎯",
         },
         {
