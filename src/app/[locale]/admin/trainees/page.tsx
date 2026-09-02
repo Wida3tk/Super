@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import AdminSupervisionPanel from '@/components/admin/AdminSupervisionPanel';
+import Link from 'next/link';
 
 interface Props { params: Promise<{ locale: string }>; }
 
@@ -27,6 +28,11 @@ export default async function TraineesPage({ params }: Props) {
     const onboarding = trainees.filter((t: any) => t.status === 'onboarding').length;
     return (
       <AdminPageLayout locale={locale} title="المتدربون">
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
+          <Link href={`/${locale}/admin/import`} style={{ background: '#0D40FC', color: '#fff', borderRadius: 10, padding: '11px 16px', fontWeight: 800, textDecoration: 'none', boxShadow: '0 8px 20px rgba(13,64,252,.18)' }}>
+            📥 استيراد ملف متدرب
+          </Link>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
           {[
             { emoji: '👥', val: trainees.length, label: 'إجمالي المتدربين', color: '#4F46E5', border: '#4F46E5' },

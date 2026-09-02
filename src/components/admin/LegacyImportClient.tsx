@@ -11,16 +11,39 @@ type ImportFile = Array<{
 
 export default function LegacyImportClient() {
   const [supervisorEmail, setSupervisorEmail] = useState("master.bcba@gmail.com");
+  const [license, setLicense] = useState<"QASP-S" | "QBA">("QASP-S");
   const [data, setData] = useState<ImportFile | null>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   async function readFile(file?: File) {
     if (!file) return;
-    const parsed = JSON.parse(await file.text());
-    if (!Array.isArray(parsed)) throw new Error("INVALID_FILE");
-    setData(parsed);
+    setLoading(true);
     setResult(null);
+    try {
+      if (file.name.toLowerCase().endsWith(".json")) {
+        const parsed = JSON.parse(await file.text());
+        if (!Array.isArray(parsed)) throw new Error("INVALID_FILE");
+        setData(parsed);
+        return;
+      }
+      const form = new FormData();
+      form.append("file", file);
+      form.append("license", license);
+      const response = await fetch("/api/admin/legacy-trainee-import/parse", {
+        method: "POST",
+        body: form,
+      });
+      const parsed = await response.json();
+      if (!response.ok) {
+        setResult({ ok: false, status: response.status, ...parsed });
+        return;
+      }
+      setData(parsed.trainees);
+      setResult({ ok: true, parsed: parsed.summary });
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function submit(dryRun: boolean) {
@@ -53,8 +76,13 @@ export default function LegacyImportClient() {
           onChange={(event) => setSupervisorEmail(event.target.value)}
           style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 18 }}
         />
-        <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>ملف الاستيراد JSON</label>
-        <input type="file" accept="application/json,.json" onChange={(event) => void readFile(event.target.files?.[0])} />
+        <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>مسار المتدرب</label>
+        <select value={license} onChange={(event) => setLicense(event.target.value as "QASP-S" | "QBA")} style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 18 }}>
+          <option value="QASP-S">مساعد محلل سلوك — 1000 ساعة ميدانية / 50 إشراف</option>
+          <option value="QBA">محلل سلوك — 2000 ساعة ميدانية / 100 إشراف</option>
+        </select>
+        <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>ملف تتبع المتدرب Excel</label>
+        <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.json" onChange={(event) => void readFile(event.target.files?.[0])} />
         {data && (
           <div style={{ marginTop: 18, padding: 16, background: "#f8fafc", borderRadius: 12 }}>
             جاهز للاستيراد: {data.map((item) => item.info.name).join("، ")} — {data.reduce((sum, item) => sum + item.activities.length, 0)} سجلًا
