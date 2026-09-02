@@ -79,7 +79,7 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
                             : (s.name||'م')[0]
                           }
                         </div>
-                        <span style={{color:'#001442',fontWeight:600}}>{s.name||'—'}</span>
+                        <a href={`/ar/admin/supervisors/${s.id}`} style={{color:'#001442',fontWeight:700,textDecoration:'none'}}>{s.name||'—'}<small style={{display:'block',color:'#0D40FC',fontSize:10,fontWeight:600,marginTop:2}}>فتح ملف العمل ←</small></a>
                       </div>
                     </td>
                     <td style={{color:'#8898AA',fontSize:12}}>{s.email||'—'}</td>
@@ -90,7 +90,7 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
                         {s.isActive?'● نشط':'○ موقوف'}
                       </span>
                     </td>
-                    <td className="c"><a href={`/ar/admin/supervisors/${s.id}`} style={{fontSize:11,color:'#047857',textDecoration:'none',background:'#ECFDF5',padding:'5px 10px',borderRadius:8,border:'1px solid #A7F3D0'}}>{s.accountType === 'consultant' ? 'المواعيد ←' : 'المواعيد والمقاعد ←'}</a></td>
+                    <td className="c"><a href={`/ar/admin/supervisors/${s.id}#schedule`} style={{fontSize:11,color:'#047857',textDecoration:'none',background:'#ECFDF5',padding:'5px 10px',borderRadius:8,border:'1px solid #A7F3D0'}}>{s.accountType === 'consultant' ? 'إدارة المواعيد ←' : 'إدارة المواعيد والمقاعد ←'}</a></td>
                     <td className="c">
                       <button onClick={()=>setAuthSupervisor(s)} style={{background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',color:'#d97706',fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit'}}>
                         🔑 الحساب
