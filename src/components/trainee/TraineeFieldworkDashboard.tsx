@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
+import MonthlyHoursInsights from "@/components/trainee/MonthlyHoursInsights";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 import { credentialRules } from "@/lib/qaba/compliance";
 import {
@@ -555,6 +556,8 @@ export default function TraineeFieldworkDashboard({
           </>
         )}
         {activeTab === "hours" && (
+          <>
+          <MonthlyHoursInsights activities={activities} supervisionTarget={supervisionTargetHours} />
           <div className="grid">
             <section className="panel">
               <h3>توزيع الساعات</h3>
@@ -682,6 +685,7 @@ export default function TraineeFieldworkDashboard({
               </div>
             </section>
           </div>
+          </>
         )}
         {activeTab === "plan" && (
           <section className="panel" style={{ marginTop: 16 }}>
