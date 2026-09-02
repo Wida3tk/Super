@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import SupervisorTabs from '@/components/admin/SupervisorTabs';
+import Link from 'next/link';
 
 interface Props { params: Promise<{ locale: string }>; }
 
@@ -34,6 +35,7 @@ export default async function SupervisorsPage({ params }: Props) {
     }));
     return (
       <AdminPageLayout locale={locale} title="حسابات المشرفين">
+        <div style={{display:'flex',justifyContent:'flex-start',marginBottom:14}}><Link href={`/${locale}/admin/import-supervisor`} style={{background:'#0D40FC',color:'#fff',borderRadius:10,padding:'11px 16px',fontWeight:800,textDecoration:'none'}}>📥 استيراد ملف مشرف</Link></div>
         <SupervisorTabs supervisors={supervisorsWithOperations as any} />
       </AdminPageLayout>
     );

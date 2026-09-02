@@ -60,6 +60,7 @@ export default function AdminSidebar({
           label: "المواعيد والحجوزات",
           emoji: "📋",
         },
+        { href: `${base}/import-supervisor`, icon: "ti-file-import", label: "استيراد ملف مشرف", emoji: "📥" },
       ],
     },
     {
@@ -89,6 +90,7 @@ export default function AdminSidebar({
           label: "طلبات المتدربين",
           emoji: "📨",
         },
+        { href: `${base}/import`, icon: "ti-file-import", label: "استيراد ملف متدرب", emoji: "📥" },
       ],
     },
     {

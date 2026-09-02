@@ -87,7 +87,7 @@ export default async function AdminDashboardPage({ params }: Props) {
   const readyToAssign = trainees.filter(
     (t) => t.status === "onboarding" && t.onboardingStage === "contracting",
   );
-  const totalHours = trainees.reduce((sum, trainee) => sum + Number(trainee.approvedFieldworkHours ?? trainee.totalHours ?? 0), 0);
+  const totalHours = trainees.reduce((sum, trainee) => sum + Number(trainee.approvedSupervisionHours ?? 0), 0);
   const weekSessions = sessions.filter((s) => s.date >= weekAgo);
 
   // تنبيهات
@@ -105,8 +105,8 @@ export default async function AdminDashboardPage({ params }: Props) {
   const traineeProgress = activeTrainees
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
-      const targetHours = credentialRules(t.license || "QASP-S").total;
-      const approvedHours = Number(t.approvedFieldworkHours ?? t.totalHours ?? 0);
+      const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license || "QASP-S").supervisionTarget);
+      const approvedHours = Number(t.approvedSupervisionHours ?? 0);
       const pct = Math.round((approvedHours / targetHours) * 100);
       return {
         ...t,
@@ -279,7 +279,7 @@ export default async function AdminDashboardPage({ params }: Props) {
             {/* إحصائيات */}
             <div className="stats">
               <div className="stat">
-                <div className="stat-label">ساعات الشهر</div>
+                <div className="stat-label">ساعات الإشراف المعتمدة</div>
                 <div className="stat-val" style={{ color: "#0D40FC" }}>
                   {totalHours}
                 </div>

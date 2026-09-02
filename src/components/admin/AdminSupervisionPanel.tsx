@@ -11,6 +11,8 @@ import type {
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import AdminAgreementModal from "@/components/admin/AdminAgreementModal";
 import { credentialRules } from "@/lib/qaba/compliance";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -797,6 +799,7 @@ export default function AdminSupervisionPanel({
   initialTrainees?: any[];
   initialSnapshots?: any[];
 }) {
+  const { locale } = useParams<{ locale: string }>();
   const [trainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
   const [snapshots] = useState<MonthlySnapshot[]>(
     initialSnapshots as MonthlySnapshot[],
@@ -1272,9 +1275,10 @@ export default function AdminSupervisionPanel({
                     const sup = supervisors.find(
                       (s) => s.id === t.currentSupervisorId,
                     );
-                    const targetHours = credentialRules(t.license).total;
+                    const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license).supervisionTarget);
+                    const approvedHours = Number(t.approvedSupervisionHours ?? ((t.totalIndividualHours || 0) + (t.totalGroupHours || 0)));
                     const pct = Math.min(
-                      Math.round((((t.approvedFieldworkHours ?? t.totalHours) || 0) / targetHours) * 100),
+                      Math.round((approvedHours / targetHours) * 100),
                       100,
                     );
                     const statusStyle = STATUS_COLORS[t.status];
@@ -1308,9 +1312,9 @@ export default function AdminSupervisionPanel({
                               {t.name?.slice(0, 2)}
                             </div>
                             <div>
-                              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                              <Link href={`/${locale}/admin/trainees/${t.id}`} style={{ fontSize: 13, fontWeight: 700, color: COLORS.deep, textDecoration: "none" }}>
                                 {t.name}
-                              </div>
+                              </Link>
                               <div
                                 style={{ fontSize: 11, color: COLORS.gray500 }}
                               >
@@ -1385,7 +1389,7 @@ export default function AdminSupervisionPanel({
                             <span
                               style={{ fontSize: 11, color: COLORS.gray500 }}
                             >
-                              {(t.approvedFieldworkHours ?? t.totalHours) || 0}/{targetHours}
+                              {approvedHours}/{targetHours} إشراف
                             </span>
                           </div>
                         </td>
