@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
+import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 import type { FieldworkActivityType } from "@/types";
 
 const TYPES = new Set<FieldworkActivityType>([
@@ -39,7 +39,7 @@ function durationBetween(start: string, end: string) {
 export async function GET() {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!trainee.currentSupervisorId || trainee.status !== "active")
+  if (!hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const snap = await adminDb
     .collection("fieldworkActivities")
@@ -53,7 +53,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
-  if (!trainee || !trainee.currentSupervisorId)
+  if (!trainee || !hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const {
@@ -163,6 +163,8 @@ export async function PATCH(req: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasActiveTraineeService(trainee))
+    return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const body = await req.json();
   const { id, action } = body;
   if (!id || !["submit", "update"].includes(action))

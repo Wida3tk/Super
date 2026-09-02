@@ -21,6 +21,12 @@ export interface AuthenticatedTrainee {
   [key: string]: unknown;
 }
 
+export function hasActiveTraineeService(trainee: AuthenticatedTrainee): boolean {
+  if (!trainee.currentSupervisorId) return false;
+  if (trainee.lifecycleStage) return trainee.lifecycleStage === "active_service" && trainee.serviceAccessEnabled !== false;
+  return trainee.status === "active";
+}
+
 export async function getSessionUser(): Promise<DecodedIdToken | null> {
   const sessionCookie = (await cookies()).get('__session')?.value;
   if (!sessionCookie) return null;

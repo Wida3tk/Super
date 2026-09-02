@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
+import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 
 const TYPES = new Set(["defer", "withdraw", "change_supervisor"]);
 const clean = (value: unknown, max = 1000) =>
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee)
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (!trainee.currentSupervisorId || trainee.status !== "active")
+  if (!hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const body = await request.json();
   const type = clean(body.type, 30);

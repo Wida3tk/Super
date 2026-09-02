@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { adminDb } from "@/lib/firebase/admin";
-import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
+import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 
 const labels: Record<string, string> = {
   direct: "مباشرة",
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!trainee.currentSupervisorId || trainee.status !== "active")
+  if (!hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const month = req.nextUrl.searchParams.get("month") || "";
   let locked = false;

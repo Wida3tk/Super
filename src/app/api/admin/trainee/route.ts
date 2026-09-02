@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     supervisionTargetHours,
     status: "onboarding",
     onboardingStage: "initial_interview",
+    lifecycleStage: "initial_interview",
+    lifecycleStageChangedAt: new Date().toISOString(),
+    serviceAccessEnabled: false,
     currentSupervisorId: null,
     totalIndividualHours: 0,
     totalGroupHours: 0,
@@ -46,6 +49,8 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
+  const createdAt = new Date().toISOString();
+  await adminDb.collection("traineeLifecycleTransitions").add({ traineeId: ref.id, fromStage: null, toStage: "initial_interview", reason: "إضافة متدرب من الإدارة", changedAt: createdAt, changedMonth: createdAt.slice(0, 7), changedBy: "admin" });
 
   await logActivity({
     type: "trainee_added",
@@ -84,6 +89,21 @@ export async function PATCH(req: NextRequest) {
       traineeId,
       meta: { status: data.status, adminOverride: true },
     });
+  } else if (action === "updateLifecycle") {
+    const stages = new Set(["initial_interview", "post_interview", "contracting", "active_service", "approved_pause", "supervisor_transfer", "platform_suspension", "financial_clearance", "completed"]);
+    const nextStage = String(data.stage || "");
+    if (!stages.has(nextStage)) return NextResponse.json({ error: "INVALID_LIFECYCLE_STAGE" }, { status: 400 });
+    const before = await ref.get();
+    if (!before.exists) return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
+    const previousStage = String(before.data()?.lifecycleStage || before.data()?.onboardingStage || (before.data()?.status === "active" ? "active_service" : "initial_interview"));
+    const now = new Date().toISOString();
+    const statusByStage: Record<string, string> = { initial_interview: "onboarding", post_interview: "onboarding", contracting: "onboarding", active_service: "active", approved_pause: "paused", supervisor_transfer: "paused", platform_suspension: "terminated", financial_clearance: "paused", completed: "completed" };
+    const batch = adminDb.batch();
+    batch.update(ref, { lifecycleStage: nextStage, lifecycleStageChangedAt: now, serviceAccessEnabled: nextStage === "active_service", status: statusByStage[nextStage], updatedAt: now });
+    const historyRef = adminDb.collection("traineeLifecycleTransitions").doc();
+    batch.set(historyRef, { traineeId, fromStage: previousStage, toStage: nextStage, reason: String(data.reason || "تحديث إداري").slice(0, 500), changedAt: now, changedMonth: now.slice(0, 7), changedBy: "admin" });
+    await batch.commit();
+    await logActivity({ type: "admin_lifecycle_transition", message: `نقلت الإدارة المتدرب من ${previousStage} إلى ${nextStage}`, traineeId, meta: { previousStage, nextStage, reason: data.reason || "" } });
   } else if (action === "updateOnboarding") {
     const allowedStages = new Set(["initial_interview", "awaiting_decisions", "interview_declined", "admin_review", "contracting", "ready_assignment"]);
     if (!allowedStages.has(String(data.stage)))
@@ -187,16 +207,20 @@ export async function PATCH(req: NextRequest) {
       );
     }
     const batch = adminDb.batch();
+    const assignedAt = new Date().toISOString();
     batch.update(ref, {
       currentSupervisorId: supervisorId,
       status: "active",
       onboardingStage: null,
       assignmentStatus: "active",
+      lifecycleStage: "active_service",
+      lifecycleStageChangedAt: assignedAt,
+      serviceAccessEnabled: true,
       authUid: authUser.uid,
       accountStatus: selfRegistered ? "active" : "invited",
       fieldworkStartDate: traineeData.fieldworkStartDate || assignmentStart,
       courseworkStartDate: traineeData.courseworkStartDate || data.courseworkStartDate || assignmentStart,
-      updatedAt: new Date().toISOString(),
+      updatedAt: assignedAt,
     });
     if (isTransfer) {
       const activeAssignments = await adminDb.collection("assignments")
@@ -218,6 +242,11 @@ export async function PATCH(req: NextRequest) {
       createdBy: "admin",
       adminOverride: true,
       status: "active",
+    });
+    batch.set(adminDb.collection("traineeLifecycleTransitions").doc(), {
+      traineeId, fromStage: traineeData.lifecycleStage || traineeData.onboardingStage || "contracting", toStage: "active_service",
+      reason: isTransfer ? "اكتمال الانتقال وإسناد المشرف الجديد" : "اعتماد الإسناد وبدء الخدمة",
+      changedAt: assignedAt, changedMonth: assignedAt.slice(0, 7), changedBy: "admin",
     });
     await batch.commit();
     if (action === "assign") {

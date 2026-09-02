@@ -1,13 +1,13 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
+import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 
 export async function PATCH(req: NextRequest) {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!trainee.currentSupervisorId || trainee.status !== "active")
+  if (!hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
   const body = await req.json();
   if (body.entity === "meeting") {

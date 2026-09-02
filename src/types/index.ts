@@ -162,7 +162,21 @@ export interface Trainee {
   approvedGroupSupervisionHours?: number;
   authUid?: string;
   accountStatus?: "prepared" | "invited" | "active";
+  lifecycleStage?: TraineeLifecycleStage;
+  lifecycleStageChangedAt?: string;
+  serviceAccessEnabled?: boolean;
 }
+
+export type TraineeLifecycleStage =
+  | "initial_interview"
+  | "post_interview"
+  | "contracting"
+  | "active_service"
+  | "approved_pause"
+  | "supervisor_transfer"
+  | "platform_suspension"
+  | "financial_clearance"
+  | "completed";
 
 export type FieldworkActivityType =
   "direct" | "indirect" | "supervision_direct" | "supervision_indirect";

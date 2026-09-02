@@ -109,6 +109,9 @@ export async function PATCH(request: NextRequest) {
     batch.update(traineeRef, {
       currentSupervisorId: newSupervisorId,
       status: "active",
+      lifecycleStage: "active_service",
+      lifecycleStageChangedAt: now,
+      serviceAccessEnabled: true,
       updatedAt: now,
     });
     const assignments = await adminDb
@@ -175,6 +178,9 @@ export async function POST(request: NextRequest) {
     batch = adminDb.batch();
   batch.update(ref, {
     status: "active",
+    lifecycleStage: "active_service",
+    lifecycleStageChangedAt: now,
+    serviceAccessEnabled: true,
     pauseStartDate: null,
     expectedReturnDate: null,
     resumedAt: now,

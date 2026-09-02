@@ -13,7 +13,8 @@ export default async function TraineeDashboardPage({
   const { locale } = await params;
   const trainee = await getAuthenticatedTrainee();
   if (!trainee) redirect(`/${locale}/login`);
-  if (!trainee.currentSupervisorId || trainee.status !== "active") {
+  const legacyActive = !trainee.lifecycleStage && trainee.status === "active" && Boolean(trainee.currentSupervisorId);
+  if (!trainee.currentSupervisorId || (!legacyActive && trainee.lifecycleStage !== "active_service")) {
     const bookings = await adminDb.collection("bookings")
       .where("studentEmail", "==", trainee.email).limit(30).get();
     const booking = (bookings.docs.map(document => ({ id: document.id, ...document.data() } as any))
