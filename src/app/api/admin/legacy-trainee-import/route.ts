@@ -36,6 +36,25 @@ type LegacyTrainee = {
   activities: LegacyActivity[];
 };
 
+type ParsedTrainee = {
+  name: string;
+  email: string;
+  license: "QASP-S" | "QBA";
+  startDate: string;
+  activities: LegacyActivity[];
+};
+
+type ImportPreview = {
+  name: string;
+  email: string;
+  license: "QASP-S" | "QBA";
+  existingTraineeId: string | null;
+  duplicateCount: number;
+  activityCount: number;
+  fieldworkHours: number;
+  supervisionHours: number;
+};
+
 const ACTIVITY_TYPES = new Set([
   "direct",
   "indirect",
@@ -50,7 +69,7 @@ function normalizeEmail(value: unknown) {
   return clean(value, 320).toLowerCase();
 }
 
-function validateTrainee(input: LegacyTrainee) {
+function validateTrainee(input: LegacyTrainee): ParsedTrainee {
   const name = clean(input?.info?.name, 200);
   const email = normalizeEmail(input?.info?.email);
   const license = input?.supervisorSummary?.license;
@@ -141,8 +160,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "SUPERVISOR_NOT_ACTIVE" }, { status: 409 });
     }
 
-    const parsed = inputs.map((item: LegacyTrainee) => validateTrainee(item));
-    const preview = [];
+    const parsed: ParsedTrainee[] = inputs.map((item: LegacyTrainee) =>
+      validateTrainee(item),
+    );
+    const preview: ImportPreview[] = [];
     for (const trainee of parsed) {
       const existing = await adminDb
         .collection("trainees")
@@ -266,7 +287,7 @@ export async function POST(request: NextRequest) {
 
       let createdActivities = 0;
       for (let offset = 0; offset < trainee.activities.length; offset += 400) {
-        const chunk = trainee.activities.slice(offset, offset + 400);
+        const chunk: LegacyActivity[] = trainee.activities.slice(offset, offset + 400);
         const refs = chunk.map((row) =>
           adminDb.collection("fieldworkActivities").doc(activityId(trainee.email, row)),
         );
