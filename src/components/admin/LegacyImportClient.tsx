@@ -11,6 +11,7 @@ type ImportFile = Array<{
 
 export default function LegacyImportClient() {
   const [supervisorEmail, setSupervisorEmail] = useState("master.bcba@gmail.com");
+  const [supervisorName, setSupervisorName] = useState("د. منى أبو الهول");
   const [license, setLicense] = useState<"QASP-S" | "QBA">("QASP-S");
   const [data, setData] = useState<ImportFile | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -56,6 +57,9 @@ export default function LegacyImportClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supervisorEmail,
+          supervisorName,
+          supervisorProfileId: "dr-mona-aboulhol",
+          createSupervisor: true,
           trainees: data,
           dryRun,
           sendInvitations: false,
@@ -79,6 +83,12 @@ export default function LegacyImportClient() {
         <input
           value={supervisorEmail}
           onChange={(event) => setSupervisorEmail(event.target.value)}
+          style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 18 }}
+        />
+        <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>اسم المشرف</label>
+        <input
+          value={supervisorName}
+          onChange={(event) => setSupervisorName(event.target.value)}
           style={{ width: "100%", padding: 12, border: "1px solid #cbd5e1", borderRadius: 10, marginBottom: 18 }}
         />
         <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>مسار المتدرب</label>

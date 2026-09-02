@@ -145,18 +145,61 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const supervisorEmail = normalizeEmail(body.supervisorEmail);
+    const supervisorName = clean(body.supervisorName, 200);
     const dryRun = body.dryRun !== false;
     const sendInvitations = body.sendInvitations === true;
+    const createSupervisor = body.createSupervisor === true;
     const inputs = Array.isArray(body.trainees) ? body.trainees : [];
     if (!supervisorEmail || inputs.length < 1 || inputs.length > 20) {
       return NextResponse.json({ error: "INVALID_IMPORT_PAYLOAD" }, { status: 400 });
     }
 
-    const supervisor = await findSupervisor(supervisorEmail);
-    if (!supervisor) {
+    let supervisor = await findSupervisor(supervisorEmail);
+    if (!supervisor && (!createSupervisor || !supervisorName)) {
       return NextResponse.json({ error: "SUPERVISOR_NOT_FOUND" }, { status: 404 });
     }
-    const supervisorData = supervisor.data();
+    if (!supervisor && !dryRun) {
+      let supervisorAuth;
+      try {
+        supervisorAuth = await adminAuth.getUserByEmail(supervisorEmail);
+      } catch (error: any) {
+        if (error?.code !== "auth/user-not-found") throw error;
+        supervisorAuth = await adminAuth.createUser({
+          email: supervisorEmail,
+          displayName: supervisorName,
+          emailVerified: false,
+        });
+      }
+      await adminAuth.setCustomUserClaims(supervisorAuth.uid, {
+        role: "supervisor",
+        supervisorId: supervisorAuth.uid,
+      });
+      await adminDb.collection("supervisors").doc(supervisorAuth.uid).set(
+        {
+          name: supervisorName,
+          email: supervisorEmail,
+          bio: "",
+          isActive: true,
+          totalSessions: 0,
+          ratingAverage: 0,
+          accountType: "supervisor",
+          accountStatus: "prepared",
+          authUid: supervisorAuth.uid,
+          availableSeats: 0,
+          publicProfileId: clean(body.supervisorProfileId, 120) || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+      supervisor = await findSupervisor(supervisorEmail);
+    }
+    const supervisorData = supervisor?.data() || {
+      name: supervisorName,
+      email: supervisorEmail,
+      isActive: true,
+      accountType: "supervisor",
+    };
     if (supervisorData.isActive === false || supervisorData.accountType === "consultant") {
       return NextResponse.json({ error: "SUPERVISOR_NOT_ACTIVE" }, { status: 409 });
     }
@@ -192,12 +235,20 @@ export async function POST(request: NextRequest) {
     if (dryRun) {
       return NextResponse.json({
         dryRun: true,
-        supervisor: { id: supervisor.id, name: supervisorData.name, email: supervisorEmail },
+        supervisor: {
+          id: supervisor?.id || null,
+          name: supervisorData.name,
+          email: supervisorEmail,
+          willCreate: !supervisor,
+        },
         trainees: preview,
       });
     }
     if (preview.some((row) => row.duplicateCount > 1)) {
       return NextResponse.json({ error: "DUPLICATE_TRAINEE_EMAIL" }, { status: 409 });
+    }
+    if (!supervisor) {
+      return NextResponse.json({ error: "SUPERVISOR_CREATE_FAILED" }, { status: 500 });
     }
 
     const results = [];
