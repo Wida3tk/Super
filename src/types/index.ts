@@ -168,6 +168,7 @@ export interface Trainee {
 }
 
 export type TraineeLifecycleStage =
+  | "registered"
   | "initial_interview"
   | "post_interview"
   | "contracting"

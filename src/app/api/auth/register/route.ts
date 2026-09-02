@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         fieldworkTargetHours: requiredHours,
         supervisionTargetHours,
         status: "onboarding",
-        lifecycleStage: "initial_interview",
+        lifecycleStage: "registered",
         lifecycleStageChangedAt: new Date().toISOString(),
         serviceAccessEnabled: false,
         onboardingStage: "initial_interview",
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         createdAt: now,
       });
       batch.set(adminDb.collection("traineeLifecycleTransitions").doc(), {
-        traineeId: user.uid, fromStage: null, toStage: "initial_interview",
+        traineeId: user.uid, fromStage: null, toStage: "registered",
         reason: "تسجيل متدرب جديد", changedAt: now, changedMonth: now.slice(0, 7), changedBy: "self_registration",
       });
     }

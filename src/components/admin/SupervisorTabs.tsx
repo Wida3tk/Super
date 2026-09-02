@@ -97,7 +97,7 @@ export default function SupervisorTabs({ supervisors }: { supervisors: Superviso
                       </button>
                     </td>
                     <td className="c">
-                      <a href={`/ar/supervisor/${s.id}`} target="_blank" rel="noopener noreferrer"
+                      <a href={`/ar/supervisor/${(s as any).publicProfileId || s.id}`} target="_blank" rel="noopener noreferrer"
                         style={{fontSize:12,color:'#0D40FC',textDecoration:'none',background:'rgba(13,64,252,0.07)',padding:'5px 12px',borderRadius:8,border:'1px solid rgba(13,64,252,0.15)'}}>
                         🔗 فتح
                       </a>

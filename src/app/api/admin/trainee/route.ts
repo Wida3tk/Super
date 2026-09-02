@@ -90,14 +90,14 @@ export async function PATCH(req: NextRequest) {
       meta: { status: data.status, adminOverride: true },
     });
   } else if (action === "updateLifecycle") {
-    const stages = new Set(["initial_interview", "post_interview", "contracting", "active_service", "approved_pause", "supervisor_transfer", "platform_suspension", "financial_clearance", "completed"]);
+    const stages = new Set(["registered", "initial_interview", "post_interview", "contracting", "active_service", "approved_pause", "supervisor_transfer", "platform_suspension", "financial_clearance", "completed"]);
     const nextStage = String(data.stage || "");
     if (!stages.has(nextStage)) return NextResponse.json({ error: "INVALID_LIFECYCLE_STAGE" }, { status: 400 });
     const before = await ref.get();
     if (!before.exists) return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
     const previousStage = String(before.data()?.lifecycleStage || before.data()?.onboardingStage || (before.data()?.status === "active" ? "active_service" : "initial_interview"));
     const now = new Date().toISOString();
-    const statusByStage: Record<string, string> = { initial_interview: "onboarding", post_interview: "onboarding", contracting: "onboarding", active_service: "active", approved_pause: "paused", supervisor_transfer: "paused", platform_suspension: "terminated", financial_clearance: "paused", completed: "completed" };
+    const statusByStage: Record<string, string> = { registered: "onboarding", initial_interview: "onboarding", post_interview: "onboarding", contracting: "onboarding", active_service: "active", approved_pause: "paused", supervisor_transfer: "paused", platform_suspension: "terminated", financial_clearance: "paused", completed: "completed" };
     const batch = adminDb.batch();
     batch.update(ref, { lifecycleStage: nextStage, lifecycleStageChangedAt: now, serviceAccessEnabled: nextStage === "active_service", status: statusByStage[nextStage], updatedAt: now });
     const historyRef = adminDb.collection("traineeLifecycleTransitions").doc();
