@@ -402,6 +402,17 @@ export async function POST(request: NextRequest) {
       }
 
       const totals = await syncTraineeFieldworkTotals(traineeRef.id);
+      await traineeRef.set(
+        {
+          totalIndividualHours: Math.max(
+            0,
+            totals.approvedSupervisionHours - totals.approvedGroupSupervisionHours,
+          ),
+          totalGroupHours: totals.approvedGroupSupervisionHours,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
       let inviteLink = "";
       let emailSent = false;
       if (sendInvitations && existingData.accountStatus !== "active") {
