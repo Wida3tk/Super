@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type {
   Trainee,
   Session,
@@ -665,15 +665,18 @@ function SessionModal({
 function TraineeCard({
   trainee,
   snapshot,
+  cumulative,
+  target,
   onSelect,
 }: {
   trainee: Trainee;
   snapshot: any;
+  cumulative: number;
+  target: number;
   onSelect: () => void;
 }) {
-  const total = snapshot?.totalHours || 0;
-  const targetHours = credentialRules(trainee.license).total;
-  const pct = Math.min(Math.round((total / targetHours) * 100), 100);
+  const remaining = Math.max(0, target - cumulative);
+  const pct = target ? Math.min(Math.round((cumulative / target) * 100), 100) : 0;
   const groupPct = snapshot?.groupPercentage || 0;
   const isGroupWarn = groupPct > 25;
 
@@ -755,13 +758,13 @@ function TraineeCard({
               }}
             />
           </div>
-          <span style={{ fontSize: 11, color: COLORS.gray500, minWidth: 60 }}>
-            {total}/{targetHours} ساعة
+          <span style={{ fontSize: 11, color: COLORS.gray500, minWidth: 76 }}>
+            {cumulative}/{target} ساعة إشراف
           </span>
         </div>
-        <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+        <div style={{ display: "flex", gap: 12, marginTop: 4, flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: COLORS.gray500 }}>
-            🎯 فردية: <strong>{snapshot?.individualHours || 0}</strong>
+            🎯 فردية هذا الشهر: <strong>{snapshot?.individualHours || 0}</strong>
           </span>
           <span
             style={{
@@ -769,7 +772,7 @@ function TraineeCard({
               color: isGroupWarn ? COLORS.warning : COLORS.gray500,
             }}
           >
-            {isGroupWarn ? "⚠️" : "👥"} جماعية:{" "}
+            {isGroupWarn ? "⚠️" : "👥"} جماعية هذا الشهر:{" "}
             <strong>{snapshot?.groupHours || 0}</strong>
             {isGroupWarn && (
               <span style={{ color: COLORS.warning }}> ({groupPct}%)</span>
@@ -780,6 +783,16 @@ function TraineeCard({
               🚫 غياب: <strong>{snapshot.absenceCount}</strong>
             </span>
           )}
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: remaining ? "#C2410C" : COLORS.success,
+              marginRight: "auto",
+            }}
+          >
+            {remaining ? `متبقي ${remaining} ساعة` : "بلغ الهدف ✓"}
+          </span>
         </div>
       </div>
       <span style={{ color: COLORS.gray300, fontSize: 18 }}>‹</span>
@@ -795,11 +808,13 @@ export default function SupervisionHours({
   initialTrainees = [],
   initialSessions = [],
   initialSnapshots = [],
+  approvedActivities = [],
 }: {
   supervisorId: string;
   initialTrainees?: any[];
   initialSessions?: any[];
   initialSnapshots?: any[];
+  approvedActivities?: any[];
 }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -810,7 +825,59 @@ export default function SupervisionHours({
   );
   const [showModal, setShowModal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
+  const [traineeSearch, setTraineeSearch] = useState("");
+  const [traineeSort, setTraineeSort] = useState<
+    "name" | "remaining" | "cumulative"
+  >("remaining");
+  const [traineePage, setTraineePage] = useState(0);
   const months = getLast6Months();
+
+  // إجمالي ساعات الإشراف المعتمدة تراكمياً لكل متدرب، مقابل الهدف (50 أو 100 ساعة)
+  const traineeProgress = useMemo(() => {
+    const cumulativeByTrainee: Record<string, number> = {};
+    approvedActivities.forEach((a: any) => {
+      if (!String(a.activityType || "").startsWith("supervision_")) return;
+      cumulativeByTrainee[a.traineeId] =
+        (cumulativeByTrainee[a.traineeId] || 0) + Number(a.duration || 0);
+    });
+    const map: Record<string, { cumulative: number; target: number }> = {};
+    trainees.forEach((t: any) => {
+      const cumulative = cumulativeByTrainee[t.id] || 0;
+      const target =
+        Number(t.supervisionTargetHours) ||
+        credentialRules(t.license).supervisionTarget;
+      map[t.id] = { cumulative, target };
+    });
+    return map;
+  }, [approvedActivities, trainees]);
+
+  const traineePageSize = 8;
+  const visibleTrainees = useMemo(() => {
+    const filtered = trainees.filter((t: any) =>
+      `${t.name || ""} ${t.email || ""} ${t.license || ""}`
+        .toLowerCase()
+        .includes(traineeSearch.toLowerCase()),
+    );
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      if (traineeSort === "name")
+        return String(a.name || "").localeCompare(String(b.name || ""), "ar");
+      const pa = traineeProgress[a.id] || { cumulative: 0, target: 0 };
+      const pb = traineeProgress[b.id] || { cumulative: 0, target: 0 };
+      if (traineeSort === "cumulative") return pb.cumulative - pa.cumulative;
+      const remainingA = Math.max(0, pa.target - pa.cumulative);
+      const remainingB = Math.max(0, pb.target - pb.cumulative);
+      return remainingB - remainingA;
+    });
+    return sorted;
+  }, [trainees, traineeSearch, traineeSort, traineeProgress]);
+  const traineePageCount = Math.max(
+    1,
+    Math.ceil(visibleTrainees.length / traineePageSize),
+  );
+  const pagedTrainees = visibleTrainees.slice(
+    traineePage * traineePageSize,
+    traineePage * traineePageSize + traineePageSize,
+  );
 
   const getTraineeSnapshot = useCallback(
     (traineeId: string) => {
@@ -1293,14 +1360,52 @@ export default function SupervisionHours({
             background: COLORS.gray100,
             display: "flex",
             justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.deep }}>
-            متدربو هذا الشهر
+            متدربوك ({trainees.length})
           </span>
-          <span style={{ fontSize: 12, color: COLORS.gray500 }}>
-            {trainees.length} متدرب
-          </span>
+          <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
+            <input
+              value={traineeSearch}
+              onChange={(e) => {
+                setTraineeSearch(e.target.value);
+                setTraineePage(0);
+              }}
+              placeholder="بحث بالاسم أو الرخصة"
+              style={{
+                border: `1px solid ${COLORS.gray300}`,
+                background: "#fff",
+                borderRadius: 8,
+                padding: "6px 10px",
+                fontSize: 12,
+                fontFamily: "inherit",
+                width: 180,
+              }}
+            />
+            <select
+              value={traineeSort}
+              onChange={(e) => {
+                setTraineeSort(e.target.value as any);
+                setTraineePage(0);
+              }}
+              style={{
+                border: `1px solid ${COLORS.gray300}`,
+                background: "#fff",
+                borderRadius: 8,
+                padding: "6px 8px",
+                fontSize: 12,
+                fontFamily: "inherit",
+              }}
+            >
+              <option value="remaining">الأكثر احتياجاً للساعات</option>
+              <option value="cumulative">الأكثر ساعات مكتسبة</option>
+              <option value="name">الاسم</option>
+            </select>
+          </div>
         </div>
         <div style={{ padding: "12px 16px" }}>
           {trainees.length === 0 ? (
@@ -1314,15 +1419,79 @@ export default function SupervisionHours({
             >
               لا يوجد متدربون مسندون إليك حالياً
             </div>
+          ) : visibleTrainees.length === 0 ? (
+            <div
+              style={{
+                padding: "2rem",
+                textAlign: "center",
+                color: COLORS.gray500,
+                fontSize: 13,
+              }}
+            >
+              لا توجد نتائج مطابقة للبحث
+            </div>
           ) : (
-            trainees.map((t) => (
-              <TraineeCard
-                key={t.id}
-                trainee={t}
-                snapshot={getTraineeSnapshot(t.id)}
-                onSelect={() => setSelectedTrainee(t)}
-              />
-            ))
+            <>
+              {pagedTrainees.map((t: any) => (
+                <TraineeCard
+                  key={t.id}
+                  trainee={t}
+                  snapshot={getTraineeSnapshot(t.id)}
+                  cumulative={traineeProgress[t.id]?.cumulative || 0}
+                  target={traineeProgress[t.id]?.target || 0}
+                  onSelect={() => setSelectedTrainee(t)}
+                />
+              ))}
+              {visibleTrainees.length > traineePageSize && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: COLORS.gray500,
+                  }}
+                >
+                  <button
+                    disabled={traineePage === 0}
+                    onClick={() => setTraineePage((p) => Math.max(0, p - 1))}
+                    style={{
+                      border: `1px solid ${COLORS.gray300}`,
+                      background: "#fff",
+                      borderRadius: 7,
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      opacity: traineePage === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    السابق
+                  </button>
+                  <span>
+                    {traineePage + 1} / {traineePageCount}
+                  </span>
+                  <button
+                    disabled={traineePage >= traineePageCount - 1}
+                    onClick={() =>
+                      setTraineePage((p) =>
+                        Math.min(traineePageCount - 1, p + 1),
+                      )
+                    }
+                    style={{
+                      border: `1px solid ${COLORS.gray300}`,
+                      background: "#fff",
+                      borderRadius: 7,
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      opacity: traineePage >= traineePageCount - 1 ? 0.4 : 1,
+                    }}
+                  >
+                    التالي
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

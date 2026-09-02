@@ -23,6 +23,7 @@ interface Props {
   upcomingCount: number;
   traineesCount: number;
   fieldworkActivities: any[];
+  approvedActivities?: any[];
   supervisor?: any;
 }
 
@@ -35,6 +36,7 @@ export default function SupervisorTabs({
   upcomingCount,
   traineesCount,
   fieldworkActivities,
+  approvedActivities,
   supervisor,
 }: Props) {
   const [activeTab, setActiveTab] = useState<
@@ -144,6 +146,7 @@ export default function SupervisorTabs({
           initialTrainees={initialTrainees}
           initialSessions={initialSessions}
           initialSnapshots={initialSnapshots}
+          approvedActivities={approvedActivities}
         />
       )}
       {activeTab === "fieldwork" && (

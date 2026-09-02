@@ -27,6 +27,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     snapshotsSnap,
     notifsSnap,
     fieldworkSnap,
+    approvedActivitiesSnap,
   ] = await Promise.all([
     adminDb
       .collection("bookings")
@@ -61,6 +62,11 @@ export default async function SupervisorDashboardPage({ params }: Props) {
       .where("status", "==", "submitted")
       .limit(500)
       .get(),
+    adminDb
+      .collection("fieldworkActivities")
+      .where("supervisorId", "==", supervisor.id)
+      .where("status", "==", "approved")
+      .get(),
   ]);
 
   const allBookings = bookingsSnap.docs.map((d) => ({
@@ -94,6 +100,10 @@ export default async function SupervisorDashboardPage({ params }: Props) {
   const fieldworkActivities = (
     fieldworkSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[]
   ).filter((a) => a.status === "submitted");
+  const approvedActivities = approvedActivitiesSnap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as any[];
   const unreadCount = notifications.filter((n: any) => !n.read).length;
   const isConsultant = supervisor.accountType === "consultant";
 
@@ -380,6 +390,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
               upcomingCount={upcomingCount}
               traineesCount={initialTrainees.length}
               fieldworkActivities={fieldworkActivities}
+              approvedActivities={approvedActivities}
               supervisor={supervisor}
             />
           </div>
