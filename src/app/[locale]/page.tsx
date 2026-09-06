@@ -464,15 +464,15 @@ export default async function HomePage({ params }: HomePageProps) {
                 <div className="path-option highlight">
                   <span className="path-tag">لحملة البكالوريوس</span>
                   <h3>مساعد محلل سلوك</h3>
-                  <strong>50 ساعة</strong>
-                  <p>إشراف مباشر ضمن مسار 1000 ساعة خبرة ميدانية.</p>
+                  <strong>1000 ساعة</strong>
+                  <p>خبرة ميدانية، منها 50 ساعة إشراف مباشر مع المشرف.</p>
                   <span className="payment-note">تقسيط حتى 12 دفعة</span>
                 </div>
                 <div className="path-option">
                   <span className="path-tag">للماجستير والدكتوراه</span>
                   <h3>محلل سلوك</h3>
-                  <strong>100 ساعة</strong>
-                  <p>إشراف مباشر ضمن مسار 2000 ساعة خبرة ميدانية.</p>
+                  <strong>2000 ساعة</strong>
+                  <p>خبرة ميدانية، منها 100 ساعة إشراف مباشر مع المشرف.</p>
                   <span className="payment-note">تقسيط حتى 18 دفعة</span>
                 </div>
               </div>
