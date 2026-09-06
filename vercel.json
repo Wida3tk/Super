@@ -1,5 +1,12 @@
 {
   "buildCommand": "npm run build",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/ar",
+      "permanent": false
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/reminders",
