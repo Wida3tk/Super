@@ -17,10 +17,9 @@ export default async function AccountsPage({
     .collection("clients")
     .orderBy("createdAt", "desc")
     .get();
-  const clients = snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as ClientAccount[];
+  const clients = snapshot.docs
+    .filter((doc) => !doc.data().promotedToTraineeId)
+    .map((doc) => ({ id: doc.id, ...doc.data() })) as ClientAccount[];
   return (
     <AdminPageLayout locale={locale} title="حسابات المسجلين">
       <ClientAccountsManager initialClients={clients} />

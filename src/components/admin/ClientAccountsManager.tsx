@@ -40,6 +40,7 @@ export default function ClientAccountsManager({
   });
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const visible = useMemo(
     () =>
       clients.filter((c) =>
@@ -101,6 +102,25 @@ export default function ClientAccountsManager({
       setMessage("تم حفظ بيانات الحساب بنجاح.");
     }
     setSaving(false);
+  }
+
+  async function promote() {
+    if (!selected) return;
+    setPromoting(true);
+    setMessage("");
+    const response = await fetch("/api/admin/client-auth", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: selected.id, ...form, action: "promoteToTrainee" }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) {
+      setClients((current) => current.filter((client) => client.id !== selected.id));
+      setSelected(null);
+    } else {
+      setMessage(data.error === "TRAINEE_ALREADY_EXISTS" ? "هذا الحساب موجود بالفعل ضمن المتدربين." : "تعذرت إضافة الحساب كمتدرب.");
+    }
+    setPromoting(false);
   }
 
   return (
@@ -297,6 +317,24 @@ export default function ClientAccountsManager({
               }}
             >
               {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </button>
+            <button
+              type="button"
+              disabled={promoting || saving}
+              onClick={promote}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                padding: 11,
+                border: "1px solid #0D40FC",
+                borderRadius: 9,
+                background: "#EEF4FF",
+                color: "#0D40FC",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {promoting ? "جاري الإضافة..." : "إضافة كمتدرب"}
             </button>
           </form>
         </aside>
