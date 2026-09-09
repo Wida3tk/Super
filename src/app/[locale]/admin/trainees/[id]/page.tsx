@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import { credentialRules } from "@/lib/qaba/compliance";
 import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
+import ManageTraineePassword from "@/components/admin/ManageTraineePassword";
 
 const value = (input: unknown) => {
   if (!input) return "—";
@@ -50,6 +51,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
       <section style={{marginTop:16,padding:24,borderRadius:20,color:"white",background:"linear-gradient(125deg,#001442,#0D40FC)",display:"flex",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}><div><div style={{fontSize:12,color:"#9EC5FF"}}>الملف الإداري الكامل</div><h2 style={{margin:"6px 0"}}>{trainee.name}</h2><div>{trainee.email} · {trainee.license}</div></div><div style={{padding:"9px 15px",borderRadius:99,background:"#ffffff18",alignSelf:"center"}}>المشرف: {supervisorSnap?.data()?.name || "غير مسند"}</div></section>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,margin:"16px 0"}}>{cards.map(([label,val,color])=><div key={String(label)} style={{background:"white",border:"1px solid #E2E8F0",borderTop:`3px solid ${color}`,borderRadius:15,padding:18}}><b style={{fontSize:22,color:String(color)}}>{String(val)}</b><div style={{fontSize:12,color:"#64748B",marginTop:6}}>{String(label)}</div></div>)}</div>
       <section style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,padding:20,marginBottom:16}}><h3 style={{marginTop:0}}>البيانات الأساسية</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{details.map(([k,v])=><div key={String(k)} style={{background:"#F8FAFC",padding:12,borderRadius:10}}><small style={{color:"#64748B"}}>{String(k)}</small><div style={{fontWeight:700,marginTop:4}}>{value(v)}</div></div>)}</div></section>
+      <ManageTraineePassword traineeId={id} />
       <section style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,padding:20,marginBottom:16}}><h3 style={{marginTop:0}}>ملخص الملف</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>{[["سجلات الساعات",activities.length],["الحجوزات",bookingsSnap.size],["المستندات",documentsSnap.size],["تقارير التقدم",reportsSnap.size],["تقييمات الكفاءة",assessmentsSnap.size],["الاتفاقية",agreementSnap.exists?"موجودة":"غير موجودة"],["الخطة",planSnap.exists?"موجودة":"غير موجودة"]].map(([k,v])=><div key={String(k)} style={{padding:14,border:"1px solid #E8EDF5",borderRadius:10,textAlign:"center"}}><b style={{fontSize:20}}>{String(v)}</b><div style={{fontSize:11,color:"#64748B"}}>{String(k)}</div></div>)}</div></section>
       <TraineeMonthlyHours activities={activities} />
     </div>

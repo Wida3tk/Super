@@ -16,12 +16,12 @@ export async function PATCH(request: NextRequest) {
     const email = String(body.email || "")
       .trim()
       .toLowerCase();
-    const phone = String(body.phone || "").trim();
+    const phone = String(body.phone ?? trainee.phone ?? "").trim();
     const password = String(body.password || "");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
     }
-    if (!/^\+?[\d\s-]{8,15}$/.test(phone)) {
+    if (phone && !/^\+?[\d\s-]{8,15}$/.test(phone)) {
       return NextResponse.json({ error: "INVALID_PHONE" }, { status: 400 });
     }
     if (password && password.length < 8) {

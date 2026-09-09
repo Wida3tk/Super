@@ -75,7 +75,52 @@ export async function PATCH(req: NextRequest) {
 
   const ref = adminDb.collection("trainees").doc(traineeId);
 
-  if (action === "updateStatus") {
+  if (action === "resetPassword") {
+    const password = String(data.password || "");
+    if (password.length < 8)
+      return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
+
+    const traineeSnap = await ref.get();
+    if (!traineeSnap.exists)
+      return NextResponse.json({ error: "TRAINEE_NOT_FOUND" }, { status: 404 });
+
+    const trainee = traineeSnap.data() as any;
+    const email = String(trainee.email || "").trim().toLowerCase();
+    if (!email)
+      return NextResponse.json({ error: "MISSING_EMAIL" }, { status: 400 });
+
+    try {
+      let authUser;
+      if (trainee.authUid) {
+        try {
+          authUser = await adminAuth.getUser(String(trainee.authUid));
+        } catch (error: any) {
+          if (error?.code !== "auth/user-not-found") throw error;
+        }
+      }
+      if (!authUser) authUser = await adminAuth.getUserByEmail(email);
+
+      await adminAuth.updateUser(authUser.uid, { password });
+      await adminAuth.setCustomUserClaims(authUser.uid, {
+        role: "trainee",
+        traineeId,
+      });
+      await ref.update({
+        authUid: authUser.uid,
+        accountStatus: "active",
+        updatedAt: new Date().toISOString(),
+      });
+      await logActivity({
+        type: "admin_trainee_password_reset",
+        message: `غيّرت الإدارة كلمة مرور المتدرب ${trainee.name || email}`,
+        traineeId,
+      });
+    } catch (error: any) {
+      const code = error?.code === "auth/user-not-found" ? "AUTH_USER_NOT_FOUND" : "PASSWORD_UPDATE_FAILED";
+      console.error("Admin trainee password update failed:", error);
+      return NextResponse.json({ error: code }, { status: code === "AUTH_USER_NOT_FOUND" ? 404 : 500 });
+    }
+  } else if (action === "updateStatus") {
     const allowedStatuses = new Set(["onboarding", "active", "paused", "withdrawn", "terminated", "completed"]);
     if (!allowedStatuses.has(String(data.status)))
       return NextResponse.json({ error: "INVALID_STATUS" }, { status: 400 });
