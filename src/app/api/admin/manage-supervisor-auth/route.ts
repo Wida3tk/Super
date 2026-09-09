@@ -20,8 +20,52 @@ export async function POST(request: NextRequest) {
       if (!newPassword || newPassword.length < 8) {
         return NextResponse.json({ error: 'PASSWORD_TOO_SHORT' }, { status: 400 });
       }
-      await adminAuth.updateUser(uid, { password: newPassword });
-      return NextResponse.json({ success: true, message: 'تم تغيير كلمة المرور' });
+      const supervisorRef = adminDb.collection('supervisors').doc(supervisorId || uid);
+      const supervisorSnap = await supervisorRef.get();
+      if (!supervisorSnap.exists) {
+        return NextResponse.json({ error: 'SUPERVISOR_NOT_FOUND' }, { status: 404 });
+      }
+      const supervisor = supervisorSnap.data() as any;
+      const email = String(supervisor.email || '').trim().toLowerCase();
+      if (!email) return NextResponse.json({ error: 'MISSING_EMAIL' }, { status: 400 });
+
+      let authUser;
+      for (const candidateUid of [supervisor.authUid, uid].filter(Boolean)) {
+        try {
+          authUser = await adminAuth.getUser(String(candidateUid));
+          break;
+        } catch (error: any) {
+          if (error?.code !== 'auth/user-not-found') throw error;
+        }
+      }
+      if (!authUser) {
+        try {
+          authUser = await adminAuth.getUserByEmail(email);
+        } catch (error: any) {
+          if (error?.code !== 'auth/user-not-found') throw error;
+        }
+      }
+      if (!authUser) {
+        authUser = await adminAuth.createUser({
+          email,
+          password: newPassword,
+          displayName: String(supervisor.name || ''),
+          emailVerified: false,
+        });
+      } else {
+        await adminAuth.updateUser(authUser.uid, { password: newPassword, disabled: false });
+      }
+      await adminAuth.setCustomUserClaims(authUser.uid, {
+        role: supervisor.accountType === 'consultant' ? 'consultant' : 'supervisor',
+        supervisorId: supervisorSnap.id,
+      });
+      await supervisorRef.update({
+        authUid: authUser.uid,
+        isActive: true,
+        accountStatus: 'active',
+        updatedAt: new Date().toISOString(),
+      });
+      return NextResponse.json({ success: true, message: 'تم تجهيز الحساب وتغيير كلمة المرور' });
     }
 
     if (action === 'changeEmail') {

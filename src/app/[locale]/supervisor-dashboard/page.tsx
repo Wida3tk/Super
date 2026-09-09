@@ -181,7 +181,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                 <img
                   src="/logo.svg"
                   alt="سلوكيرا"
-                  style={{ height: "32px", width: "auto" }}
+                  style={{ height: "36px", width: "auto", display: "block" }}
                 />
               </div>
               <div className="nav-div" />
