@@ -419,7 +419,7 @@ export default async function HomePage({ params }: HomePageProps) {
               </p>
               <div className="hero-actions">
                 <a href="#supervisors" className="hero-cta">
-                  احجز مقابلتك بـ50 ريال ←
+                  احجز مقابلتك ←
                 </a>
                 <Link
                   href={`/${locale}/supervision-journey`}
@@ -447,8 +447,8 @@ export default async function HomePage({ params }: HomePageProps) {
                   <div className="hero-stat-lbl">ساعة إشراف مباشر</div>
                 </div>
                 <div className="hero-stat">
-                  <div className="hero-stat-num">50 ر.س</div>
-                  <div className="hero-stat-lbl">للمقابلة الأولية</div>
+                  <div className="hero-stat-num">1000 و2000</div>
+                  <div className="hero-stat-lbl">ساعة خبرة ميدانية</div>
                 </div>
               </div>
               <div className="portal-note">
