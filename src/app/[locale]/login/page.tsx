@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import UiIcon from "@/components/ui/UiIcon";
 
 export default function LoginPage() {
   const [portal, setPortal] = useState<"trainee" | "provider" | "admin">(
@@ -158,16 +159,15 @@ export default function LoginPage() {
         }
         .page-left::before { content: ''; position: absolute; top: -200px; left: -200px; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(13,64,252,0.15) 0%, transparent 70%); }
         .page-left::after { content: ''; position: absolute; bottom: -150px; right: -150px; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(85,215,255,0.08) 0%, transparent 70%); }
-        .brand-logo { font-size: 52px; font-weight: 900; color: var(--primary); letter-spacing: -2px; margin-bottom: 8px; position: relative; z-index: 1; }
-        .brand-en { font-size: 14px; font-weight: 600; color: var(--neon); letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.7; margin-bottom: 48px; position: relative; z-index: 1; }
+        .brand-logo { width: 220px; height: auto; margin-bottom: 42px; position: relative; z-index: 1; filter: drop-shadow(0 12px 28px rgba(13,64,252,.3)); }
         .brand-tagline { font-size: 26px; font-weight: 700; color: #fff; text-align: center; line-height: 1.5; margin-bottom: 16px; position: relative; z-index: 1; }
         .brand-sub { font-size: 14px; color: rgba(255,255,255,0.45); text-align: center; line-height: 1.7; max-width: 320px; position: relative; z-index: 1; }
-        .brand-dots { display: flex; gap: 8px; margin-top: 48px; position: relative; z-index: 1; }
-        .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); }
-        .brand-dot.active { background: var(--primary); width: 24px; border-radius: 4px; }
-        .page-right { background: #F8FAFC; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 48px 40px; min-height: 100vh; }
-        .login-box { width: 100%; max-width: 380px; }
-        .login-welcome { margin-bottom: 36px; }
+        .brand-points { display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:34px;position:relative;z-index:1; }
+        .brand-point { color:#D6E4FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);padding:7px 11px;border-radius:99px;font-size:11px; }
+        .page-right { background: radial-gradient(circle at 85% 8%,#E6F8FF 0,transparent 30%),#F5F8FD; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 48px 40px; min-height: 100vh; }
+        .login-box { width: 100%; max-width: 410px;background:rgba(255,255,255,.92);border:1px solid #E1E8F2;border-radius:24px;padding:32px;box-shadow:0 24px 70px rgba(1,20,66,.10); }
+        .mobile-logo{display:none;width:128px;height:auto;margin:0 auto 24px}
+        .login-welcome { margin-bottom: 28px; }
         .login-welcome h1 { font-size: 28px; font-weight: 800; color: var(--deep); margin-bottom: 6px; }
         .login-welcome p { font-size: 14px; color: #8898AA; }
         .portal-picker { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:26px;padding:5px;background:#EAF0F8;border-radius:14px; }
@@ -180,7 +180,7 @@ export default function LoginPage() {
         .field input { width: 100%; background: #fff; border: 1.5px solid #D1D9E6; color: var(--deep); border-radius: 12px; padding: 13px 16px; font-size: 14px; transition: all 0.18s; font-family: inherit; box-shadow: 0 1px 3px rgba(1,20,66,0.05); }
         .field input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,64,252,0.1); }
         .field input::placeholder { color: #B0BEC5; }
-        .pass-toggle { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94A3B8; font-size: 16px; padding: 4px; transition: color 0.15s; }
+        .pass-toggle { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width:32px;height:32px;display:grid;place-items:center;background:#F1F5F9;border: none;border-radius:8px; cursor: pointer; color: #64748B; padding: 0; transition: color 0.15s,background .15s; }
         .pass-toggle:hover { color: var(--deep); }
         .error-box { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #dc2626; margin-bottom: 20px; direction: rtl; line-height: 1.6; }
         .step-box { background: rgba(13,64,252,0.05); border: 1px solid rgba(13,64,252,0.15); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: var(--primary); margin-bottom: 20px; }
@@ -191,25 +191,22 @@ export default function LoginPage() {
         .reset-message { background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:10px;padding:12px 14px;font-size:12px;color:#047857;margin-bottom:20px;line-height:1.7; }
         .login-footer { text-align: center; margin-top: 32px; font-size: 12px; color: #94A3B8; }
         .login-footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        @media(max-width:900px){body{background:#F5F8FD}.page-right{padding:24px 16px}.login-box{padding:26px 22px}.mobile-logo{display:block}}
       `}</style>
 
       <div className="page" dir="rtl">
         <div className="page-left">
-          <div className="brand-logo">سلوكيرا</div>
-          <div className="brand-en">Sulukera</div>
-          <div className="brand-tagline">منصة الإشراف الأكاديمي</div>
+          <img className="brand-logo" src="/logo.svg" alt="سلوكيرا" />
+          <div className="brand-tagline">الواجهة الموحّدة للإشراف</div>
           <div className="brand-sub">
-            بوابة المشرفين الأكاديميين لإدارة الجلسات والمواعيد مع الطلاب
+            مساحة واحدة للمتدرب والمشرف لإدارة الساعات والجلسات ومتابعة رحلة الإشراف
           </div>
-          <div className="brand-dots">
-            <div className="brand-dot active" />
-            <div className="brand-dot" />
-            <div className="brand-dot" />
-          </div>
+          <div className="brand-points"><span className="brand-point">متابعة الساعات</span><span className="brand-point">إدارة الجلسات</span><span className="brand-point">ملف إشرافي موحّد</span></div>
         </div>
 
         <div className="page-right">
           <div className="login-box">
+            <img className="mobile-logo" src="/logo.svg" alt="سلوكيرا" />
             <div className="login-welcome">
               <h1>{portal === "admin" ? "دخول الإدارة" : "تسجيل الدخول"}</h1>
               <p>
@@ -273,8 +270,9 @@ export default function LoginPage() {
                     type="button"
                     className="pass-toggle"
                     onClick={() => setShowPass((p) => !p)}
+                    aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                   >
-                    {showPass ? "🙈" : "👁"}
+                    <UiIcon name={showPass ? "eyeOff" : "eye"} size={17} />
                   </button>
                 </div>
               </div>
@@ -298,7 +296,7 @@ export default function LoginPage() {
             </form>
 
             <div className="login-footer">
-              منصة الإشراف الأكاديمي ·{" "}
+              الواجهة الموحّدة للإشراف ·{" "}
               <a href="https://sulukera.com" target="_blank">
                 سلوكيرا
               </a>

@@ -20,6 +20,8 @@ const paths: Record<string, ReactNode> = {
   book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/></>,
   check: <><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></>,
   star: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>,
+  eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"/><circle cx="12" cy="12" r="3"/></>,
+  eyeOff: <><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.5 6.5C3.6 8.3 2 12 2 12s3.5 6 10 6c1.9 0 3.5-.5 4.8-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></>,
 };
 
 export default function UiIcon({name,size=18,...props}:{name:string;size?:number}&SVGProps<SVGSVGElement>){
