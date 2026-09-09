@@ -3,6 +3,7 @@ import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { redirect } from "next/navigation";
 import AvailabilityManager from "@/components/supervisor/AvailabilityManager";
 import Link from "next/link";
+import UiIcon from "@/components/ui/UiIcon";
 import LogoutButton from "@/components/LogoutButton";
 import SeatsManager from "@/components/supervisor/SeatsManager";
 import SupervisorTabs from "@/components/supervisor/SupervisorTabs";
@@ -248,7 +249,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                   className="stat-icon"
                   style={{ background: "rgba(13,64,252,0.08)" }}
                 >
-                  📋
+                  <UiIcon name="file" size={19} style={{color:"#0D40FC"}} />
                 </div>
                 <div>
                   <div className="stat-val">
@@ -262,7 +263,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                   className="stat-icon"
                   style={{ background: "rgba(239,68,68,0.08)" }}
                 >
-                  ✓
+                  <UiIcon name="check" size={19} style={{color:"#059669"}} />
                 </div>
                 <div>
                   <div
@@ -281,7 +282,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                   className="stat-icon"
                   style={{ background: "rgba(245,158,11,0.08)" }}
                 >
-                  ⭐
+                  <UiIcon name="star" size={19} style={{color:"#D97706"}} />
                 </div>
                 <div>
                   <div className="stat-val" style={{ color: "#d97706" }}>
@@ -295,7 +296,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                   className="stat-icon"
                   style={{ background: "rgba(16,185,129,0.08)" }}
                 >
-                  🗓️
+                  <UiIcon name="calendar" size={19} style={{color:"#059669"}} />
                 </div>
                 <div>
                   <div className="stat-val" style={{ color: "#059669" }}>

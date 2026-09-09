@@ -6,6 +6,7 @@ import SupervisionHours from "./SupervisionHours";
 import FieldworkReview from "./FieldworkReview";
 import TraineeSupervisionWorkspace from "./TraineeSupervisionWorkspace";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
+import UiIcon from "@/components/ui/UiIcon";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -45,26 +46,26 @@ export default function SupervisorTabs({
 
   const isConsultant = supervisor?.accountType === "consultant";
   const tabs = [
-    { key: "overview", label: "نظرة عامة", icon: "⌂", count: 0 },
-    { key: "bookings", label: "المقابلات", icon: "🗓️", count: upcomingCount },
-    { key: "hours", label: "ساعات الإشراف", icon: "⏱️", count: traineesCount },
+    { key: "overview", label: "نظرة عامة", icon: "home", count: 0 },
+    { key: "bookings", label: "المقابلات", icon: "calendar", count: upcomingCount },
+    { key: "hours", label: "ساعات الإشراف", icon: "clock", count: traineesCount },
   ];
   if (!isConsultant)
     tabs.push({
       key: "fieldwork",
       label: "ساعات المتدربين",
-      icon: "📊",
+      icon: "chart",
       count: fieldworkActivities.length,
     });
   if (!isConsultant)
     tabs.push({
       key: "workspace",
       label: "ملفات الإشراف",
-      icon: "📁",
+      icon: "folder",
       count: traineesCount,
     });
   if (!isConsultant)
-    tabs.push({ key: "policies", label: "السياسات", icon: "▤", count: 0 });
+    tabs.push({ key: "policies", label: "السياسات", icon: "book", count: 0 });
 
   return (
     <div>
@@ -107,7 +108,7 @@ export default function SupervisorTabs({
                 activeTab === t.key ? "0 5px 14px rgba(0,0,0,.14)" : "none",
             }}
           >
-            <span style={{ fontSize: 16 }}>{t.icon}</span>
+            <span style={{width:22,height:22,display:"grid",placeItems:"center"}}><UiIcon name={t.icon} size={17}/></span>
             <span>{t.label}</span>
             {t.count > 0 && (
               <span

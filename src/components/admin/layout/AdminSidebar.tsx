@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import UiIcon from "@/components/ui/UiIcon";
 
 interface NavItem {
   href: string;
@@ -231,8 +232,8 @@ export default function AdminSidebar({
                         "transparent";
                   }}
                 >
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>
-                    {item.emoji}
+                  <span style={{ width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", flexShrink: 0, background: active ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.06)" }}>
+                    <UiIcon name={adminIconName[item.icon] || "file"} size={16} />
                   </span>
                   <span style={{ flex: 1 }}>{item.label}</span>
                   {item.badge !== undefined && item.badge > 0 && (
@@ -286,10 +287,12 @@ export default function AdminSidebar({
             (e.currentTarget as HTMLElement).style.background = "transparent";
           }}
         >
-          <span style={{ fontSize: 16 }}>🌐</span>
+          <span style={{ width: 30, height: 30, display: "grid", placeItems: "center" }}><UiIcon name="globe" size={17} /></span>
           <span>الموقع الرئيسي</span>
         </Link>
       </div>
     </aside>
   );
 }
+
+const adminIconName:Record<string,string>={"ti-layout-dashboard":"dashboard","ti-bell":"bell","ti-chart-bar":"chart","ti-calendar":"calendar","ti-file-import":"upload","ti-users":"users","ti-user-check":"target","ti-calendar-stats":"calendar","ti-file-description":"file","ti-activity-heartbeat":"shield","ti-user-cog":"user","ti-file-export":"download","ti-settings":"settings"};
