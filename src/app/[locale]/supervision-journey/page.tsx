@@ -131,7 +131,7 @@ export default async function SupervisionJourneyPage({ params }: Props) {
         </p>
         <div className="hero-actions">
           <Link className="btn btn-primary" href={`/${locale}#supervisors`}>
-            ابدأ بمقابلة أولية — 50 ريال
+            احجز مقابلتك
           </Link>
           <a className="btn btn-ghost" href="#journey">
             استكشف خطوات الرحلة
