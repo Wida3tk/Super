@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { buildCompliance } from "@/lib/qaba/compliance";
+import { uploadTraineeFile } from "@/lib/drive/uploadClient";
 
 const competencyGroups = [
   {
@@ -217,6 +218,7 @@ export default function TraineeSupervisionWorkspace({
               traineeId={traineeId}
               items={data.documents}
               onSave={save}
+              onRefresh={refresh}
             />
           )}
           {tab === "agreement" && (
@@ -471,7 +473,7 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
   );
 }
 
-function Documents({ traineeId, items, onSave }: any) {
+function Documents({ traineeId, items, onSave, onRefresh }: any) {
   const paperApprovalTypes = new Set([
     "guardian_consent",
     "center_approval",
@@ -498,28 +500,24 @@ function Documents({ traineeId, items, onSave }: any) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 55000);
     try {
-      const fd = new FormData();
-      fd.append("traineeId", traineeId);
-      fd.append("file", file);
-      const r = await fetch("/api/supervisor/document-upload", {
-        method: "POST",
-        body: fd,
-        signal: controller.signal,
+      const j = await uploadTraineeFile({
+        traineeId,
+        file,
+        category: "approvals",
+        type: form.type,
+        title: form.title || file.name,
+        notes: form.notes,
+        issuedAt: form.issuedAt,
+        centerName: form.centerName,
+        clientCode: form.clientCode,
+        expiresAt: form.expiresAt,
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        const messages: Record<string, string> = {
-          INVALID_FILE: "الملف غير مدعوم أو يتجاوز 10MB.",
-          FORBIDDEN: "لا تملك صلاحية الرفع إلى ملف هذا المتدرب.",
-          UPLOAD_FAILED: "تعذر رفع الملف إلى التخزين السحابي. حاول مرة أخرى.",
-        };
-        throw new Error(messages[j.error] || "تعذر رفع الملف.");
-      }
       setForm((current: any) => ({
         ...current,
-        fileName: j.fileName,
-        fileUrl: j.fileUrl,
+        fileName: file.name,
+        fileUrl: `saved:${j.id}`,
       }));
+      await onRefresh();
     } catch (error) {
       setUploadError(
         error instanceof DOMException && error.name === "AbortError"
@@ -594,7 +592,7 @@ function Documents({ traineeId, items, onSave }: any) {
             <small>
               {busy
                 ? "جارٍ الرفع..."
-                : form.fileName || "PDF أو صورة أو Word، حتى 10MB"}
+                : form.fileName || "PDF أو صورة أو Word، حتى 250MB"}
             </small>
             {uploadError && (
               <small style={{ color: "#b91c1c", display: "block" }}>
@@ -612,18 +610,9 @@ function Documents({ traineeId, items, onSave }: any) {
         <button
           className="save"
           disabled={busy || !form.title || !form.fileUrl}
-          onClick={async () => {
-            if (await onSave({ entity: "document", ...form }))
-              setForm({
-                ...form,
-                title: "",
-                notes: "",
-                fileName: "",
-                fileUrl: "",
-              });
-          }}
+          onClick={() => setForm({ ...form, title: "", notes: "", fileName: "", fileUrl: "" })}
         >
-          حفظ في ملف المتدرب
+          إضافة مستند آخر
         </button>
       </FormBox>
       <ListBox title="المستندات المحفوظة">
@@ -655,9 +644,11 @@ function Documents({ traineeId, items, onSave }: any) {
             >
               {d.fileUrl && (
                 <a
-                  href={`/api/supervisor/document-upload?path=${encodeURIComponent(d.fileUrl)}`}
+                  href={d.storageProvider === "google_drive" ? `/api/files?documentId=${encodeURIComponent(d.id)}` : `/api/supervisor/document-upload?path=${encodeURIComponent(d.fileUrl)}`}
+                  target={d.storageProvider === "google_drive" ? "_blank" : undefined}
+                  rel={d.storageProvider === "google_drive" ? "noreferrer" : undefined}
                 >
-                  تنزيل
+                  {d.storageProvider === "google_drive" ? "عرض" : "تنزيل"}
                 </a>
               )}
               {d.status !== "reviewed" && (

@@ -7,6 +7,7 @@ import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings"
 import MonthlyHoursInsights from "@/components/trainee/MonthlyHoursInsights";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 import TraineeHoursGuide from "@/components/trainee/TraineeHoursGuide";
+import TraineeFilesWorkspace from "@/components/trainee/TraineeFilesWorkspace";
 import { credentialRules } from "@/lib/qaba/compliance";
 import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import {
@@ -898,7 +899,7 @@ export default function TraineeFieldworkDashboard({
           <MeetingDetails meetings={meetings} onUpdate={updateMeeting} />
         )}
         {activeTab === "documents" && (
-          <DocumentDetails documents={supervisionFile?.documents || []} />
+          <TraineeFilesWorkspace traineeId={trainee.id} initialDocuments={supervisionFile?.documents || []} />
         )}
         {activeTab === "agreement" && (
           <AgreementSummary
