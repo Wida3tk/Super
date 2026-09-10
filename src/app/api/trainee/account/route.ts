@@ -10,6 +10,9 @@ export async function PATCH(request: NextRequest) {
   if (!trainee || !sessionUser) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
+  if (sessionUser.isDemo || trainee.isDemo) {
+    return NextResponse.json({ error: "DEMO_READ_ONLY_ACCOUNT" }, { status: 403 });
+  }
 
   try {
     const body = await request.json();

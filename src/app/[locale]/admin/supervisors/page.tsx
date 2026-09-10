@@ -19,7 +19,7 @@ export default async function SupervisorsPage({ params }: Props) {
       adminDb.collection('supervisors').get(),
       adminDb.collection('bookings').get(),
     ]);
-    const supervisors = await Promise.all(supervisorsSnap.docs.map(async d => {
+    const supervisors = await Promise.all(supervisorsSnap.docs.filter(d => !d.data().isDemo).map(async d => {
       const data = d.data() as any;
       let authUid = data.authUid || '';
       if (!authUid && data.email) {

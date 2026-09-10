@@ -42,6 +42,7 @@ export default async function AdminDashboardPage({ params }: Props) {
     snapshotsSnap,
     activitySnap,
     notifsSnap,
+    demoSummarySnap,
   ] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").get(),
@@ -56,13 +57,14 @@ export default async function AdminDashboardPage({ params }: Props) {
       .limit(8)
       .get(),
     adminDb.collection("notifications").where("read", "==", false).get(),
+    adminDb.collection("demoAnalytics").doc("summary").get(),
   ]);
 
-  const trainees = traineesSnap.docs.map((d) => ({
+  const trainees = traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
   })) as any[];
-  const supervisors = supervisorsSnap.docs.map((d) => ({
+  const supervisors = supervisorsSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
   })) as any[];
@@ -79,6 +81,7 @@ export default async function AdminDashboardPage({ params }: Props) {
     ...d.data(),
   })) as any[];
   const notifCount = notifsSnap.size;
+  const demoSummary = demoSummarySnap.data() || {};
 
   const activeTrainees = trainees.filter((t) => t.status === "active");
   const onboardingTrainees = trainees.filter((t) => t.status === "onboarding");
@@ -189,7 +192,7 @@ export default async function AdminDashboardPage({ params }: Props) {
         .alert-sub { font-size: 11px; color: #94A3B8; margin-top: 2px; }
 
         /* Stats */
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
         .stat-card {
           background: #fff; border-radius: 16px; padding: 18px 20px;
           border: 1px solid #E2E8F0;
@@ -481,6 +484,19 @@ export default async function AdminDashboardPage({ params }: Props) {
                   منهم {readyToAssign.length} جاهز للإسناد
                 </div>
               </div>
+              <Link
+                href={`/${locale}/demo`}
+                target="_blank"
+                className="stat-card"
+                style={{ borderTop: "3px solid #55D7FF", textDecoration: "none", color: "inherit" }}
+              >
+                <div className="stat-icon">🧪</div>
+                <div className="stat-val" style={{ color: "#0D40FC" }}>
+                  {Number(demoSummary.uniqueVisitors || 0)}
+                </div>
+                <div className="stat-label">جرّبوا النظام</div>
+                <div className="stat-note">{Number(demoSummary.totalLaunches || 0)} تجربة · فتح الرابط</div>
+              </Link>
             </div>
 
             {/* Bottom */}

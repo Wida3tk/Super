@@ -20,8 +20,8 @@ export default async function TraineesPage({ params }: Props) {
       adminDb.collection('trainees').get(),
       adminDb.collection('traineeLifecycleTransitions').limit(2000).get(),
     ]);
-    const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(t => t.lifecycleStage !== 'registered');
+    const supervisors = supervisorsSnap.docs.filter(d => !d.data().isDemo).map(d => ({ id: d.id, ...d.data() }));
+    const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(t => !t.isDemo && t.lifecycleStage !== 'registered');
     const transitions = transitionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     return (
       <AdminPageLayout locale={locale} title="المتدربون">
