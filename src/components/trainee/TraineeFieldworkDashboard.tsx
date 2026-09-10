@@ -6,6 +6,7 @@ import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
 import MonthlyHoursInsights from "@/components/trainee/MonthlyHoursInsights";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
+import TraineeHoursGuide from "@/components/trainee/TraineeHoursGuide";
 import { credentialRules } from "@/lib/qaba/compliance";
 import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import {
@@ -15,8 +16,8 @@ import {
 } from "@/components/trainee/TraineeOperations";
 
 const labels: Record<FieldworkActivityType, string> = {
-  direct: "مباشرة مع العميل",
-  indirect: "غير مباشرة",
+  direct: "ساعات مباشرة",
+  indirect: "ساعات غير مباشرة",
   supervision_direct: "إشراف مباشر",
   supervision_indirect: "إشراف غير مباشر",
 };
@@ -58,6 +59,7 @@ export default function TraineeFieldworkDashboard({
   const [activeTab, setActiveTab] = useState<
     | "overview"
     | "hours"
+    | "hoursGuide"
     | "plan"
     | "competency"
     | "meetings"
@@ -346,7 +348,7 @@ export default function TraineeFieldworkDashboard({
   return (
     <main className="fw-page" dir="rtl">
       <style>{`
-      *{box-sizing:border-box}.fw-page{min-height:100vh;background:#f5f7fb;color:#001442;padding:28px;font-family:'IBM Plex Sans Arabic',Arial,sans-serif}.fw-wrap{max-width:1180px;margin:auto}.fw-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.fw-head h1{font-size:28px;margin:0}.muted{color:#718096;font-size:13px}.primary{border:0;background:#0d40fc;color:#fff;padding:11px 18px;border-radius:11px;font-weight:700;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}.card,.panel{background:#fff;border:1px solid #e4e9f1;border-radius:15px;box-shadow:0 2px 8px #0014420a}.card{padding:17px}.card b{display:block;font-size:23px;margin-top:6px}.grid{display:grid;grid-template-columns:1.05fr 1.95fr;gap:16px}.panel{padding:20px}.bars{display:flex;align-items:flex-end;gap:18px;height:210px;padding:18px 12px 0}.bar-col{flex:1;text-align:center;font-size:12px;color:#718096}.bar{width:100%;min-height:5px;border-radius:8px 8px 3px 3px;margin-bottom:8px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:11px 9px;text-align:right;border-bottom:1px solid #edf0f5;font-size:12px}th{color:#718096;background:#fafbfc}.status{padding:4px 8px;border-radius:20px;background:#eef2ff;color:#2947a9;white-space:nowrap}.modal-bg{position:fixed;inset:0;background:#00144299;display:grid;place-items:center;padding:16px;z-index:50}.modal{background:#fff;border-radius:18px;padding:22px;width:min(650px,100%);max-height:92vh;overflow:auto}.fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;font-size:12px;color:#64748b;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.field textarea{min-height:90px}.full{grid-column:1/-1}.duration{background:#eef4ff;padding:12px;border-radius:10px;color:#0d40fc;font-weight:700}.actions{display:flex;gap:8px;margin-top:18px}.secondary{background:#fff;border:1px solid #cfd8e6;padding:10px 15px;border-radius:9px;cursor:pointer}@media(max-width:850px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.fw-page{padding:16px}.fw-head{align-items:flex-start;flex-direction:column}}
+      *{box-sizing:border-box}.fw-page{min-height:100vh;background:#f5f7fb;color:#001442;padding:28px;font-family:'IBM Plex Sans Arabic',Arial,sans-serif}.fw-wrap{max-width:1180px;margin:auto}.fw-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.fw-head h1{font-size:28px;margin:0}.muted{color:#718096;font-size:13px}.primary{border:0;background:#0d40fc;color:#fff;padding:11px 18px;border-radius:11px;font-weight:700;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}.card,.panel{background:#fff;border:1px solid #e4e9f1;border-radius:15px;box-shadow:0 2px 8px #0014420a}.card{padding:17px}.card b{display:block;font-size:23px;margin-top:6px}.grid{display:grid;grid-template-columns:1.05fr 1.95fr;gap:16px}.panel{padding:20px}.bars{display:flex;align-items:flex-end;gap:18px;height:210px;padding:18px 12px 0}.bar-col{flex:1;text-align:center;font-size:12px;color:#718096}.bar{width:100%;min-height:5px;border-radius:8px 8px 3px 3px;margin-bottom:8px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:11px 9px;text-align:right;border-bottom:1px solid #edf0f5;font-size:12px}th{color:#718096;background:#fafbfc}.status{padding:4px 8px;border-radius:20px;background:#eef2ff;color:#2947a9;white-space:nowrap}.modal-bg{position:fixed;inset:0;background:#00144299;display:grid;place-items:center;padding:16px;z-index:50}.modal{background:#fff;border-radius:18px;padding:22px;width:min(650px,100%);max-height:92vh;overflow:auto}.fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;font-size:12px;color:#64748b;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;padding:10px;border:1px solid #d8dfeb;border-radius:9px;font:inherit}.field-hint{font-size:10.5px;color:#64748b;line-height:1.55;margin-top:6px}.field textarea{min-height:90px}.full{grid-column:1/-1}.duration{background:#eef4ff;padding:12px;border-radius:10px;color:#0d40fc;font-weight:700}.actions{display:flex;gap:8px;margin-top:18px}.secondary{background:#fff;border:1px solid #cfd8e6;padding:10px 15px;border-radius:9px;cursor:pointer}@media(max-width:850px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.fw-page{padding:16px}.fw-head{align-items:flex-start;flex-direction:column}}
     `}</style>
       <style>{`
       .fw-page{background:radial-gradient(circle at 8% 4%,#dff7ff 0,transparent 27%),radial-gradient(circle at 95% 8%,#eae7ff 0,transparent 25%),#f5f7fb;padding-top:0!important}
@@ -499,6 +501,7 @@ export default function TraineeFieldworkDashboard({
             [
               ["overview", "نظرة عامة"],
               ["hours", "الساعات"],
+              ["hoursGuide", "دليل تسجيل الساعات"],
               ["plan", "خطة الإشراف"],
               ["competency", "تقييم الكفاءة"],
               ["meetings", "الاجتماعات والمهام"],
@@ -796,6 +799,9 @@ export default function TraineeFieldworkDashboard({
           </div>
           </>
         )}
+        {activeTab === "hoursGuide" && (
+          <TraineeHoursGuide onStart={() => setOpen(true)} />
+        )}
         {activeTab === "plan" && (
           <section className="panel" style={{ marginTop: 16 }}>
             <h3>ملف الإشراف والتطور المهني</h3>
@@ -958,6 +964,12 @@ export default function TraineeFieldworkDashboard({
                     </option>
                   ))}
                 </select>
+                <div className="field-hint">
+                  {form.activityType === "direct" && "ساعات تطبيق مباشر مع المستفيد، ولا تشمل اجتماع الإشراف."}
+                  {form.activityType === "indirect" && "عمل تحليلي مثل تحليل البيانات، التقييم، التقارير أو إعداد البرامج."}
+                  {form.activityType === "supervision_direct" && "لقاء إشرافي متزامن مع المشرف للمراجعة والتغذية الراجعة."}
+                  {form.activityType === "supervision_indirect" && "نشاط إشرافي موثق مرتبط بتطوير الكفاءة؛ تحقق من تصنيفه مع المشرف."}
+                </div>
               </div>
               <div className="field">
                 <label>وقت البداية</label>
@@ -1131,6 +1143,12 @@ function TabIcon({ name }: { name: string }) {
       <>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" />
+      </>
+    ),
+    hoursGuide: (
+      <>
+        <path d="M4 5h6a3 3 0 0 1 3 3v12a3 3 0 0 0-3-3H4zM20 5h-4a3 3 0 0 0-3 3v12a3 3 0 0 1 3-3h4z" />
+        <path d="M7 9h3M16 9h1" />
       </>
     ),
     plan: (
