@@ -15,9 +15,10 @@ export default async function SupervisorsPage({ params }: Props) {
     const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login?portal=admin`);
-    const [supervisorsSnap, bookingsSnap] = await Promise.all([
+    const [supervisorsSnap, bookingsSnap, traineesSnap] = await Promise.all([
       adminDb.collection('supervisors').get(),
       adminDb.collection('bookings').get(),
+      adminDb.collection('trainees').get(),
     ]);
     const supervisors = await Promise.all(supervisorsSnap.docs.filter(d => !d.data().isDemo).map(async d => {
       const data = d.data() as any;
@@ -32,6 +33,8 @@ export default async function SupervisorsPage({ params }: Props) {
     const supervisorsWithOperations = supervisors.map((supervisor: any) => ({
       ...supervisor,
       upcomingBookings: bookings.filter((booking: any) => booking.supervisorId === supervisor.id && booking.status === 'confirmed' && booking.date >= today).length,
+      assignedTrainees: traineesSnap.docs.filter((trainee) => trainee.data().currentSupervisorId === supervisor.id).length,
+      isProtectedAdmin: String(supervisor.email || '').trim().toLowerCase() === process.env.ADMIN_EMAIL?.trim().toLowerCase(),
     }));
     return (
       <AdminPageLayout locale={locale} title="حسابات المشرفين">
