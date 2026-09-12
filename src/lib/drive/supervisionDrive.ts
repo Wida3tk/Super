@@ -99,8 +99,11 @@ export async function createResumableDriveUpload(params: {
   size: number;
   uploaderId: string;
   uploaderRole: string;
+  readerEmails: Array<string | undefined>;
 }) {
-  const { categoryFolder } = await ensureTraineeDriveFolder(params);
+  const { drive, traineeFolder, categoryFolder } =
+    await ensureTraineeDriveFolder(params);
+  await syncTraineeFolderReaders(drive, traineeFolder, params.readerEmails);
   const tokenResult = await authClient().getAccessToken();
   const token = typeof tokenResult === "string" ? tokenResult : tokenResult?.token;
   if (!token) throw new Error("DRIVE_AUTH_FAILED");
@@ -133,6 +136,75 @@ export async function createResumableDriveUpload(params: {
     throw new Error(`DRIVE_UPLOAD_INIT_FAILED:${response.status}`);
   }
   return uploadUrl;
+}
+
+/**
+ * Keeps each trainee folder private to the trainee, their current supervisor,
+ * and the Workspace owner. Direct reader permissions left by a previous
+ * supervisor assignment are removed. Inherited/owner permissions are never
+ * touched.
+ */
+export async function syncTraineeFolderReaders(
+  drive: drive_v3.Drive,
+  folderId: string,
+  emails: Array<string | undefined>,
+) {
+  const desired = new Set(
+    emails
+      .map((email) => email?.trim().toLowerCase())
+      .filter(Boolean) as string[],
+  );
+  const current = await drive.permissions.list({
+    fileId: folderId,
+    supportsAllDrives: true,
+    fields:
+      "permissions(id,type,role,emailAddress,permissionDetails(inherited))",
+  });
+  const directUserPermissions = (current.data.permissions || []).filter(
+    (permission) =>
+      permission.id &&
+      permission.type === "user" &&
+      permission.role === "reader" &&
+      !permission.permissionDetails?.some((detail) => detail.inherited),
+  );
+
+  await Promise.all(
+    directUserPermissions
+      .filter(
+        (permission) =>
+          permission.emailAddress &&
+          !desired.has(permission.emailAddress.toLowerCase()),
+      )
+      .map((permission) =>
+        drive.permissions.delete({
+          fileId: folderId,
+          permissionId: permission.id!,
+          supportsAllDrives: true,
+        }),
+      ),
+  );
+
+  const existing = new Set(
+    (current.data.permissions || [])
+      .map((permission) => permission.emailAddress?.toLowerCase())
+      .filter(Boolean),
+  );
+  await Promise.all(
+    [...desired]
+      .filter((email) => !existing.has(email))
+      .map(async (email) => {
+        try {
+          await drive.permissions.create({
+            fileId: folderId,
+            supportsAllDrives: true,
+            sendNotificationEmail: false,
+            requestBody: { type: "user", role: "reader", emailAddress: email },
+          });
+        } catch (error: any) {
+          if (![400, 409].includes(Number(error?.code))) throw error;
+        }
+      }),
+  );
 }
 
 export async function getVerifiedDriveFile(fileId: string, traineeId: string) {

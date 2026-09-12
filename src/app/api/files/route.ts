@@ -93,6 +93,18 @@ export async function POST(req: NextRequest) {
         size,
         uploaderId: access.id,
         uploaderRole: access.role,
+        readerEmails: [
+          trainee.email,
+          trainee.currentSupervisorId
+            ? (
+                await adminDb
+                  .collection("supervisors")
+                  .doc(trainee.currentSupervisorId)
+                  .get()
+              ).data()?.email
+            : undefined,
+          process.env.ADMIN_EMAIL,
+        ],
       });
       return NextResponse.json({ uploadUrl });
     }
