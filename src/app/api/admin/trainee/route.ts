@@ -26,13 +26,19 @@ export async function POST(req: NextRequest) {
   if (!name || !email || !phone || !license) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
+  if (!new Set(["QASP-S", "QBA"]).has(String(license)))
+    return NextResponse.json({ error: "INVALID_LICENSE" }, { status: 400 });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existing = await adminDb.collection("trainees").where("email", "==", normalizedEmail).limit(1).get();
+  if (!existing.empty)
+    return NextResponse.json({ error: "EMAIL_EXISTS" }, { status: 409 });
 
   const requiredHours = license === "QASP-S" ? 1000 : 2000;
   const supervisionTargetHours = license === "QASP-S" ? 50 : 100;
   const ref = await adminDb.collection("trainees").add({
-    name,
-    email,
-    phone,
+    name: String(name).trim(),
+    email: normalizedEmail,
+    phone: String(phone).trim(),
     license,
     requiredHours,
     fieldworkTargetHours: requiredHours,

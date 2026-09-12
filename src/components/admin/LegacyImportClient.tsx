@@ -9,7 +9,7 @@ type ImportFile = Array<{
   activities: unknown[];
 }>;
 
-export default function LegacyImportClient() {
+export default function LegacyImportClient({ embedded = false, onImported }: { embedded?: boolean; onImported?: () => void }) {
   const [supervisorEmail, setSupervisorEmail] = useState("master.bcba@gmail.com");
   const [supervisorName, setSupervisorName] = useState("د. منى أبو الهول");
   const [license, setLicense] = useState<"QASP-S" | "QBA">("QASP-S");
@@ -67,14 +67,15 @@ export default function LegacyImportClient() {
       });
       const body = await response.json();
       setResult({ ok: response.ok, status: response.status, ...body });
+      if (!dryRun && response.ok) setTimeout(() => onImported?.(), 900);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main dir="rtl" style={{ padding: 32, maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ color: "#001442", marginBottom: 8 }}>استيراد السجلات السابقة</h1>
+    <main dir="rtl" style={{ padding: embedded ? 0 : 32, maxWidth: 1100, margin: "0 auto" }}>
+      <h1 style={{ color: "#001442", marginBottom: 8 }}>{embedded ? "استيراد ملف متدرب" : "استيراد السجلات السابقة"}</h1>
       <p style={{ color: "#64748b", marginBottom: 24 }}>
         أداة إدارية محمية لمطابقة الحسابات وربط المشرف واستيراد الساعات المعتمدة دون تكرار. لا تُرسل دعوات أو كلمات مرور عند الاستيراد.
       </p>

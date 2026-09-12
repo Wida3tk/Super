@@ -1,13 +1,13 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
-import TraineeLifecyclePanel from '@/components/admin/TraineeLifecyclePanel';
-import Link from 'next/link';
+import TraineeManagementWorkspace from '@/components/admin/TraineeManagementWorkspace';
 
-interface Props { params: Promise<{ locale: string }>; }
+interface Props { params: Promise<{ locale: string }>; searchParams: Promise<{ view?: string }>; }
 
-export default async function TraineesPage({ params }: Props) {
+export default async function TraineesPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { view } = await searchParams;
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__session')?.value;
   if (!sessionCookie) redirect(`/${locale}/login?portal=admin`);
@@ -25,12 +25,7 @@ export default async function TraineesPage({ params }: Props) {
     const transitions = transitionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     return (
       <AdminPageLayout locale={locale} title="المتدربون">
-        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
-          <Link href={`/${locale}/admin/import`} style={{ background: '#0D40FC', color: '#fff', borderRadius: 10, padding: '11px 16px', fontWeight: 800, textDecoration: 'none', boxShadow: '0 8px 20px rgba(13,64,252,.18)' }}>
-            📥 استيراد ملف متدرب
-          </Link>
-        </div>
-        <TraineeLifecyclePanel supervisors={supervisors} trainees={trainees} transitions={transitions} />
+        <TraineeManagementWorkspace locale={locale} initialView={view === 'add' ? 'add' : view === 'import' ? 'import' : 'manage'} supervisors={supervisors} trainees={trainees} transitions={transitions} />
       </AdminPageLayout>
     );
   } catch { redirect(`/${locale}/login?portal=admin`); }
