@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, email, password, bio, accountType } = await request.json();
-    if (!name || !email || !password) {
+    const cleanBio = String(bio || "").trim();
+    if (!name || !email || !password || !cleanBio) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
 
@@ -34,13 +35,15 @@ export async function POST(request: NextRequest) {
       .set({
         name,
         email,
-        bio: bio || "",
+        bio: cleanBio,
         isActive: true,
         totalSessions: 0,
         ratingAverage: 0,
         createdAt: new Date().toISOString(),
         accountType: accountType === "consultant" ? "consultant" : "supervisor",
         authUid: userRecord.uid,
+        publicProfileId: userRecord.uid,
+        profileCreatedAt: new Date().toISOString(),
         availableSeats: 0,
       });
 

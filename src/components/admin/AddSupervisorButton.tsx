@@ -65,6 +65,7 @@ export default function AddSupervisorButton() {
         const errMap: Record<string, string> = {
           EMAIL_EXISTS: "البريد الإلكتروني مسجل مسبقاً",
           MISSING_FIELDS: "يرجى تعبئة جميع الحقول المطلوبة",
+          BIO_REQUIRED: "النبذة التعريفية إلزامية",
           SERVER_ERROR: "حدث خطأ، حاولي مرة أخرى",
         };
         setMsg(errMap[data.error] ?? data.error);
@@ -290,14 +291,15 @@ export default function AddSupervisorButton() {
                   </div>
                 </div>
                 <div className="field">
-                  <label>نبذة مختصرة (اختياري)</label>
+                  <label>نبذة عن المشرف <span>*</span></label>
                   <input
                     type="text"
-                    placeholder="مشرف تحليل السلوك التطبيقي"
+                    placeholder="اكتبي نبذة مهنية مختصرة تظهر في صفحته التعريفية"
                     value={form.bio}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, bio: e.target.value }))
                     }
+                    required
                   />
                 </div>
 

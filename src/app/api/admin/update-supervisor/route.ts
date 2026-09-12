@@ -31,10 +31,13 @@ export async function POST(request: NextRequest) {
       accountType,
     } = await request.json();
     if (!id) return NextResponse.json({ error: "MISSING_ID" }, { status: 400 });
+    if (bio !== undefined && !String(bio).trim())
+      return NextResponse.json({ error: "BIO_REQUIRED" }, { status: 400 });
 
     const updateData: any = { updatedAt: new Date().toISOString() };
     if (name !== undefined) updateData.name = name;
-    if (bio !== undefined) updateData.bio = bio;
+    if (bio !== undefined) updateData.bio = String(bio).trim();
+    updateData.publicProfileId = id;
     if (specialization !== undefined)
       updateData.specialization = specialization;
     if (photo !== undefined) updateData.photo = photo;

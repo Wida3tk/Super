@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const file = form.get("file");
     const commit = form.get("commit") === "true";
+    const bio = String(form.get("bio") || "").trim();
     if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".xlsx")) return NextResponse.json({ error: "INVALID_XLSX" }, { status: 400 });
     if (file.size > 15 * 1024 * 1024) return NextResponse.json({ error: "FILE_TOO_LARGE" }, { status: 413 });
     const workbook = new ExcelJS.Workbook();
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
     if (!name || !email.includes("@")) return NextResponse.json({ error: "MISSING_SUPERVISOR_INFORMATION" }, { status: 400 });
     const preview = { name, email, credential, availableSeats, accountType: "supervisor", sourceFile: file.name };
     if (!commit) return NextResponse.json({ ok: true, preview });
+    if (!bio) return NextResponse.json({ error: "BIO_REQUIRED" }, { status: 400 });
     const duplicate = await adminDb.collection("supervisors").where("email", "==", email).limit(1).get();
     let authUid = String(duplicate.docs[0]?.data().authUid || "");
     if (!authUid) {
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       catch { authUid = (await adminAuth.createUser({ email, displayName: name })).uid; }
     }
     const ref = duplicate.empty ? adminDb.collection("supervisors").doc() : duplicate.docs[0].ref;
-    await ref.set({ ...preview, authUid, isActive: true, accountStatus: "prepared", updatedAt: new Date().toISOString(), ...(duplicate.empty ? { createdAt: new Date().toISOString() } : {}) }, { merge: true });
+    await ref.set({ ...preview, bio, authUid, publicProfileId: ref.id, profileCreatedAt: new Date().toISOString(), isActive: true, accountStatus: "prepared", updatedAt: new Date().toISOString(), ...(duplicate.empty ? { createdAt: new Date().toISOString() } : {}) }, { merge: true });
     await adminAuth.setCustomUserClaims(authUid, { role: "supervisor", supervisorId: ref.id });
     return NextResponse.json({ ok: true, supervisorId: ref.id, created: duplicate.empty, accountStatus: "prepared", emailSent: false, preview });
   } catch (error) {

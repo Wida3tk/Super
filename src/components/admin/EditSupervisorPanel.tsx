@@ -85,6 +85,11 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
+    if (!form.bio.trim()) {
+      setIsError(true);
+      setMsg("❌ النبذة التعريفية إلزامية قبل حفظ صفحة المشرف");
+      return;
+    }
     setLoading(true);
     setMsg("");
     setIsError(false);
@@ -574,7 +579,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                 </div>
 
                 <div className="ep-field">
-                  <label className="ep-label">النبذة التعريفية</label>
+                  <label className="ep-label">النبذة التعريفية <span style={{color:"#DC2626"}}>*</span></label>
                   <textarea
                     className="ep-textarea"
                     placeholder="اكتب نبذة مفصلة عن المشرف — خبراته، شهاداته، مجالات تخصصه..."
@@ -583,6 +588,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
                       setForm((p) => ({ ...p, bio: e.target.value }))
                     }
                     rows={4}
+                    required
                   />
                 </div>
 
