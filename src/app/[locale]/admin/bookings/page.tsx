@@ -15,8 +15,12 @@ export default async function BookingsPage({ params }: Props) {
     const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login?portal=admin`);
-    const bookingsSnap = await adminDb.collection('bookings').orderBy('createdAt', 'desc').get();
+    const [bookingsSnap, supervisorsSnap] = await Promise.all([
+      adminDb.collection('bookings').orderBy('createdAt', 'desc').get(),
+      adminDb.collection('supervisors').get(),
+    ]);
     const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    const supervisorNames = new Map(supervisorsSnap.docs.map(doc => [doc.id, String(doc.data().name || 'مشرف غير مسمى')]));
     const confirmed = bookings.filter(b => b.status === 'confirmed').length;
     const cancelled = bookings.filter(b => b.status === 'cancelled').length;
     return (
@@ -54,7 +58,7 @@ export default async function BookingsPage({ params }: Props) {
                     <td style={{ padding: '12px 16px', color: COLORS.gray500, fontSize: 12 }}>{b.studentEmail || '—'}</td>
                     <td style={{ padding: '12px 16px' }}>{b.date || '—'}</td>
                     <td style={{ padding: '12px 16px' }}>{b.time || '—'}</td>
-                    <td style={{ padding: '12px 16px', color: COLORS.gray500, fontSize: 12 }}>{b.supervisorId || '—'}</td>
+                    <td style={{ padding: '12px 16px' }}><div style={{fontWeight:700,color:COLORS.deep}}>{b.supervisorName || supervisorNames.get(b.supervisorId) || 'مشرف غير موجود'}</div><small style={{display:'block',color:COLORS.gray500,marginTop:2}}>{b.supervisorId && !supervisorNames.has(b.supervisorId) ? 'حساب محذوف أو قديم' : 'المشرف المسؤول'}</small></td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 99, background: b.status === 'confirmed' ? '#EAF3DE' : b.status === 'cancelled' ? '#FCEBEB' : '#FAEEDA', color: b.status === 'confirmed' ? '#3B6D11' : b.status === 'cancelled' ? '#A32D2D' : '#854F0B' }}>
                         {b.status === 'confirmed' ? '✓ مؤكد' : b.status === 'cancelled' ? '✕ ملغى' : '⏳ معلق'}
