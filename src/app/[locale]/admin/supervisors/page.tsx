@@ -38,7 +38,7 @@ export default async function SupervisorsPage({ params, searchParams }: Props) {
     }));
     return (
       <AdminPageLayout locale={locale} title="حسابات المشرفين">
-        <SupervisorTabs supervisors={supervisorsWithOperations as any} initialTab={view === 'import' ? 'import' : 'table'} />
+        <SupervisorTabs locale={locale} supervisors={supervisorsWithOperations as any} initialTab={view === 'import' ? 'import' : 'table'} />
       </AdminPageLayout>
     );
   } catch { redirect(`/${locale}/login?portal=admin`); }

@@ -13,7 +13,7 @@ interface Supervisor {
 }
 type Tab = "table" | "edit" | "import";
 
-export default function SupervisorTabs({ supervisors, initialTab = "table" }: { supervisors: Supervisor[]; initialTab?: Tab }) {
+export default function SupervisorTabs({ supervisors, initialTab = "table", locale = "ar" }: { supervisors: Supervisor[]; initialTab?: Tab; locale?: string }) {
   const [records, setRecords] = useState(supervisors);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [authSupervisor, setAuthSupervisor] = useState<Supervisor | null>(null);
@@ -60,11 +60,11 @@ export default function SupervisorTabs({ supervisors, initialTab = "table" }: { 
       {!records.length ? <div className="empty-filter">لا يوجد مشرفون حتى الآن.</div> : !visible.length ? <div className="empty-filter">لا توجد حسابات تطابق البحث أو التصفية الحالية.</div> : <div className="table-wrap"><table><thead><tr><th>المشرف والحساب</th><th>الحالة</th><th>الإشراف</th><th>المواعيد</th><th>الحساب والصفحة</th><th>إجراءات</th></tr></thead><tbody>{visible.map((supervisor) => {
         const cannotDelete = Boolean(supervisor.isProtectedAdmin || Number(supervisor.assignedTrainees || 0) || Number(supervisor.upcomingBookings || 0));
         return <tr key={supervisor.id}>
-          <td><div className="identity"><div className="avatar">{supervisor.photo ? <img src={supervisor.photo} alt="" /> : (supervisor.name || "م")[0]}</div><div><a className="name" href={`/ar/admin/supervisors/${supervisor.id}`}>{supervisor.name || "—"}</a><small>{supervisor.email || "—"}</small><div className="supervisor-meta"><span>{supervisor.accountType === "consultant" ? "مستشار" : "مشرف"}</span>{supervisor.isProtectedAdmin && <span>حساب الإدارة</span>}</div></div></div></td>
+          <td><div className="identity"><div className="avatar">{supervisor.photo ? <img src={supervisor.photo} alt="" /> : (supervisor.name || "م")[0]}</div><div><a className="name" href={`/${locale}/admin/supervisors/${supervisor.id}?view=work`}>{supervisor.name || "—"}</a><small>{supervisor.email || "—"}</small><div className="supervisor-meta"><span>{supervisor.accountType === "consultant" ? "مستشار" : "مشرف"}</span>{supervisor.isProtectedAdmin && <span>حساب الإدارة</span>}</div></div></div></td>
           <td><span className={`badge ${supervisor.isActive ? "active" : "stopped"}`}>{supervisor.isActive ? "نشط" : "موقوف"}</span></td>
           <td><b>{supervisor.assignedTrainees || 0} متدرب</b><small>{supervisor.accountType === "consultant" ? "لا توجد مقاعد" : `${supervisor.availableSeats || 0} مقعد متاح`}</small></td>
-          <td><div className="operation-stack"><small>{supervisor.upcomingBookings || 0} مقابلة قادمة</small><a className="schedule" href={`/ar/admin/supervisors/${supervisor.id}#schedule`}>{supervisor.accountType === "consultant" ? "إدارة المواعيد" : "المواعيد والمقاعد"}</a></div></td>
-          <td><div className="row-actions"><button className="account" onClick={() => setAuthSupervisor(supervisor)}>إدارة الدخول</button><a href={`/ar/supervisor/${supervisor.publicProfileId || supervisor.id}`} target="_blank" rel="noreferrer">الصفحة العامة</a><a href={`/ar/admin/supervisors/${supervisor.id}`}>ملف العمل</a></div></td>
+          <td><div className="operation-stack"><small>{supervisor.upcomingBookings || 0} مقابلة قادمة</small><a className="schedule" href={`/${locale}/admin/supervisors/${supervisor.id}?view=schedule`}>{supervisor.accountType === "consultant" ? "إدارة المواعيد" : "المواعيد والمقاعد"}</a></div></td>
+          <td><div className="row-actions"><button className="account" onClick={() => setAuthSupervisor(supervisor)}>إدارة الدخول</button><a href={`/${locale}/supervisor/${supervisor.publicProfileId || supervisor.id}`} target="_blank" rel="noreferrer">الصفحة العامة</a><a href={`/${locale}/admin/supervisors/${supervisor.id}?view=work`}>ملف العمل</a></div></td>
           <td><div className="row-actions"><button className={supervisor.isActive ? "stop" : "start"} disabled={workingId === supervisor.id || supervisor.isProtectedAdmin} onClick={() => toggleStatus(supervisor)}>{supervisor.isActive ? "إيقاف" : "تفعيل"}</button><button className="delete" disabled={workingId === supervisor.id || cannotDelete} title={cannotDelete ? "الحذف غير متاح لوجود ارتباطات أو لأن الحساب محمي" : "حذف الحساب"} onClick={() => deleteSupervisor(supervisor)}>حذف</button></div></td>
         </tr>;
       })}</tbody></table></div>}

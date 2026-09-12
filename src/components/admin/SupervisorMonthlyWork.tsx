@@ -5,7 +5,7 @@ const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","ي
 const num=(v:unknown)=>Number(v||0);
 const monthOf=(x:any)=>String(x.month||x.date||x.issuedAt||x.createdAt||"").slice(0,7);
 
-export default function SupervisorMonthlyWork({supervisor,trainees,activities,sessions,minutes,documents}:{supervisor:any;trainees:any[];activities:any[];sessions:any[];minutes:any[];documents:any[]}){
+export default function SupervisorMonthlyWork({supervisor,trainees,activities,sessions,minutes,documents,locale="ar"}:{supervisor:any;trainees:any[];activities:any[];sessions:any[];minutes:any[];documents:any[];locale?:string}){
   const months=useMemo(()=>Array.from(new Set([...activities,...sessions,...minutes,...documents].map(monthOf).filter(x=>/^\d{4}-\d{2}$/.test(x)))).sort().reverse(),[activities,sessions,minutes,documents]);
   const [selected,setSelected]=useState(months[0]||"");
   const [search,setSearch]=useState("");
@@ -47,7 +47,7 @@ export default function SupervisorMonthlyWork({supervisor,trainees,activities,se
   const detailGroups=visibleRows.map(({trainee})=>({trainee,rows:detailRows.filter(row=>row.traineeId===trainee.id||(row.traineeIds||[]).includes(trainee.id))})).filter(group=>group.rows.length);
 
   return <section dir="rtl" style={{marginBottom:18}}>
-    <div style={{background:"linear-gradient(125deg,#001442,#0D40FC)",color:"white",borderRadius:18,padding:"20px 24px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div><small style={{color:"#8FE8FF"}}>سجل المشرف الشهري</small><h2 style={{margin:"5px 0"}}>{supervisor.name}</h2><span style={{color:"#D6E1FF",fontSize:12}}>{supervisor.email}</span></div><a href="#schedule" style={{color:"#001442",background:"white",textDecoration:"none",padding:"9px 13px",borderRadius:9,fontSize:12,fontWeight:700}}>إدارة المواعيد والمقاعد</a></div>
+    <div style={{background:"linear-gradient(125deg,#001442,#0D40FC)",color:"white",borderRadius:18,padding:"20px 24px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div><small style={{color:"#8FE8FF"}}>ملف العمل وكشف المتدربين</small><h2 style={{margin:"5px 0"}}>{supervisor.name}</h2><span style={{color:"#D6E1FF",fontSize:12}}>{supervisor.email}</span></div><a href={`/${locale}/admin/supervisors/${supervisor.id}?view=schedule`} style={{color:"#001442",background:"white",textDecoration:"none",padding:"9px 13px",borderRadius:9,fontSize:12,fontWeight:700}}>{supervisor.accountType === "consultant" ? "إدارة المواعيد" : "إدارة المواعيد والمقاعد"}</a></div>
     <div style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,overflow:"hidden"}}>
       <div style={{padding:"17px 18px 12px"}}><h3 style={{margin:0,color:"#001442"}}>المتابعة حسب الشهر</h3><p style={{fontSize:12,color:"#64748B",margin:"5px 0 0"}}>بنفس تنظيم ملف المشرف: اختر الشهر لمراجعة جميع المتدربين والجلسات المسجلة خلاله.</p></div>
       <div style={{display:"flex",gap:7,overflowX:"auto",padding:"0 18px 13px",borderBottom:"1px solid #E2E8F0"}}>{months.map(m=><button key={m} onClick={()=>setSelected(m)} style={{whiteSpace:"nowrap",border:selected===m?"1px solid #0D40FC":"1px solid #DCE5F0",background:selected===m?"#0D40FC":"#F8FAFC",color:selected===m?"white":"#475569",padding:"9px 14px",borderRadius:9,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>{label(m)}</button>)}</div>
