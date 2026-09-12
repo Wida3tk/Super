@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   sendPasswordResetEmail,
+  signOut,
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -101,7 +102,7 @@ export default function LoginPage() {
         res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, portal }),
         });
       } catch (fetchErr: any) {
         setError("خطأ في الاتصال بالسيرفر");
@@ -113,6 +114,13 @@ export default function LoginPage() {
       const sessionData = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (sessionData.error === "ADMIN_ONLY") {
+          await signOut(auth);
+          setError("هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة");
+          setLoading(false);
+          setStep("");
+          return;
+        }
         setError(
           `فشل إنشاء الجلسة: ${sessionData.error || res.status} - ${sessionData.detail || ""}`,
         );
@@ -125,14 +133,20 @@ export default function LoginPage() {
       setStep("تم! جارٍ التوجيه...");
       const role =
         sessionData.role || (sessionData.isAdmin ? "admin" : "supervisor");
+      const requestedNext = new URLSearchParams(window.location.search).get("next");
+      const safeAdminNext =
+        role === "admin" && requestedNext && /^\/(ar|en)\/admin(?:\/|$)/.test(requestedNext)
+          ? requestedNext
+          : null;
       const dest =
-        role === "admin"
+        safeAdminNext ||
+        (role === "admin"
           ? "/ar/admin"
           : role === "trainee"
             ? "/ar/trainee-dashboard"
             : role === "client"
               ? "/ar/client-dashboard"
-              : "/ar/supervisor-dashboard";
+              : "/ar/supervisor-dashboard");
       // انتظر ثانية عشان الـ cookie ينحفظ
       await new Promise((r) => setTimeout(r, 800));
       window.location.href = dest;

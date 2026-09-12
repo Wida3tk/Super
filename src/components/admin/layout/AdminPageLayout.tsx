@@ -37,7 +37,7 @@ export default function AdminPageLayout({ locale, title, children, notifCount = 
                 style={{ width: 38, height: 38, borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                 <i className="ti ti-bell" style={{ fontSize: 18, color: '#64748B' }} aria-hidden="true" />
               </Link>
-              <LogoutButton locale={locale} />
+              <LogoutButton locale={locale} portal="admin" />
             </div>
           </div>
           <div className="content">

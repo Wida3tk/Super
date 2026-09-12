@@ -12,7 +12,7 @@ export default async function AccountsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!(await requireAdmin())) redirect(`/${locale}/login`);
+  if (!(await requireAdmin())) redirect(`/${locale}/login?portal=admin`);
   const snapshot = await adminDb
     .collection("clients")
     .orderBy("createdAt", "desc")

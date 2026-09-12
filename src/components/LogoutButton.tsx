@@ -5,7 +5,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 import { useState } from 'react';
 
-export default function LogoutButton({ locale = 'ar' }: { locale?: string }) {
+export default function LogoutButton({ locale = 'ar', portal }: { locale?: string; portal?: 'admin' }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -14,7 +14,7 @@ export default function LogoutButton({ locale = 'ar' }: { locale?: string }) {
     try {
       await signOut(auth);
       await fetch('/api/auth/logout', { method: 'POST' });
-      router.push(`/${locale}/login`);
+      router.push(`/${locale}/login${portal === 'admin' ? '?portal=admin' : ''}`);
     } catch {
       setLoading(false);
     }

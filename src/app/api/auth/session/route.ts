@@ -5,7 +5,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json();
+    const { token, portal } = await request.json();
 
     if (!token) {
       return NextResponse.json({ error: "NO_TOKEN" }, { status: 400 });
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     let sessionCookie;
     try {
       sessionCookie = await adminAuth.createSessionCookie(token, {
-        expiresIn: 60 * 60 * 24 * 5 * 1000,
+        expiresIn: 60 * 60 * 24 * 14 * 1000,
       });
     } catch (e: any) {
       console.error("createSessionCookie failed:", e.message);
@@ -52,11 +52,15 @@ export async function POST(request: NextRequest) {
       else if (client.exists) role = "client";
     }
 
+    if (portal === "admin" && role !== "admin") {
+      return NextResponse.json({ error: "ADMIN_ONLY" }, { status: 403 });
+    }
+
     const response = NextResponse.json({ success: true, isAdmin, role });
     response.cookies.set("__session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 5,
+      maxAge: 60 * 60 * 24 * 14,
       path: "/",
       sameSite: "lax",
     });

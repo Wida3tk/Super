@@ -10,11 +10,11 @@ export default async function BookingsPage({ params }: Props) {
   const { locale } = await params;
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__session')?.value;
-  if (!sessionCookie) redirect(`/${locale}/login`);
+  if (!sessionCookie) redirect(`/${locale}/login?portal=admin`);
   try {
     const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login`);
+    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login?portal=admin`);
     const bookingsSnap = await adminDb.collection('bookings').orderBy('createdAt', 'desc').get();
     const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
     const confirmed = bookings.filter(b => b.status === 'confirmed').length;
@@ -68,5 +68,5 @@ export default async function BookingsPage({ params }: Props) {
         </div>
       </AdminPageLayout>
     );
-  } catch { redirect(`/${locale}/login`); }
+  } catch { redirect(`/${locale}/login?portal=admin`); }
 }

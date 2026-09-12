@@ -21,7 +21,7 @@ async function verifyAdmin() {
 export default async function NotificationsPage({ params }: Props) {
   const { locale } = await params;
   const auth = await verifyAdmin();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login?portal=admin`);
   const { adminDb } = auth;
 
   const [notifsSnap, campaignsSnap, supervisorsSnap, traineesSnap] = await Promise.all([

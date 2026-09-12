@@ -9,11 +9,11 @@ export default async function MonthsPage({ params }: Props) {
   const { locale } = await params;
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__session')?.value;
-  if (!sessionCookie) redirect(`/${locale}/login`);
+  if (!sessionCookie) redirect(`/${locale}/login?portal=admin`);
   try {
     const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login`);
+    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login?portal=admin`);
     const currentMonth = new Date().toISOString().slice(0, 7);
     const [supervisorsSnap, traineesSnap, approvalsSnap, activitiesSnap] = await Promise.all([
       adminDb.collection('supervisors').get(),
@@ -59,5 +59,5 @@ export default async function MonthsPage({ params }: Props) {
         <AdminSupervisionPanel supervisors={supervisors} initialTrainees={trainees} initialSnapshots={snapshots} />
       </AdminPageLayout>
     );
-  } catch { redirect(`/${locale}/login`); }
+  } catch { redirect(`/${locale}/login?portal=admin`); }
 }

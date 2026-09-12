@@ -24,7 +24,12 @@ export function proxy(request: NextRequest) {
 
   if (isProtected && !sessionCookie) {
     const locale = pathname.startsWith('/ar') ? 'ar' : 'en';
-    return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
+    const loginUrl = new URL(`/${locale}/login`, request.url);
+    if (pathname.includes('/admin')) {
+      loginUrl.searchParams.set('portal', 'admin');
+      loginUrl.searchParams.set('next', `${pathname}${request.nextUrl.search}`);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   return intlMiddleware(request);

@@ -9,7 +9,7 @@ export default async function RequestsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  if (!(await requireAdmin())) redirect(`/${locale}/login`);
+  if (!(await requireAdmin())) redirect(`/${locale}/login?portal=admin`);
   const [snapshot, supervisorsSnap] = await Promise.all([
     adminDb.collection("traineeRequests").orderBy("createdAt", "desc").get(),
     adminDb.collection("supervisors").where("isActive", "==", true).get(),

@@ -27,7 +27,7 @@ async function verifyAdmin() {
 export default async function AdminDashboardPage({ params }: Props) {
   const { locale } = await params;
   const auth = await verifyAdmin();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login?portal=admin`);
   const { adminDb } = auth;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
