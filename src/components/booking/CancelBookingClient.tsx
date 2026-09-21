@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { cancelBookingByToken } from '@/lib/actions/bookingActions';
 import { useRouter } from 'next/navigation';
 
-interface Props { token: string; locale: string; }
+interface Props { token: string; }
 
-export default function CancelBookingClient({ token, locale }: Props) {
+export default function CancelBookingClient({ token }: Props) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -14,7 +14,7 @@ export default function CancelBookingClient({ token, locale }: Props) {
 
   const handleCancel = async () => {
     setCancelling(true); setError('');
-    const result = await cancelBookingByToken(token, locale as 'ar' | 'en');
+    const result = await cancelBookingByToken(token);
     if (result.success) {
       router.refresh();
     } else {

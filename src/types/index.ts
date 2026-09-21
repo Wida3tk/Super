@@ -364,6 +364,9 @@ export interface Session {
   notes?: string;
   createdAt: string;
   createdBy: string; // supervisorId أو adminId
+  deleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 // ===========================

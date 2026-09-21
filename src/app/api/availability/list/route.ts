@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
 import { adminDb } from '@/lib/firebase/admin';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supervisor = await getAuthenticatedSupervisor();
     if (!supervisor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const slots = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     return NextResponse.json({ slots });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ slots: [], error: 'Failed' }, { status: 500 });
   }
 }

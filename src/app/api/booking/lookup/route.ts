@@ -1,12 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceRateLimit, getRequestIdentifier } from '@/lib/security/rateLimit';
+import { isBookingReference, maskPersonName } from '@/lib/validation/booking';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const ref = searchParams.get('ref')?.trim().toUpperCase();
 
-  if (!ref) return NextResponse.json({ error: 'MISSING_REF' }, { status: 400 });
+  if (!ref || !isBookingReference(ref))
+    return NextResponse.json({ error: 'INVALID_REF' }, { status: 400 });
 
   try {
+    const rateLimit = await enforceRateLimit(getRequestIdentifier(request), {
+      action: 'booking_lookup',
+      limit: 30,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rateLimit.allowed)
+      return NextResponse.json(
+        { error: 'TOO_MANY_ATTEMPTS' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        },
+      );
+
     const { adminDb } = await import('@/lib/firebase/admin');
 
     const snap = await adminDb.collection('bookings')
@@ -14,7 +31,11 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .get();
 
-    if (snap.empty) return NextResponse.json({ booking: null });
+    if (snap.empty)
+      return NextResponse.json(
+        { booking: null },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
 
     const doc = snap.docs[0];
     const data = doc.data();
@@ -30,14 +51,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       booking: {
         referenceNumber: data.referenceNumber,
-        studentName: data.studentName,
+        studentName: maskPersonName(data.studentName),
         supervisorName,
         date: data.date,
         time: data.time,
         status: data.status,
       }
-    });
-  } catch (error: any) {
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
     return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 });
   }
 }

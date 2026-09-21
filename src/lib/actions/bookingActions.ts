@@ -2,6 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
+import { headers } from "next/headers";
 import { recordOperationalFailure } from "@/lib/operations/monitoring";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import {
@@ -19,6 +20,7 @@ import {
   cancelCalendarEvent,
   createCalendarEvent,
 } from "@/lib/calendar/googleCalendar";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 type BookingResult = {
   success: boolean;
@@ -41,6 +43,20 @@ export async function createBooking(
   payload: CreateBookingPayload,
   locale: "ar" | "en" = "ar",
 ): Promise<BookingResult> {
+  const requestHeaders = await headers();
+  const identifier =
+    requestHeaders.get("x-vercel-forwarded-for")?.trim() ||
+    requestHeaders.get("x-real-ip")?.trim() ||
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+  const rateLimit = await enforceRateLimit(identifier, {
+    action: "booking",
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!rateLimit.allowed)
+    return { success: false, error: "TOO_MANY_ATTEMPTS" };
+
   const validationError = validateBookingPayload(payload);
   if (validationError) return { success: false, error: validationError };
 
@@ -275,7 +291,6 @@ export async function createBooking(
 
 export async function cancelBookingByToken(
   token: string,
-  locale: "ar" | "en" = "ar",
 ): Promise<{ success: boolean; error?: string }> {
   if (!isManagementToken(token)) {
     return { success: false, error: "BOOKING_NOT_FOUND" };
@@ -337,7 +352,6 @@ export async function cancelBookingByToken(
         booking.studentName,
         booking.date,
         booking.time,
-        locale,
       );
     } catch (error) {
       console.error("Cancellation email error:", error);

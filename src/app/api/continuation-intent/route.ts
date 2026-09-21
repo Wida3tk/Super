@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
+import {
+  continuationOutcome,
+  shouldReleaseInterviewSeat,
+  type ContinuationDecision,
+} from "@/lib/validation/continuation";
 
 async function sessionUser() {
   const session = (await cookies()).get("__session")?.value;
@@ -40,44 +45,90 @@ export async function POST(req: NextRequest) {
 
   const intentField = isSupervisor ? "supervisorContinuationIntent" : "traineeContinuationIntent";
   const otherField = isSupervisor ? "traineeContinuationIntent" : "supervisorContinuationIntent";
-  const otherDecision = booking[otherField] || traineeDoc.data()[otherField] || "pending";
-  const bothContinue = decision === "continue" && otherDecision === "continue";
-  const declined = decision === "decline" || otherDecision === "decline";
-  const stage = declined
-    ? "interview_declined"
-    : bothContinue ? "admin_review" : "awaiting_decisions";
   const now = new Date().toISOString();
-  const batch = adminDb.batch();
-  batch.update(bookingRef, {
-    [intentField]: decision,
-    continuationUpdatedAt: now,
-    ...(declined ? { status: "closed", closedReason: "continuation_declined", closedAt: now } : {}),
-  });
-  batch.update(traineeDoc.ref, {
-    [intentField]: decision,
-    interviewSupervisorId: booking.supervisorId,
-    interviewBookingId: bookingId,
-    onboardingStage: stage,
-    updatedAt: now,
-  });
-  if (bothContinue) {
-    const notificationRef = adminDb.collection("notifications").doc();
-    batch.set(notificationRef, {
-      type: "reminder",
-      targetType: "admin",
-      message: `اكتملت موافقة الطرفين للمتدرب ${traineeDoc.data().name || booking.studentName}. الطلب جاهز للمراجعة والتعاقد.`,
-      traineeId: traineeDoc.id,
-      supervisorId: booking.supervisorId,
-      read: false,
-      createdAt: now,
+  let result: ReturnType<typeof continuationOutcome>;
+  try {
+    result = await adminDb.runTransaction(async (transaction) => {
+      const [currentBooking, currentTrainee] = await Promise.all([
+        transaction.get(bookingRef),
+        transaction.get(traineeDoc.ref),
+      ]);
+      if (!currentBooking.exists) throw new Error("BOOKING_NOT_FOUND");
+      if (!currentTrainee.exists) throw new Error("TRAINEE_NOT_FOUND");
+
+      const current = currentBooking.data()!;
+      if (current.meetingStatus !== "completed" || current.bookingType === "consultation")
+        throw new Error("INTERVIEW_NOT_COMPLETED");
+      if (current.status === "closed") throw new Error("INTERVIEW_CLOSED");
+      const currentEmail = String(current.studentEmail || "").toLowerCase();
+      if (
+        (isSupervisor && current.supervisorId !== supervisorDoc.id) ||
+        (!isSupervisor && currentEmail !== email)
+      ) throw new Error("FORBIDDEN");
+
+      const otherDecision =
+        current[otherField] || currentTrainee.data()?.[otherField] || "pending";
+      const outcome = continuationOutcome(
+        decision as ContinuationDecision,
+        otherDecision,
+      );
+      const releaseSeat = shouldReleaseInterviewSeat(
+        outcome.declined,
+        String(current.status || ""),
+        current.seatReleased === true,
+      );
+
+      transaction.update(bookingRef, {
+        [intentField]: decision,
+        continuationUpdatedAt: now,
+        ...(outcome.declined
+          ? {
+              status: "closed",
+              closedReason: "continuation_declined",
+              closedAt: now,
+              ...(releaseSeat ? { seatReleased: true } : {}),
+            }
+          : {}),
+      });
+      transaction.update(traineeDoc.ref, {
+        [intentField]: decision,
+        interviewSupervisorId: current.supervisorId,
+        interviewBookingId: bookingId,
+        onboardingStage: outcome.stage,
+        updatedAt: now,
+      });
+      if (outcome.bothContinue && !current.continuationCompletedAt) {
+        transaction.update(bookingRef, { continuationCompletedAt: now });
+        transaction.set(adminDb.collection("notifications").doc(), {
+          type: "reminder",
+          targetType: "admin",
+          message: `اكتملت موافقة الطرفين للمتدرب ${currentTrainee.data()?.name || current.studentName}. الطلب جاهز للمراجعة والتعاقد.`,
+          traineeId: traineeDoc.id,
+          supervisorId: current.supervisorId,
+          read: false,
+          createdAt: now,
+        });
+      }
+      if (releaseSeat) {
+        transaction.update(adminDb.collection("supervisors").doc(current.supervisorId), {
+          availableSeats: FieldValue.increment(1),
+        });
+      }
+      return outcome;
     });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    const statusByCode: Record<string, number> = {
+      BOOKING_NOT_FOUND: 404,
+      TRAINEE_NOT_FOUND: 404,
+      INTERVIEW_NOT_COMPLETED: 409,
+      INTERVIEW_CLOSED: 409,
+      FORBIDDEN: 403,
+    };
+    if (statusByCode[code])
+      return NextResponse.json({ error: code }, { status: statusByCode[code] });
+    throw error;
   }
-  if (declined && booking.status !== "closed" && booking.seatReleased !== true) {
-    batch.update(bookingRef, { seatReleased: true });
-    batch.update(adminDb.collection("supervisors").doc(booking.supervisorId), {
-      availableSeats: FieldValue.increment(1),
-    });
-  }
-  await batch.commit();
+  const { stage, bothContinue } = result;
   return NextResponse.json({ success: true, stage, bothContinue });
 }

@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth/serverAuth';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { adminDb, adminAuth } = await import('@/lib/firebase/admin');
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
-    if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const { adminDb } = await import('@/lib/firebase/admin');
+    if (!(await requireAdmin()))
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const snap = await adminDb.collection('bookings').get();
     const bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -31,7 +25,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': 'attachment; filename=bookings.csv',
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error' }, { status: 500 });
   }
 }

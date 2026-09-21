@@ -1611,6 +1611,8 @@ function AgreementSummary({ agreement, assignments, supervisorName }: any) {
   );
 }
 
+// Kept as a reusable view for the upcoming documents tab rollout.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function DocumentDetails({ documents }: { documents: any[] }) {
   if (!documents.length)
     return (

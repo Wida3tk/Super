@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isManagementToken, validateBookingPayload } from "./booking";
+import {
+  getInterviewSeatDelta,
+  isManagementToken,
+  isBookingReference,
+  maskPersonName,
+  validateBookingPayload,
+} from "./booking";
 import type { CreateBookingPayload } from "@/types";
 
 const validPayload: CreateBookingPayload = {
@@ -53,5 +59,22 @@ describe("booking validation", () => {
     expect(isManagementToken("a".repeat(64))).toBe(true);
     expect(isManagementToken("A".repeat(64))).toBe(false);
     expect(isManagementToken("a".repeat(63))).toBe(false);
+  });
+
+  it("keeps interview seats in sync with missed-status transitions", () => {
+    expect(getInterviewSeatDelta("pending", "missed")).toBe(1);
+    expect(getInterviewSeatDelta("completed", "missed")).toBe(1);
+    expect(getInterviewSeatDelta("missed", "completed")).toBe(-1);
+    expect(getInterviewSeatDelta("missed", "pending")).toBe(-1);
+    expect(getInterviewSeatDelta("missed", "missed")).toBe(0);
+    expect(
+      getInterviewSeatDelta("pending", "missed", "consultation"),
+    ).toBe(0);
+  });
+
+  it("validates booking references and redacts customer names", () => {
+    expect(isBookingReference("SUL-A1B2-C3D4")).toBe(true);
+    expect(isBookingReference("SUL-../../-TEST")).toBe(false);
+    expect(maskPersonName("أحمد محمد علي")).toBe("أ*** م*** ع**");
   });
 });

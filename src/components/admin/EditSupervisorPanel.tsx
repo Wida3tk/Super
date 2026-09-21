@@ -23,18 +23,6 @@ interface Props {
   supervisors: Supervisor[];
 }
 
-// تحويل رابط Google Drive لرابط مباشر
-function convertDriveUrl(url: string): string {
-  if (!url) return url;
-  // صيغة: https://drive.google.com/file/d/FILE_ID/view
-  const match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (match) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-  // صيغة: https://drive.google.com/open?id=FILE_ID
-  const match2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-  if (match2) return `https://drive.google.com/uc?export=view&id=${match2[1]}`;
-  return url;
-}
-
 export default function EditSupervisorPanel({ supervisors }: Props) {
   const [selected, setSelected] = useState<Supervisor | null>(null);
   const [form, setForm] = useState({

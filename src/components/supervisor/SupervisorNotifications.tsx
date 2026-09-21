@@ -30,7 +30,6 @@ const timeAgo = (iso: string) => {
 
 export default function SupervisorNotifications({
   notifications: initial,
-  supervisorId,
 }: {
   notifications: Notification[];
   supervisorId: string;

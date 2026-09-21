@@ -4,7 +4,6 @@ export type QabaCredential = "QASP-S" | "QBA";
 
 export function credentialRules(
   credential: QabaCredential,
-  _fieldworkStartDate?: string,
 ) {
   if (credential === "QASP-S")
     return {
@@ -36,7 +35,10 @@ export function buildCompliance(
   credential: QabaCredential,
   fieldworkStartDate?: string,
 ) {
-  const rules = credentialRules(credential, fieldworkStartDate);
+  // Reserved for date-aware compliance rules once the applicable QABA
+  // transition windows are represented in the ruleset.
+  void fieldworkStartDate;
+  const rules = credentialRules(credential);
   const approved = activities.filter((a) => a.status === "approved");
   const direct = approved
     .filter((a) => a.activityType === "direct")

@@ -14,7 +14,7 @@ interface Props {
   locale: string;
 }
 
-export default function AvailabilityManager({ supervisorId, locale }: Props) {
+export default function AvailabilityManager({ supervisorId }: Props) {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("12:00");

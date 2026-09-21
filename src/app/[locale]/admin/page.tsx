@@ -68,10 +68,9 @@ export default async function AdminDashboardPage({ params }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const sessions = sessionsSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
+  const sessions = sessionsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((session: any) => !session.deleted) as any[];
   const snapshots = snapshotsSnap.docs.map((d) => ({
     id: d.id,
     ...d.data(),

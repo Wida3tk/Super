@@ -44,7 +44,7 @@ export function useSupervisorSupervision(supervisorId: string) {
     try {
       const data = await getTraineesBySupervisor(supervisorId);
       setTrainees(data);
-    } catch (e) {
+    } catch {
       setError("حدث خطأ في جلب المتدربين");
     }
   }, [supervisorId]);
@@ -59,7 +59,7 @@ export function useSupervisorSupervision(supervisorId: string) {
       ]);
       setSessions(sessionsData);
       setSnapshots(snapshotsData);
-    } catch (e) {
+    } catch {
       setError("حدث خطأ في جلب بيانات الشهر");
     } finally {
       setLoading(false);
@@ -152,7 +152,7 @@ export function useAdminSupervision(adminId?: string) {
     try {
       const data = await getAllTrainees();
       setTrainees(data);
-    } catch (e) {
+    } catch {
       setError("حدث خطأ في جلب البيانات");
     } finally {
       setLoading(false);
@@ -202,9 +202,9 @@ export function useAdminSupervision(adminId?: string) {
 
   const unlockMonthForTrainee = useCallback(
     async (supervisorId: string, traineeId: string, month: string) => {
-      await unlockMonth(supervisorId, traineeId, month, adminId || "admin");
+      await unlockMonth(supervisorId, traineeId, month);
     },
-    [adminId]
+    []
   );
 
   const getTraineesByStatus = useCallback(

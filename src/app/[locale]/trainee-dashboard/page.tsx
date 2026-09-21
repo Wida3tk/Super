@@ -147,7 +147,11 @@ export default async function TraineeDashboardPage({
     currentMonth,
     attendance: attendanceSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((item: any) => item.type === "absence" || item.type === "warning")
+      .filter(
+        (item: any) =>
+          !item.deleted &&
+          (item.type === "absence" || item.type === "warning"),
+      )
       .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),
     requests: requestsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))

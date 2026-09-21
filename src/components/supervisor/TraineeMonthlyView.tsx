@@ -33,7 +33,7 @@ interface Snapshot {
   lockedAt?: string;
 }
 
-export default function TraineeMonthlyView({ traineeId, supervisorId }: { traineeId: string; supervisorId: string }) {
+export default function TraineeMonthlyView({ traineeId }: { traineeId: string; supervisorId: string }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);

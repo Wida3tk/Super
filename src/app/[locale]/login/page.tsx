@@ -104,7 +104,7 @@ export default function LoginPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, portal }),
         });
-      } catch (fetchErr: any) {
+      } catch {
         setError("خطأ في الاتصال بالسيرفر");
         setLoading(false);
         setStep("");

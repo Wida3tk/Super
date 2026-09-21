@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebase/admin";
-import { cookies } from "next/headers";
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__session")?.value;
-  if (!sessionCookie) return false;
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return (
-      decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
-    );
-  } catch {
-    return false;
-  }
-}
+import { adminDb } from "@/lib/firebase/admin";
+import { requireAdmin } from "@/lib/auth/serverAuth";
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin()))
+  if (!(await requireAdmin()))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { type, message, targetType, targetId } = await req.json();

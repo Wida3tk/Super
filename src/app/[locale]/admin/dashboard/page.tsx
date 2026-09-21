@@ -32,7 +32,6 @@ export default async function AdminDashboardPage({ params }: Props) {
   const { adminDb } = auth;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const today = new Date().toISOString().split("T")[0];
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
@@ -68,10 +67,9 @@ export default async function AdminDashboardPage({ params }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const sessions = sessionsSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
+  const sessions = sessionsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((session: any) => !session.deleted) as any[];
   const snapshots = snapshotsSnap.docs.map((d) => ({
     id: d.id,
     ...d.data(),
@@ -93,9 +91,6 @@ export default async function AdminDashboardPage({ params }: Props) {
 
   // تنبيهات
   const over25 = snapshots.filter((s) => (s.groupPercentage || 0) > 25);
-  const noWorkHours = snapshots.filter(
-    (s) => !s.workHours || s.workHours === 0,
-  );
   const atRisk = trainees.filter((t) => {
     if (t.status !== "active") return false;
     const snap = snapshots.find((s) => s.traineeId === t.id);

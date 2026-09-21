@@ -8,16 +8,13 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp,
   writeBatch,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "./client"; // مسار firebase config الموجود عندك
 import type {
   Trainee,
   Session,
   MonthlySnapshot,
-  Assignment,
   License,
   OnboardingStage,
   TraineeStatus,
@@ -384,7 +381,9 @@ export async function getSessionsByTrainee(
     );
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Session);
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as Session)
+    .filter((session) => !session.deleted);
 }
 
 /** جلب جلسات مشرف في شهر معين */
@@ -399,32 +398,9 @@ export async function getSessionsBySupervisorMonth(
     orderBy("date", "desc"),
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Session);
-}
-
-/** حذف جلسة (المشرف في نفس الشهر فقط) */
-export async function deleteSession(
-  sessionId: string,
-  requesterId: string,
-  isAdmin: boolean,
-): Promise<void> {
-  const sessionSnap = await getDoc(doc(db, "sessions", sessionId));
-  if (!sessionSnap.exists()) throw new Error("الجلسة غير موجودة");
-
-  const session = sessionSnap.data() as Session;
-  const currentMonth = getCurrentMonth();
-
-  // المشرف ما يقدر يحذف جلسات شهر مختلف
-  if (!isAdmin && session.month !== currentMonth) {
-    throw new Error("لا يمكن حذف جلسات من شهر سابق");
-  }
-
-  // TODO: عكس الساعات من الـ snapshot والمتدرب
-  await updateDoc(doc(db, "sessions", sessionId), {
-    deleted: true,
-    deletedAt: new Date().toISOString(),
-    deletedBy: requesterId,
-  });
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as Session)
+    .filter((session) => !session.deleted);
 }
 
 // ===========================
@@ -499,7 +475,6 @@ export async function unlockMonth(
   supervisorId: string,
   traineeId: string,
   month: string,
-  adminId: string,
 ): Promise<void> {
   const snapshotId = getSnapshotId(supervisorId, traineeId, month);
   await updateDoc(doc(db, "monthlySnapshots", snapshotId), {

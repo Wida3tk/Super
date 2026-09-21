@@ -79,7 +79,7 @@ export default function BookingsManager({
           b.id === bookingId ? { ...b, meetingStatus: status } : b,
         ),
       );
-    } catch (e) {
+    } catch {
       alert("حدث خطأ، حاول مرة أخرى");
     } finally {
       setLoadingId(null);
@@ -115,7 +115,6 @@ export default function BookingsManager({
         : missed;
 
   const renderBooking = (b: Booking) => {
-    const isPast = b.date < today;
     const isLoading = loadingId === b.id;
 
     return (

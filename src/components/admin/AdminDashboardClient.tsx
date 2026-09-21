@@ -13,7 +13,7 @@ interface Props {
   locale: string;
 }
 
-export default function AdminDashboardClient({ stats, bookings, supervisors, reviews, locale }: Props) {
+export default function AdminDashboardClient({ stats, bookings, supervisors, reviews }: Props) {
   const t = useTranslations('admin');
   const [activeTab, setActiveTab] = useState<'supervisors' | 'bookings' | 'reviews' | 'supervision'>('supervisors');
 

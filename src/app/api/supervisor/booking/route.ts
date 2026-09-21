@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getInterviewSeatDelta } from '@/lib/validation/booking';
 
 export async function PATCH(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -20,18 +20,44 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  await adminDb.runTransaction(async (transaction) => {
-    const ref = adminDb.collection('bookings').doc(bookingId);
-    const current = await transaction.get(ref);
-    if (!current.exists || current.data()?.supervisorId !== supervisor.id) throw new Error('FORBIDDEN');
-    const previousStatus = current.data()?.meetingStatus || 'pending';
-    transaction.update(ref, { meetingStatus, meetingStatusUpdatedAt: new Date().toISOString() });
-    if (meetingStatus === 'missed' && previousStatus !== 'missed' && (current.data()?.bookingType || 'initial_interview') === 'initial_interview') {
-      transaction.update(adminDb.collection('supervisors').doc(supervisor.id), {
-        availableSeats: FieldValue.increment(1),
+  try {
+    await adminDb.runTransaction(async (transaction) => {
+      const ref = adminDb.collection('bookings').doc(bookingId);
+      const supervisorRef = adminDb.collection('supervisors').doc(supervisor.id);
+      const [current, supervisorSnapshot] = await Promise.all([
+        transaction.get(ref),
+        transaction.get(supervisorRef),
+      ]);
+      if (!current.exists) throw new Error('NOT_FOUND');
+      if (current.data()?.supervisorId !== supervisor.id) throw new Error('FORBIDDEN');
+
+      const previousStatus = current.data()?.meetingStatus || 'pending';
+      const seatDelta = getInterviewSeatDelta(
+        previousStatus,
+        meetingStatus,
+        current.data()?.bookingType || 'initial_interview',
+      );
+      transaction.update(ref, {
+        meetingStatus,
+        meetingStatusUpdatedAt: new Date().toISOString(),
       });
-    }
-  });
+      if (seatDelta !== 0 && supervisorSnapshot.exists) {
+        const availableSeats = Number(
+          supervisorSnapshot.data()?.availableSeats || 0,
+        );
+        transaction.update(supervisorRef, {
+          availableSeats: Math.max(0, availableSeats + seatDelta),
+        });
+      }
+    });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code === 'NOT_FOUND')
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (code === 'FORBIDDEN')
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    throw error;
+  }
 
   return NextResponse.json({ success: true });
 }

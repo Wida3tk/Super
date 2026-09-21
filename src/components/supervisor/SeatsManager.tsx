@@ -7,7 +7,7 @@ interface Props {
   currentSeats: number;
 }
 
-export default function SeatsManager({ supervisorId, currentSeats }: Props) {
+export default function SeatsManager({ currentSeats }: Props) {
   const [seats, setSeats] = useState(currentSeats);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");

@@ -12,15 +12,13 @@ export default async function HomePage({ params }: HomePageProps) {
   const { locale } = await params;
 
   let supervisors: any[] = [];
-  let cms: any = {};
   const availableDatesByProvider: Record<string, string[]> = {};
 
   try {
     const { adminDb, adminStorage } = await import("@/lib/firebase/admin");
     const today = new Date().toISOString().slice(0, 10);
-    const [supervisorsSnap, cmsSnap, availabilitySnap] = await Promise.all([
+    const [supervisorsSnap, availabilitySnap] = await Promise.all([
       adminDb.collection("supervisors").get(),
-      adminDb.collection("settings").doc("cms").get(),
       adminDb.collection("availability").where("date", ">=", today).get(),
     ]);
     availabilitySnap.docs.forEach((doc) => {
@@ -59,8 +57,7 @@ export default async function HomePage({ params }: HomePageProps) {
         }
       }),
     );
-    cms = cmsSnap.exists ? cmsSnap.data() : {};
-  } catch (error) {
+  } catch {
     supervisors = [];
   }
 
@@ -86,8 +83,6 @@ export default async function HomePage({ params }: HomePageProps) {
       })),
   ];
 
-  const siteName = cms.siteName || "سلوكيرا";
-  const siteNameEn = cms.siteNameEn || "Sulukera";
   const supervisorProviders = supervisors.filter(
     (provider) => provider.accountType !== "consultant",
   );

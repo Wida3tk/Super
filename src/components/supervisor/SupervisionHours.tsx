@@ -901,6 +901,8 @@ export default function SupervisionHours({
     initialSnapshots as MonthlySnapshot[],
   );
   const [showModal, setShowModal] = useState(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
   const [traineeSearch, setTraineeSearch] = useState("");
   const [traineeSort, setTraineeSort] = useState<
@@ -990,15 +992,29 @@ export default function SupervisionHours({
     window.location.reload();
   };
 
-  // تحديث ساعات العمل عبر API
-  const submitWorkHours = async (traineeId: string, workHours: number) => {
-    const res = await fetch("/api/supervisor/session", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ traineeId, month: selectedMonth, workHours }),
-    });
-    if (!res.ok) throw new Error("فشل التحديث");
-    window.location.reload();
+  const removeSession = async (session: Session) => {
+    const confirmed = window.confirm(
+      "هل تريد حذف هذه الجلسة؟ سيتم عكس ساعاتها من إجماليات المتدرب.",
+    );
+    if (!confirmed) return;
+
+    setDeletingSessionId(session.id);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/supervisor/session", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "تعذر حذف الجلسة");
+      window.location.reload();
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "تعذر حذف الجلسة",
+      );
+      setDeletingSessionId(null);
+    }
   };
 
   const totals = monthTotals();
@@ -1214,10 +1230,16 @@ export default function SupervisionHours({
               لا توجد جلسات مسجّلة هذا الشهر
             </div>
           ) : (
+            <>
+            {deleteError && (
+              <div style={{ padding: "10px 14px", color: "#B42318", fontSize: 12 }}>
+                {deleteError}
+              </div>
+            )}
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: COLORS.gray100 }}>
-                  {["التاريخ", "النوع", "المدة", "ملاحظات"].map((h) => (
+                  {["التاريخ", "النوع", "المدة", "ملاحظات", "إجراء"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -1300,10 +1322,33 @@ export default function SupervisionHours({
                     >
                       {s.notes || "—"}
                     </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <button
+                        type="button"
+                        onClick={() => removeSession(s)}
+                        disabled={deletingSessionId !== null}
+                        style={{
+                          border: "1px solid #FECACA",
+                          background: "#FFF7F7",
+                          color: "#B42318",
+                          borderRadius: 8,
+                          padding: "5px 9px",
+                          fontSize: 11,
+                          cursor: deletingSessionId ? "wait" : "pointer",
+                          opacity:
+                            deletingSessionId && deletingSessionId !== s.id
+                              ? 0.5
+                              : 1,
+                        }}
+                      >
+                        {deletingSessionId === s.id ? "جارٍ الحذف..." : "حذف"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
         {showModal && (

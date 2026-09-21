@@ -1,5 +1,7 @@
 import type { App } from 'firebase-admin/app';
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 // Use the CommonJS entry points on the server. Vercel's external ESM loader can
 // otherwise rewrite firebase-admin to a deployment-specific package name that
 // is unavailable when the function starts.

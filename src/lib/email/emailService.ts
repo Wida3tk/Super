@@ -238,7 +238,6 @@ export async function sendCancellationEmail(
   studentName: string,
   date: string,
   time: string,
-  locale: "ar" | "en" = "ar",
 ): Promise<void> {
   const html = baseTemplate(`
     <h2>تم إلغاء حجزك</h2>

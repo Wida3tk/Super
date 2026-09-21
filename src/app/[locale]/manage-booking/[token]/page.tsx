@@ -119,7 +119,7 @@ export default async function ManageBookingPage({ params }: Props) {
                 )}
 
                 {booking.status === 'confirmed' && (
-                  <CancelBookingClient token={token} locale={locale} />
+                  <CancelBookingClient token={token} />
                 )}
 
                 {booking.status === 'cancelled' && (

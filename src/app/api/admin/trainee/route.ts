@@ -1,25 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logActivity } from "@/lib/activityLog";
 import { adminDb, adminAuth } from "@/lib/firebase/admin";
-import { cookies } from "next/headers";
-
-async function verifyAdmin() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__session")?.value;
-  if (!sessionCookie) return false;
-  try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return (
-      decoded.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
-    );
-  } catch {
-    return false;
-  }
-}
+import { requireAdmin } from "@/lib/auth/serverAuth";
 
 // إضافة متدرب جديد
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin()))
+  if (!(await requireAdmin()))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { name, email, phone, license } = await req.json();
@@ -70,7 +56,7 @@ export async function POST(req: NextRequest) {
 
 // تحديث حالة متدرب أو مرحلة البوردنق
 export async function PATCH(req: NextRequest) {
-  if (!(await verifyAdmin()))
+  if (!(await requireAdmin()))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
@@ -376,7 +362,7 @@ export async function PATCH(req: NextRequest) {
 
 // قفل / فتح شهر
 export async function PUT(req: NextRequest) {
-  if (!(await verifyAdmin()))
+  if (!(await requireAdmin()))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { supervisorId, traineeId, month, action } = await req.json();

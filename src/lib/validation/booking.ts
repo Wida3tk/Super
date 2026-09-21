@@ -39,3 +39,26 @@ export function validateBookingPayload(
 export function isManagementToken(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
 }
+
+export function getInterviewSeatDelta(
+  previousStatus: string,
+  nextStatus: string,
+  bookingType = "initial_interview",
+): number {
+  if (bookingType !== "initial_interview" || previousStatus === nextStatus)
+    return 0;
+  if (previousStatus !== "missed" && nextStatus === "missed") return 1;
+  if (previousStatus === "missed" && nextStatus !== "missed") return -1;
+  return 0;
+}
+
+export function isBookingReference(value: string): boolean {
+  return /^SUL-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(value);
+}
+
+export function maskPersonName(value: unknown): string {
+  const parts = String(value || "").trim().split(/\s+/).filter(Boolean);
+  return parts
+    .map((part) => (part.length <= 1 ? "*" : `${part[0]}${"*".repeat(Math.min(part.length - 1, 4))}`))
+    .join(" ");
+}

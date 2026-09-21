@@ -61,7 +61,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
     } catch {
       reviews = [];
     }
-  } catch (e) {
+  } catch {
     if (!supervisor) {
       const profile = getProviderProfile(id);
       if (!profile) notFound();

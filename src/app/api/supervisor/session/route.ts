@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { logActivity } from "@/lib/activityLog";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
+import {
+  reverseSessionFromSnapshot,
+  reverseSessionFromTrainee,
+} from "@/lib/supervision/sessionAccounting";
+import type { SessionType } from "@/types";
 
 export async function POST(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -330,6 +335,126 @@ export async function PATCH(req: NextRequest) {
     workHours,
     requiredHours,
     updatedAt: new Date().toISOString(),
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(req: NextRequest) {
+  const supervisor = await getAuthenticatedSupervisor();
+  if (!supervisor)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const sessionId = body?.sessionId;
+  if (typeof sessionId !== "string" || !sessionId.trim()) {
+    return NextResponse.json({ error: "Invalid session" }, { status: 400 });
+  }
+
+  const sessionRef = adminDb.collection("sessions").doc(sessionId);
+  const initialSession = await sessionRef.get();
+  if (!initialSession.exists) {
+    return NextResponse.json({ error: "الجلسة غير موجودة" }, { status: 404 });
+  }
+
+  const initialData = initialSession.data()!;
+  if (initialData.supervisorId !== supervisor.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (initialData.month !== new Date().toISOString().slice(0, 7)) {
+    return NextResponse.json(
+      { error: "لا يمكن حذف جلسات من شهر سابق" },
+      { status: 409 },
+    );
+  }
+
+  const now = new Date().toISOString();
+  try {
+    await adminDb.runTransaction(async (transaction) => {
+      const sessionSnapshot = await transaction.get(sessionRef);
+      if (!sessionSnapshot.exists) throw new Error("SESSION_NOT_FOUND");
+
+      const session = sessionSnapshot.data()!;
+      if (session.deleted) throw new Error("SESSION_ALREADY_DELETED");
+      if (session.supervisorId !== supervisor.id) throw new Error("FORBIDDEN");
+
+      const type = session.type as SessionType;
+      const traineeIds = Array.isArray(session.traineeIds)
+        ? [...new Set(session.traineeIds.filter((id): id is string => typeof id === "string"))]
+        : [];
+      const duration =
+        type === "individual" || type === "group"
+          ? Number(session.duration) || 1
+          : 0;
+      const snapshotRefs = traineeIds.map((traineeId) =>
+        adminDb
+          .collection("monthlySnapshots")
+          .doc(`${supervisor.id}_${traineeId}_${session.month}`),
+      );
+      const traineeRefs = traineeIds.map((traineeId) =>
+        adminDb.collection("trainees").doc(traineeId),
+      );
+
+      const [snapshotDocs, traineeDocs] = await Promise.all([
+        Promise.all(snapshotRefs.map((ref) => transaction.get(ref))),
+        Promise.all(traineeRefs.map((ref) => transaction.get(ref))),
+      ]);
+
+      if (snapshotDocs.some((snapshot) => snapshot.data()?.lockedAt)) {
+        throw new Error("MONTH_LOCKED");
+      }
+
+      snapshotDocs.forEach((snapshot, index) => {
+        if (!snapshot.exists) return;
+        transaction.update(snapshotRefs[index], {
+          ...reverseSessionFromSnapshot(snapshot.data() || {}, type, duration),
+          updatedAt: now,
+        });
+      });
+
+      if (type === "individual" || type === "group") {
+        traineeDocs.forEach((trainee, index) => {
+          if (!trainee.exists) return;
+          transaction.update(traineeRefs[index], {
+            ...reverseSessionFromTrainee(trainee.data() || {}, type, duration),
+            updatedAt: now,
+          });
+        });
+      }
+
+      transaction.update(sessionRef, {
+        deleted: true,
+        deletedAt: now,
+        deletedBy: supervisor.id,
+      });
+    });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "SESSION_NOT_FOUND")
+      return NextResponse.json({ error: "الجلسة غير موجودة" }, { status: 404 });
+    if (code === "SESSION_ALREADY_DELETED")
+      return NextResponse.json({ error: "الجلسة محذوفة مسبقًا" }, { status: 409 });
+    if (code === "FORBIDDEN")
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (code === "MONTH_LOCKED")
+      return NextResponse.json({ error: "الشهر مقفل" }, { status: 409 });
+    throw error;
+  }
+
+  await logActivity({
+    type: "session",
+    message: `حذف ${supervisor.name} جلسة إشراف`,
+    actorId: supervisor.id,
+    actorName: supervisor.name,
+    supervisorId: supervisor.id,
+    traineeId: String(initialData.traineeIds?.[0] || ""),
+    meta: {
+      action: "delete",
+      sessionId,
+      sessionType: initialData.type,
+      duration: initialData.duration,
+      date: initialData.date,
+    },
   });
 
   return NextResponse.json({ success: true });

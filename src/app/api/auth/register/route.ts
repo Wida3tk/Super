@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import {
+  enforceRateLimit,
+  getRequestIdentifier,
+} from "@/lib/security/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimit = await enforceRateLimit(getRequestIdentifier(req), {
+      action: "registration",
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed)
+      return NextResponse.json(
+        { error: "TOO_MANY_ATTEMPTS" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+        },
+      );
+
     const body = await req.json();
     const name = String(body.name || "")
       .trim()

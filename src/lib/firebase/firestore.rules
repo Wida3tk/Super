@@ -40,7 +40,9 @@ service cloud.firestore {
     }
 
     match /availability/{slotId} {
-      allow read: if true;
+      // Public clients only need open slots. Booked documents can contain
+      // internal booking references and are served to owners via server APIs.
+      allow read: if resource.data.isBooked == false;
       allow create: if request.auth != null && isSupervisorOwner(request.resource.data.supervisorId);
       allow update: if false;
       allow delete: if request.auth != null && isSupervisorOwner(resource.data.supervisorId);
@@ -57,13 +59,14 @@ service cloud.firestore {
 
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if request.auth != null
-        && request.resource.data.rating is int
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5
-        && request.resource.data.comment is string
-        && request.resource.data.comment.size() <= 2000;
+      // Reviews must be created by a server endpoint after verifying the
+      // completed booking; direct client creation is intentionally disabled.
+      allow create: if false;
       allow update, delete: if isAdmin();
+    }
+
+    match /rateLimits/{limitId} {
+      allow read, write: if false;
     }
 
     match /settings/{doc} {

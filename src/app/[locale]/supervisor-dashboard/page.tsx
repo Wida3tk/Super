@@ -78,10 +78,9 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const initialSessions = sessionsSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
+  const initialSessions = sessionsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((session: any) => !session.deleted) as any[];
   const initialSnapshots = snapshotsSnap.docs.map((d) => ({
     id: d.id,
     ...d.data(),

@@ -2,9 +2,27 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import {
+  enforceRateLimit,
+  getRequestIdentifier,
+} from "@/lib/security/rateLimit";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimit = await enforceRateLimit(getRequestIdentifier(request), {
+      action: "session",
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rateLimit.allowed)
+      return NextResponse.json(
+        { error: "TOO_MANY_ATTEMPTS" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+        },
+      );
+
     const { token, portal } = await request.json();
 
     if (!token) {
