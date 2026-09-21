@@ -149,6 +149,7 @@ export async function POST(request: NextRequest) {
     const dryRun = body.dryRun !== false;
     const sendInvitations = body.sendInvitations === true;
     const createSupervisor = body.createSupervisor === true;
+    const expectedTraineeId = clean(body.expectedTraineeId, 160);
     const inputs = Array.isArray(body.trainees) ? body.trainees : [];
     if (!supervisorEmail || inputs.length < 1 || inputs.length > 20) {
       return NextResponse.json({ error: "INVALID_IMPORT_PAYLOAD" }, { status: 400 });
@@ -230,6 +231,20 @@ export async function POST(request: NextRequest) {
         fieldworkHours: fieldwork,
         supervisionHours: supervision,
       });
+    }
+
+    if (
+      expectedTraineeId &&
+      (preview.length !== 1 || preview[0].existingTraineeId !== expectedTraineeId)
+    ) {
+      return NextResponse.json(
+        {
+          error: "TRACKER_TRAINEE_MISMATCH",
+          expectedTraineeId,
+          found: preview[0] || null,
+        },
+        { status: 409 },
+      );
     }
 
     if (dryRun) {

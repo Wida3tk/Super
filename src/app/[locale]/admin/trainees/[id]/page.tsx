@@ -6,6 +6,7 @@ import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import { credentialRules } from "@/lib/qaba/compliance";
 import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 import ManageTraineePassword from "@/components/admin/ManageTraineePassword";
+import TraineeHoursUpdate from "@/components/admin/TraineeHoursUpdate";
 
 const value = (input: unknown) => {
   if (!input) return "—";
@@ -72,7 +73,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
       <div className="file-topbar"><Link href={`/${locale}/admin/trainees`}>→ العودة إلى المتدربين</Link><span>ملف إداري للعرض والمراجعة</span></div>
       <section className="trainee-hero">
         <div className="hero-identity"><div className="hero-avatar">{String(trainee.name || "م").trim()[0]}</div><div><small>ملف المتدرب</small><h2>{trainee.name}</h2><p>{trainee.email} <span>·</span> {trainee.license}</p></div></div>
-        <div className="hero-actions"><span className="supervisor-pill">المشرف: <b>{supervisorSnap?.data()?.name || "غير مسند"}</b></span><ManageTraineePassword traineeId={id} /></div>
+        <div className="hero-actions"><span className="supervisor-pill">المشرف: <b>{supervisorSnap?.data()?.name || "غير مسند"}</b></span><TraineeHoursUpdate trainee={{id,name:trainee.name,email:trainee.email,license:trainee.license}} supervisor={supervisorSnap?.exists ? {name:String(supervisorSnap.data()?.name || ""),email:String(supervisorSnap.data()?.email || "")} : null} /><ManageTraineePassword traineeId={id} /></div>
       </section>
       <div className="progress-grid">{cards.map(([label,current,total,color])=>{const percent=Math.min(100,Number(total)?(Number(current)/Number(total))*100:0);return <div className="progress-card" key={String(label)} style={{"--accent":String(color)} as CSSProperties}><div className="progress-card-head"><span>{String(label)}</span><b>{Number(current).toFixed(1).replace(".0","")} <small>/ {String(total)}</small></b></div><div className="progress-track"><i style={{width:`${percent}%`}} /></div><small>{Math.round(percent)}% مكتمل</small></div>})}</div>
       <section className="profile-section"><div className="section-heading"><div><small>معلومات أساسية</small><h3>بيانات المتدرب</h3></div><span>آخر تحديث: {dateOnly(trainee.updatedAt || trainee.createdAt)}</span></div><div className="profile-columns"><div className="detail-group"><h4>بيانات التواصل والترخيص</h4>{identityDetails.map(([k,v,icon])=><div className="detail-row" key={String(k)}><i>{String(icon)}</i><div><small>{String(k)}</small><b>{value(v)}</b></div></div>)}</div><div className="detail-group"><h4>الإسناد وحالة الملف</h4>{enrollmentDetails.map(([k,v,icon])=><div className="detail-row" key={String(k)}><i>{String(icon)}</i><div><small>{String(k)}</small><b>{value(v)}</b></div></div>)}</div></div></section>
