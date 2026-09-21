@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import BookingSection from "@/components/booking/BookingSection";
 import Link from "next/link";
 import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
@@ -18,12 +18,40 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
   let supervisor: any = null;
   let availableDates: string[] = [];
   let reviews: any[] = [];
+  let canonicalProfileId = "";
 
   try {
     const { adminDb, adminStorage } = await import("@/lib/firebase/admin");
-    const snap = await adminDb.collection("supervisors").doc(id).get();
-    if (!snap.exists) notFound();
-    supervisor = { id: snap.id, ...snap.data() };
+    let snap = await adminDb.collection("supervisors").doc(id).get();
+    if (!snap.exists) {
+      const linked = await adminDb
+        .collection("supervisors")
+        .where("publicProfileId", "==", id)
+        .limit(2)
+        .get();
+      if (linked.size !== 1) throw new Error("SUPERVISOR_NOT_FOUND");
+      snap = linked.docs[0];
+    }
+    const operational = { id: snap.id, ...snap.data() } as any;
+    canonicalProfileId = String(operational.publicProfileId || "");
+    const editorial = getProviderProfile(canonicalProfileId || id);
+    supervisor = editorial
+      ? {
+          ...operational,
+          name: operational.name || editorial.name,
+          credential: editorial.credential,
+          credentialType: operational.credentialType || editorial.credential,
+          specialization: editorial.role,
+          languages: editorial.languages,
+          experience: editorial.experience,
+          serviceMode: operational.serviceMode || editorial.serviceMode,
+          photo: editorial.photo,
+          editorialBio: editorial.bio,
+          interests: editorial.interests,
+          highlights: editorial.highlights,
+          hasEditorialProfile: true,
+        }
+      : operational;
     if (!supervisor.isActive) notFound();
     if (supervisor.photoPath) {
       try {
@@ -36,14 +64,14 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
           });
         supervisor.photo = signedPhoto;
       } catch {}
-    } else if (supervisor.photo) {
-      supervisor.photo = `/api/provider-photo?id=${encodeURIComponent(id)}`;
+    } else if (operational.photo) {
+      supervisor.photo = `/api/provider-photo?id=${encodeURIComponent(snap.id)}`;
     }
 
     const today = new Date().toISOString().split("T")[0];
     const slotsSnap = await adminDb
       .collection("availability")
-      .where("supervisorId", "==", id)
+      .where("supervisorId", "==", snap.id)
       .where("isBooked", "==", false)
       .where("date", ">=", today)
       .get();
@@ -54,7 +82,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
     try {
       const rSnap = await adminDb
         .collection("reviews")
-        .where("supervisorId", "==", id)
+        .where("supervisorId", "==", snap.id)
         .limit(5)
         .get();
       reviews = rSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -70,12 +98,17 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
         isActive: true,
         accountType: "supervisor",
         profileOnly: true,
+        hasEditorialProfile: true,
+        editorialBio: profile.bio,
         specialization: profile.role,
         credentialType: profile.credential,
         availableSeats: 0,
         totalSessions: 0,
       };
     }
+  }
+  if (canonicalProfileId && id !== canonicalProfileId) {
+    redirect(`/${locale}/supervisor/${canonicalProfileId}${query.type ? `?type=${encodeURIComponent(query.type)}` : ""}`);
   }
   bookingType =
     supervisor?.accountType === "consultant"
@@ -294,15 +327,15 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                 <p className="bio-text">{supervisor.bio}</p>
               )}
 
-              {supervisor?.profileOnly && (
+              {supervisor?.hasEditorialProfile && (
                 <div className="profile-facts">
                   <span className="profile-fact">
                     <b>الاعتماد:</b>
-                    {supervisor.credential}
+                    {supervisor.credential || supervisor.credentialType}
                   </span>
                   <span className="profile-fact">
                     <b>اللغات:</b>
-                    {supervisor.languages.join(" / ")}
+                    {(supervisor.languages || []).join(" / ")}
                   </span>
                   <span className="profile-fact">
                     <b>الخبرة:</b>
@@ -327,7 +360,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
           <div className="main-grid">
             {/* LEFT: Reviews */}
             <div>
-              {supervisor?.profileOnly && (
+              {supervisor?.hasEditorialProfile && (
                 <>
                   <div className="section-card">
                     <div className="section-head">
@@ -335,7 +368,7 @@ export default async function SupervisorPage({ params, searchParams }: Props) {
                       <span className="section-title">نبذة مهنية</span>
                     </div>
                     <div className="section-body profile-copy">
-                      {supervisor.bio.map((paragraph: string) => (
+                      {(supervisor.editorialBio || []).map((paragraph: string) => (
                         <p key={paragraph}>{paragraph}</p>
                       ))}
                     </div>

@@ -39,19 +39,26 @@ export async function POST(request: NextRequest) {
     }
     email = email.toLowerCase().replace(/^mailto:/, "");
     if (!name || !email.includes("@")) return NextResponse.json({ error: "MISSING_SUPERVISOR_INFORMATION" }, { status: 400 });
+    const duplicate = await adminDb.collection("supervisors").where("email", "==", email).limit(2).get();
+    const existingSupervisor = duplicate.size === 1 ? {
+      id: duplicate.docs[0].id,
+      name: duplicate.docs[0].data().name,
+      email: duplicate.docs[0].data().email,
+      publicProfileId: duplicate.docs[0].data().publicProfileId || null,
+    } : null;
     const preview = { name, email, credential, availableSeats, accountType: "supervisor", sourceFile: file.name };
-    if (!commit) return NextResponse.json({ ok: true, preview });
+    if (!commit) return NextResponse.json({ ok: true, preview, existingSupervisor });
+    if (existingSupervisor) return NextResponse.json({ error: "SUPERVISOR_ALREADY_EXISTS", preview, existingSupervisor }, { status: 409 });
     if (!bio) return NextResponse.json({ error: "BIO_REQUIRED" }, { status: 400 });
-    const duplicate = await adminDb.collection("supervisors").where("email", "==", email).limit(1).get();
-    let authUid = String(duplicate.docs[0]?.data().authUid || "");
+    let authUid = "";
     if (!authUid) {
       try { authUid = (await adminAuth.getUserByEmail(email)).uid; }
       catch { authUid = (await adminAuth.createUser({ email, displayName: name })).uid; }
     }
-    const ref = duplicate.empty ? adminDb.collection("supervisors").doc() : duplicate.docs[0].ref;
-    await ref.set({ ...preview, bio, authUid, publicProfileId: ref.id, profileCreatedAt: new Date().toISOString(), isActive: true, accountStatus: "prepared", updatedAt: new Date().toISOString(), ...(duplicate.empty ? { createdAt: new Date().toISOString() } : {}) }, { merge: true });
+    const ref = adminDb.collection("supervisors").doc();
+    await ref.set({ ...preview, bio, authUid, publicProfileId: ref.id, profileCreatedAt: new Date().toISOString(), isActive: true, accountStatus: "prepared", updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() }, { merge: true });
     await adminAuth.setCustomUserClaims(authUid, { role: "supervisor", supervisorId: ref.id });
-    return NextResponse.json({ ok: true, supervisorId: ref.id, created: duplicate.empty, accountStatus: "prepared", emailSent: false, preview });
+    return NextResponse.json({ ok: true, supervisorId: ref.id, created: true, accountStatus: "prepared", emailSent: false, preview });
   } catch (error) {
     console.error("Supervisor import failed", error);
     return NextResponse.json({ error: "SUPERVISOR_IMPORT_FAILED" }, { status: 400 });
