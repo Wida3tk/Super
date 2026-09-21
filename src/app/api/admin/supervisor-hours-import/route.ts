@@ -43,23 +43,42 @@ function isoDate(value: ExcelJS.CellValue) {
 
 function number(value: ExcelJS.CellValue) {
   const raw = value && typeof value === "object" && "result" in value ? value.result : value;
+  if (raw instanceof Date) return 0;
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  return Number.isFinite(parsed) && parsed > 0 && parsed <= 16 ? parsed : 0;
 }
 
 function parseHours(sheet: ExcelJS.Worksheet) {
   const rows: ImportedHour[] = [];
-  for (let monthIndex = 0; monthIndex < 20; monthIndex += 1) {
-    const blockRow = 20 + Math.floor(monthIndex / 4) * 13;
-    const blockColumn = 2 + (monthIndex % 4) * 21;
-    for (let offset = 0; offset < 7; offset += 1) {
-      const row = blockRow + 3 + offset;
-      const date = isoDate(sheet.getCell(row, blockColumn).value);
-      if (!date) continue;
-      const individual = number(sheet.getCell(row, blockColumn + 10).value);
-      const group = number(sheet.getCell(row, blockColumn + 15).value);
-      if (individual) rows.push({ sourceMonth: monthIndex + 1, sourceRow: row, date, duration: individual, format: "individual" });
-      if (group) rows.push({ sourceMonth: monthIndex + 1, sourceRow: row, date, duration: group, format: "group" });
+  for (const blockRow of [20, 33, 46, 59, 72]) {
+    const starts: Array<{ month: number; column: number }> = [];
+    sheet.getRow(blockRow).eachCell({ includeEmpty: false }, (cell, column) => {
+      if (cell.isMerged && cell.master.address !== cell.address) return;
+      const month = Number(text(cell.value));
+      if (Number.isInteger(month) && month >= 1 && month <= 20) starts.push({ month, column });
+    });
+    starts.sort((a, b) => a.column - b.column);
+    for (let index = 0; index < starts.length; index += 1) {
+      const start = starts[index];
+      const endColumn = (starts[index + 1]?.column || sheet.columnCount + 1) - 1;
+      let individualColumn = 0;
+      let groupColumn = 0;
+      for (let column = start.column; column <= endColumn; column += 1) {
+        const cell = sheet.getCell(blockRow + 2, column);
+        if (cell.isMerged && cell.master.address !== cell.address) continue;
+        const label = text(cell.value).replace(/\s/g, "");
+        if (label.includes("فردي")) individualColumn = column;
+        if (label.includes("جماعي")) groupColumn = column;
+      }
+      for (let offset = 0; offset < 7; offset += 1) {
+        const row = blockRow + 3 + offset;
+        const date = isoDate(sheet.getCell(row, start.column).value);
+        if (!date) continue;
+        const individual = individualColumn ? number(sheet.getCell(row, individualColumn).value) : 0;
+        const group = groupColumn ? number(sheet.getCell(row, groupColumn).value) : 0;
+        if (individual) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: individual, format: "individual" });
+        if (group) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: group, format: "group" });
+      }
     }
   }
   return rows;
@@ -139,7 +158,17 @@ export async function POST(request: NextRequest) {
         .where("traineeId", "==", traineeDoc.id)
         .where("supervisorId", "==", supervisorId)
         .get();
+      const corruptImportedDocs = existingSnap.docs.filter((doc) => {
+        const row = doc.data();
+        return row.supervisorHoursImport?.version === 1 && (!Number.isFinite(Number(row.duration)) || Number(row.duration) <= 0 || Number(row.duration) > 16);
+      });
+      for (let offset = 0; offset < corruptImportedDocs.length; offset += 400) {
+        const cleanup = adminDb.batch();
+        corruptImportedDocs.slice(offset, offset + 400).forEach((doc) => cleanup.delete(doc.ref));
+        await cleanup.commit();
+      }
       const existingFingerprints = new Set(existingSnap.docs
+        .filter((doc) => !corruptImportedDocs.some((corrupt) => corrupt.id === doc.id))
         .map((doc) => doc.data())
         .filter((row) => String(row.activityType || "").startsWith("supervision_"))
         .map((row) => fingerprint(String(row.date || "").slice(0, 10), Number(row.duration || 0), String(row.format || "individual"))));
@@ -194,7 +223,7 @@ export async function POST(request: NextRequest) {
         totalGroupHours: totals.approvedGroupSupervisionHours,
         updatedAt: now,
       }, { merge: true });
-      results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, totals });
+      results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, repaired: corruptImportedDocs.length, totals });
     }
 
     await adminDb.collection("activityLogs").add({
