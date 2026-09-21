@@ -172,11 +172,15 @@ export async function POST(request: NextRequest) {
         await cleanup.commit();
       }
       const priorImportedIds = new Set(priorImportedDocs.map((doc) => doc.id));
-      const existingFingerprints = new Set(existingSnap.docs
+      const manualFingerprintCounts = new Map<string, number>();
+      existingSnap.docs
         .filter((doc) => !priorImportedIds.has(doc.id))
         .map((doc) => doc.data())
         .filter((row) => String(row.activityType || "").startsWith("supervision_"))
-        .map((row) => fingerprint(String(row.date || "").slice(0, 10), Number(row.duration || 0), String(row.format || "individual"))));
+        .forEach((row) => {
+          const fp = fingerprint(String(row.date || "").slice(0, 10), Number(row.duration || 0), String(row.format || "individual"));
+          manualFingerprintCounts.set(fp, (manualFingerprintCounts.get(fp) || 0) + 1);
+        });
       let created = 0;
       let updated = 0;
       let unchanged = 0;
@@ -188,7 +192,9 @@ export async function POST(request: NextRequest) {
         chunk.forEach((row, index) => {
           const fp = fingerprint(row.date, row.duration, row.format);
           const ref = refs[index];
-          if (!managed[index].exists && existingFingerprints.has(fp)) {
+          const matchingManualRows = manualFingerprintCounts.get(fp) || 0;
+          if (!managed[index].exists && matchingManualRows > 0) {
+            manualFingerprintCounts.set(fp, matchingManualRows - 1);
             unchanged += 1;
             return;
           }
@@ -218,7 +224,6 @@ export async function POST(request: NextRequest) {
             batch.create(ref, { ...payload, createdAt: now });
             created += 1;
           }
-          existingFingerprints.add(fp);
         });
         await batch.commit();
       }
