@@ -158,17 +158,22 @@ export async function POST(request: NextRequest) {
         .where("traineeId", "==", traineeDoc.id)
         .where("supervisorId", "==", supervisorId)
         .get();
-      const corruptImportedDocs = existingSnap.docs.filter((doc) => {
+      // The uploaded supervisor workbook is authoritative for previously imported
+      // supervision history. Replace those rows, but preserve sessions entered
+      // directly through the platform.
+      const priorImportedDocs = existingSnap.docs.filter((doc) => {
         const row = doc.data();
-        return row.supervisorHoursImport?.version === 1 && (!Number.isFinite(Number(row.duration)) || Number(row.duration) <= 0 || Number(row.duration) > 16);
+        return String(row.activityType || "").startsWith("supervision_")
+          && (row.supervisorHoursImport?.version === 1 || row.legacyImport?.version === 1);
       });
-      for (let offset = 0; offset < corruptImportedDocs.length; offset += 400) {
+      for (let offset = 0; offset < priorImportedDocs.length; offset += 400) {
         const cleanup = adminDb.batch();
-        corruptImportedDocs.slice(offset, offset + 400).forEach((doc) => cleanup.delete(doc.ref));
+        priorImportedDocs.slice(offset, offset + 400).forEach((doc) => cleanup.delete(doc.ref));
         await cleanup.commit();
       }
+      const priorImportedIds = new Set(priorImportedDocs.map((doc) => doc.id));
       const existingFingerprints = new Set(existingSnap.docs
-        .filter((doc) => !corruptImportedDocs.some((corrupt) => corrupt.id === doc.id))
+        .filter((doc) => !priorImportedIds.has(doc.id))
         .map((doc) => doc.data())
         .filter((row) => String(row.activityType || "").startsWith("supervision_"))
         .map((row) => fingerprint(String(row.date || "").slice(0, 10), Number(row.duration || 0), String(row.format || "individual"))));
@@ -223,7 +228,7 @@ export async function POST(request: NextRequest) {
         totalGroupHours: totals.approvedGroupSupervisionHours,
         updatedAt: now,
       }, { merge: true });
-      results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, repaired: corruptImportedDocs.length, totals });
+      results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, replaced: priorImportedDocs.length, totals });
     }
 
     await adminDb.collection("activityLogs").add({
