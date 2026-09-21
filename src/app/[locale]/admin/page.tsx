@@ -42,7 +42,6 @@ export default async function AdminDashboardPage({ params }: Props) {
     snapshotsSnap,
     activitySnap,
     notifsSnap,
-    demoSummarySnap,
   ] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").get(),
@@ -57,7 +56,6 @@ export default async function AdminDashboardPage({ params }: Props) {
       .limit(8)
       .get(),
     adminDb.collection("notifications").where("read", "==", false).get(),
-    adminDb.collection("demoAnalytics").doc("summary").get(),
   ]);
 
   const trainees = traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
@@ -80,7 +78,6 @@ export default async function AdminDashboardPage({ params }: Props) {
     ...d.data(),
   })) as any[];
   const notifCount = notifsSnap.size;
-  const demoSummary = demoSummarySnap.data() || {};
 
   const activeTrainees = trainees.filter((t) => t.status === "active");
   const onboardingTrainees = trainees.filter((t) => t.status === "onboarding");
@@ -483,19 +480,6 @@ export default async function AdminDashboardPage({ params }: Props) {
                   منهم {readyToAssign.length} جاهز للإسناد
                 </div>
               </div>
-              <Link
-                href={`/${locale}/demo`}
-                target="_blank"
-                className="stat-card"
-                style={{ borderTop: "3px solid #55D7FF", textDecoration: "none", color: "inherit" }}
-              >
-                <div className="stat-icon">🧪</div>
-                <div className="stat-val" style={{ color: "#0D40FC" }}>
-                  {Number(demoSummary.uniqueVisitors || 0)}
-                </div>
-                <div className="stat-label">جرّبوا النظام</div>
-                <div className="stat-note">{Number(demoSummary.totalLaunches || 0)} تجربة · فتح الرابط</div>
-              </Link>
             </div>
 
             {/* Bottom */}
