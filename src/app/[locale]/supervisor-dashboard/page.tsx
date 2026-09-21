@@ -93,6 +93,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     })) as any[]
   ).filter(
     (notification) =>
+      notification.targetType !== "admin" &&
       !notification.read &&
       (!notification.createdAt ||
         new Date(notification.createdAt).getTime() >= notificationCutoff),

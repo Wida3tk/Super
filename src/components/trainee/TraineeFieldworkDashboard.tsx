@@ -118,30 +118,44 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
-  const supervision = sum(["supervision_direct", "supervision_indirect"]);
+  const activitySupervision = sum(["supervision_direct", "supervision_indirect"]);
   const total = direct + indirect;
-  const supervisionPct = total ? (supervision / total) * 100 : 0;
-  const maxBar = Math.max(direct, indirect, supervision, 1);
   const pathway = credentialRules(trainee.license || "QASP-S");
   const requiredHours = pathway.total;
   const supervisionTargetHours = Number(
     trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
   const progress = Math.min(100, (total / requiredHours) * 100);
-  const supervisionProgress = Math.min(
-    100,
-    (supervision / supervisionTargetHours) * 100,
-  );
-  const supervisionIndividual = approved
+  const activitySupervisionIndividual = approved
     .filter(
       (a) => a.activityType.startsWith("supervision_") && a.format !== "group",
     )
     .reduce((n, a) => n + a.duration, 0);
-  const supervisionGroup = approved
+  const activitySupervisionGroup = approved
     .filter(
       (a) => a.activityType.startsWith("supervision_") && a.format === "group",
     )
     .reduce((n, a) => n + a.duration, 0);
+  // جلسات المشرف هي المصدر الرسمي لساعات الإشراف. نستخدم الأكبر من
+  // إجمالي الجلسات أو السجلات القديمة لتفادي مضاعفة الملفات المستوردة.
+  const supervisionIndividual = Math.max(
+    activitySupervisionIndividual,
+    Number(trainee.totalIndividualHours || 0),
+  );
+  const supervisionGroup = Math.max(
+    activitySupervisionGroup,
+    Number(trainee.totalGroupHours || 0),
+  );
+  const supervision = Math.max(
+    activitySupervision,
+    supervisionIndividual + supervisionGroup,
+  );
+  const supervisionPct = total ? (supervision / total) * 100 : 0;
+  const maxBar = Math.max(direct, indirect, supervision, 1);
+  const supervisionProgress = Math.min(
+    100,
+    (supervision / supervisionTargetHours) * 100,
+  );
   const individualSharePct = supervision
     ? (supervisionIndividual / supervision) * 100
     : 0;
@@ -154,9 +168,6 @@ export default function TraineeFieldworkDashboard({
     (a) => a.status === "submitted",
   ).length;
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const monthHours = approved
-    .filter((a) => a.month === currentMonth)
-    .reduce((n, a) => n + a.duration, 0);
   const motivation =
     progress >= 100
       ? "اكتمل هدف الساعات؛ راجع التوثيق ونسب الساعات وسجلات الإشراف قبل التقديم."
@@ -182,14 +193,27 @@ export default function TraineeFieldworkDashboard({
   const monthFieldwork = monthApproved
     .filter((a) => !a.activityType.startsWith("supervision_"))
     .reduce((n, a) => n + a.duration, 0);
-  const monthSupervision = monthApproved
+  const monthActivitySupervision = monthApproved
     .filter((a) => a.activityType.startsWith("supervision_"))
     .reduce((n, a) => n + a.duration, 0);
-  const monthGroup = monthApproved
+  const monthActivityGroup = monthApproved
     .filter(
       (a) => a.activityType.startsWith("supervision_") && a.format === "group",
     )
     .reduce((n, a) => n + a.duration, 0);
+  const currentMonthSessions = (supervisionFile?.supervisionSessions || []).filter(
+    (session: any) => String(session.month || session.date || "").slice(0, 7) === currentMonth,
+  );
+  const monthSessionSupervision = currentMonthSessions.reduce(
+    (total: number, session: any) => total + Number(session.duration || 0),
+    0,
+  );
+  const monthSessionGroup = currentMonthSessions
+    .filter((session: any) => session.type === "group")
+    .reduce((total: number, session: any) => total + Number(session.duration || 0), 0);
+  const monthSupervision = Math.max(monthActivitySupervision, monthSessionSupervision);
+  const monthGroup = Math.max(monthActivityGroup, monthSessionGroup);
+  const monthHours = monthFieldwork + monthSupervision;
   const monthSupervisionPct = monthFieldwork
     ? (monthSupervision / monthFieldwork) * 100
     : 0;

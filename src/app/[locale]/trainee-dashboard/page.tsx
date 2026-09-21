@@ -113,7 +113,7 @@ export default async function TraineeDashboardPage({
   const supervisionFile = {
     notifications: notificationsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as any))
-      .filter((item: any) => !item.read)
+      .filter((item: any) => !item.read && item.targetType !== "admin" && item.audience !== "admin")
       .sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))),
     continuationBooking: (bookingsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as any))
@@ -152,6 +152,10 @@ export default async function TraineeDashboardPage({
           !item.deleted &&
           (item.type === "absence" || item.type === "warning"),
       )
+      .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),
+    supervisionSessions: attendanceSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as any))
+      .filter((item: any) => !item.deleted && (item.type === "individual" || item.type === "group"))
       .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),
     requests: requestsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))

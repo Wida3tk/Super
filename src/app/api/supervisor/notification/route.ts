@@ -21,7 +21,8 @@ export async function PATCH(req: NextRequest) {
   const notification = await notificationRef.get();
   if (
     !notification.exists ||
-    notification.data()?.supervisorId !== supervisor.id
+    notification.data()?.supervisorId !== supervisor.id ||
+    notification.data()?.targetType === "admin"
   )
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
