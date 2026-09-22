@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { FieldValue } from "firebase-admin/firestore";
 import { requireAdmin } from "@/lib/auth/serverAuth";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
+import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/normalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,15 @@ type ImportedHour = {
   date: string;
   duration: number;
   format: "individual" | "group";
+};
+
+type ParsedTrainee = {
+  sheet: string;
+  name: string;
+  email: string;
+  phone: string;
+  license: "QASP-S" | "QBA";
+  hours: ImportedHour[];
 };
 
 const text = (value: ExcelJS.CellValue) => {
@@ -28,7 +38,25 @@ const text = (value: ExcelJS.CellValue) => {
   return String(value).trim();
 };
 
-const email = (value: ExcelJS.CellValue) => text(value).toLowerCase().replace(/^mailto:/, "");
+const email = (value: ExcelJS.CellValue | unknown) => normalizeIdentityEmail(text(value as ExcelJS.CellValue));
+
+function sheetPhone(sheet: ExcelJS.Worksheet) {
+  for (let row = 1; row <= Math.min(sheet.rowCount, 15); row += 1) {
+    for (let column = 1; column <= Math.min(sheet.columnCount, 20); column += 1) {
+      const label = text(sheet.getCell(row, column).value).replace(/\s/g, "");
+      if (!/(رقم)?(الجوال|الهاتف|الموبايل)/.test(label)) continue;
+      for (let candidate = column + 1; candidate <= Math.min(column + 3, sheet.columnCount); candidate += 1) {
+        const phone = normalizeIdentityPhone(text(sheet.getCell(row, candidate).value));
+        if (phone) return phone;
+      }
+    }
+  }
+  return normalizeIdentityPhone(text(sheet.getCell(6, 11).value));
+}
+
+function normalizeLicense(value: ExcelJS.CellValue): "QASP-S" | "QBA" {
+  return text(value).toUpperCase().includes("QASP") ? "QASP-S" : "QBA";
+}
 
 function isoDate(value: ExcelJS.CellValue) {
   const raw = value && typeof value === "object" && "result" in value ? value.result : value;
@@ -93,6 +121,10 @@ function fingerprint(date: string, duration: number, format: string) {
   return `${date}|${Number(duration).toFixed(3)}|${format}`;
 }
 
+function identityKey(kind: "email" | "phone", value: string) {
+  return `${kind}_${createHash("sha256").update(value).digest("hex")}`;
+}
+
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -126,31 +158,163 @@ export async function POST(request: NextRequest) {
     }
 
     const ignored = new Set(["تعليمات الاستخدام", "لوحة المعلومات الرئيسية", "اسم المتدرب | للنسخ"]);
-    const parsed = workbook.worksheets
+    const parsed: ParsedTrainee[] = workbook.worksheets
       .filter((sheet) => !ignored.has(sheet.name))
       .map((sheet) => ({
         sheet: sheet.name,
         name: text(sheet.getCell(3, 11).value),
         email: email(sheet.getCell(4, 11).value),
-        license: text(sheet.getCell(5, 11).value),
+        phone: sheetPhone(sheet),
+        license: normalizeLicense(sheet.getCell(5, 11).value),
         hours: parseHours(sheet),
       }))
       .filter((item) => item.name && item.email.includes("@"));
 
-    const traineeSnapshots = await adminDb.collection("trainees").where("currentSupervisorId", "==", supervisorId).get();
-    const assignedByEmail = new Map(traineeSnapshots.docs.map((doc) => [String(doc.data().email || "").trim().toLowerCase(), doc]));
-    const matched = parsed.filter((item) => assignedByEmail.has(item.email));
-    const unmatched = parsed.filter((item) => !assignedByEmail.has(item.email));
+    const traineeSnapshots = await adminDb.collection("trainees").get();
+    const traineesByEmail = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+    const traineesByPhone = new Map<string, FirebaseFirestore.DocumentSnapshot>();
+    const existingEmailCounts = new Map<string, number>();
+    traineeSnapshots.docs.forEach((doc) => {
+      const data = doc.data();
+      const traineeEmail = email(data.email);
+      const traineePhone = normalizeIdentityPhone(data.phone);
+      if (traineeEmail) {
+        traineesByEmail.set(traineeEmail, doc);
+        existingEmailCounts.set(
+          traineeEmail,
+          (existingEmailCounts.get(traineeEmail) || 0) + 1,
+        );
+      }
+      if (traineePhone) traineesByPhone.set(traineePhone, doc);
+    });
+    const fileEmailCounts = new Map<string, number>();
+    const filePhoneCounts = new Map<string, number>();
+    parsed.forEach((item) => {
+      fileEmailCounts.set(item.email, (fileEmailCounts.get(item.email) || 0) + 1);
+      if (item.phone) filePhoneCounts.set(item.phone, (filePhoneCounts.get(item.phone) || 0) + 1);
+    });
+    const conflicts: Array<Record<string, unknown>> = [];
+    const matched: ParsedTrainee[] = [];
+    const pendingCreation: ParsedTrainee[] = [];
+    for (const item of parsed) {
+      const existingByEmail = traineesByEmail.get(item.email);
+      const existingByPhone = item.phone ? traineesByPhone.get(item.phone) : undefined;
+      let reason = "";
+      if ((fileEmailCounts.get(item.email) || 0) > 1) reason = "DUPLICATE_EMAIL_IN_FILE";
+      else if ((existingEmailCounts.get(item.email) || 0) > 1) reason = "DUPLICATE_EMAIL_IN_SYSTEM";
+      else if (item.phone && (filePhoneCounts.get(item.phone) || 0) > 1) reason = "DUPLICATE_PHONE_IN_FILE";
+      else if (existingByEmail && existingByPhone && existingByEmail.id !== existingByPhone.id)
+        reason = "IDENTITY_CONFLICT";
+      else if (existingByPhone && email(existingByPhone.data()?.email) !== item.email)
+        reason = "PHONE_ALREADY_USED";
+      else if (existingByEmail && existingByEmail.data()?.currentSupervisorId !== supervisorId)
+        reason = "ASSIGNED_TO_ANOTHER_SUPERVISOR";
+      if (reason) conflicts.push({ name: item.name, email: item.email, phone: item.phone, reason });
+      else if (existingByEmail) matched.push(item);
+      else pendingCreation.push(item);
+    }
+    const assignedByEmail = new Map(
+      matched.map((item) => [item.email, traineesByEmail.get(item.email)!]),
+    );
     const preview = {
       supervisor: { id: supervisorId, name: supervisor.name, email: supervisor.email, publicProfileId: supervisor.publicProfileId || null },
       sourceFile: file.name,
-      matched: matched.map((item) => ({ name: item.name, email: item.email, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0) })),
-      unmatched: unmatched.map((item) => ({ name: item.name, email: item.email, reason: "NOT_ASSIGNED_TO_SUPERVISOR" })),
+      matched: matched.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0) })),
+      pendingCreation: pendingCreation.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0) })),
+      conflicts,
     };
     if (!commit) return NextResponse.json({ ok: true, preview });
-    if (!matched.length) return NextResponse.json({ error: "NO_MATCHED_TRAINEES", preview }, { status: 409 });
+    if (conflicts.length) return NextResponse.json({ error: "TRAINEE_IDENTITY_CONFLICTS", preview }, { status: 409 });
+    if (!matched.length && !pendingCreation.length)
+      return NextResponse.json({ error: "NO_TRAINEES_FOUND", preview }, { status: 409 });
 
     const now = new Date().toISOString();
+    const createdAccounts: Array<Record<string, unknown>> = [];
+    for (const item of pendingCreation) {
+      try {
+        await adminAuth.getUserByEmail(item.email);
+        return NextResponse.json(
+          { error: "AUTH_EMAIL_ALREADY_USED", email: item.email, preview },
+          { status: 409 },
+        );
+      } catch (lookupError: any) {
+        if (lookupError?.code !== "auth/user-not-found") throw lookupError;
+      }
+    }
+    for (const item of pendingCreation) {
+      const traineeRef = adminDb.collection("trainees").doc();
+      const authUser = await adminAuth.createUser({
+        email: item.email,
+        displayName: item.name,
+        emailVerified: false,
+      });
+      try {
+        await adminAuth.setCustomUserClaims(authUser.uid, {
+          role: "trainee",
+          traineeId: traineeRef.id,
+        });
+        const startDate = item.hours
+          .map((row) => row.date)
+          .sort()[0] || now.slice(0, 10);
+        const requiredHours = item.license === "QASP-S" ? 1000 : 2000;
+        const supervisionTargetHours = item.license === "QASP-S" ? 50 : 100;
+        const emailKeyRef = adminDb.collection("identityKeys").doc(identityKey("email", item.email));
+        const phoneKeyRef = item.phone
+          ? adminDb.collection("identityKeys").doc(identityKey("phone", item.phone))
+          : null;
+        await adminDb.runTransaction(async (transaction) => {
+          const emailKey = await transaction.get(emailKeyRef);
+          const phoneKey = phoneKeyRef ? await transaction.get(phoneKeyRef) : null;
+          if (emailKey.exists || phoneKey?.exists) throw new Error("IDENTITY_KEY_EXISTS");
+          transaction.create(traineeRef, {
+            name: item.name,
+            email: item.email,
+            phone: item.phone,
+            license: item.license,
+            requiredHours,
+            fieldworkTargetHours: requiredHours,
+            supervisionTargetHours,
+            status: "active",
+            lifecycleStage: "active_service",
+            lifecycleStageChangedAt: now,
+            serviceAccessEnabled: true,
+            onboardingStage: null,
+            currentSupervisorId: supervisorId,
+            assignmentStatus: "active",
+            authUid: authUser.uid,
+            accountStatus: "prepared",
+            fieldworkStartDate: startDate,
+            courseworkStartDate: startDate,
+            totalIndividualHours: 0,
+            totalGroupHours: 0,
+            totalHours: 0,
+            createdAt: now,
+            updatedAt: now,
+            supervisorHoursImport: { version: 1, sourceFile: file.name, importedAt: now },
+          });
+          transaction.create(emailKeyRef, { kind: "email", value: item.email, traineeId: traineeRef.id, createdAt: now });
+          if (phoneKeyRef) {
+            transaction.create(phoneKeyRef, { kind: "phone", value: item.phone, traineeId: traineeRef.id, createdAt: now });
+          }
+          transaction.set(adminDb.collection("assignments").doc(`supervisor_hours_${traineeRef.id}_${supervisorId}`), {
+            traineeId: traineeRef.id,
+            supervisorId,
+            startDate,
+            notes: "إنشاء تلقائي من ملف ساعات المشرف",
+            createdAt: now,
+            createdBy: admin.email || "admin",
+            adminOverride: true,
+            status: "active",
+          });
+        });
+      } catch (creationError) {
+        await adminAuth.deleteUser(authUser.uid).catch(() => undefined);
+        throw creationError;
+      }
+      assignedByEmail.set(item.email, await traineeRef.get());
+      matched.push(item);
+      createdAccounts.push({ traineeId: traineeRef.id, name: item.name, email: item.email, phone: item.phone });
+    }
     const results: Array<Record<string, unknown>> = [];
     for (const item of matched) {
       const traineeDoc = assignedByEmail.get(item.email)!;
@@ -241,9 +405,15 @@ export async function POST(request: NextRequest) {
       message: `تم تحديث ساعات المشرف ${supervisor.name}`,
       supervisorId,
       createdAt: FieldValue.serverTimestamp(),
-      meta: { sourceFile: file.name, matched: matched.length, unmatched: unmatched.length, results },
+      meta: {
+        sourceFile: file.name,
+        matched: matched.length,
+        createdAccounts: createdAccounts.length,
+        conflicts: conflicts.length,
+        results,
+      },
     });
-    return NextResponse.json({ ok: true, committed: true, preview, results });
+    return NextResponse.json({ ok: true, committed: true, preview, createdAccounts, results });
   } catch (error) {
     console.error("Supervisor hours import failed", error);
     return NextResponse.json({ error: "SUPERVISOR_HOURS_IMPORT_FAILED" }, { status: 400 });
