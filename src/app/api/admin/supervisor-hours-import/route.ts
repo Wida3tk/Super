@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/serverAuth";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/normalize";
+import { isHistoricalImportDate } from "@/lib/imports/dateValidation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ type ParsedTrainee = {
   phone: string;
   license: "QASP-S" | "QBA";
   hours: ImportedHour[];
+  ignoredFutureRecords: number;
 };
 
 const text = (value: ExcelJS.CellValue) => {
@@ -76,8 +78,9 @@ function number(value: ExcelJS.CellValue) {
   return Number.isFinite(parsed) && parsed > 0 && parsed <= 16 ? parsed : 0;
 }
 
-function parseHours(sheet: ExcelJS.Worksheet) {
+function parseHours(sheet: ExcelJS.Worksheet, today: string) {
   const rows: ImportedHour[] = [];
+  let ignoredFutureRecords = 0;
   for (const blockRow of [20, 33, 46, 59, 72]) {
     const starts: Array<{ month: number; column: number }> = [];
     sheet.getRow(blockRow).eachCell({ includeEmpty: false }, (cell, column) => {
@@ -104,12 +107,16 @@ function parseHours(sheet: ExcelJS.Worksheet) {
         if (!date) continue;
         const individual = individualColumn ? number(sheet.getCell(row, individualColumn).value) : 0;
         const group = groupColumn ? number(sheet.getCell(row, groupColumn).value) : 0;
+        if (!isHistoricalImportDate(date, today)) {
+          ignoredFutureRecords += Number(Boolean(individual)) + Number(Boolean(group));
+          continue;
+        }
         if (individual) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: individual, format: "individual" });
         if (group) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: group, format: "group" });
       }
     }
   }
-  return rows;
+  return { rows, ignoredFutureRecords };
 }
 
 function sourceId(supervisorId: string, traineeEmail: string, row: ImportedHour) {
@@ -158,16 +165,21 @@ export async function POST(request: NextRequest) {
     }
 
     const ignored = new Set(["تعليمات الاستخدام", "لوحة المعلومات الرئيسية", "اسم المتدرب | للنسخ"]);
+    const today = new Date().toISOString().slice(0, 10);
     const parsed: ParsedTrainee[] = workbook.worksheets
       .filter((sheet) => !ignored.has(sheet.name))
-      .map((sheet) => ({
-        sheet: sheet.name,
-        name: text(sheet.getCell(3, 11).value),
-        email: email(sheet.getCell(4, 11).value),
-        phone: sheetPhone(sheet),
-        license: normalizeLicense(sheet.getCell(5, 11).value),
-        hours: parseHours(sheet),
-      }))
+      .map((sheet) => {
+        const parsedHours = parseHours(sheet, today);
+        return {
+          sheet: sheet.name,
+          name: text(sheet.getCell(3, 11).value),
+          email: email(sheet.getCell(4, 11).value),
+          phone: sheetPhone(sheet),
+          license: normalizeLicense(sheet.getCell(5, 11).value),
+          hours: parsedHours.rows,
+          ignoredFutureRecords: parsedHours.ignoredFutureRecords,
+        };
+      })
       .filter((item) => item.name && item.email.includes("@"));
 
     const traineeSnapshots = await adminDb.collection("trainees").get();
@@ -219,8 +231,9 @@ export async function POST(request: NextRequest) {
     const preview = {
       supervisor: { id: supervisorId, name: supervisor.name, email: supervisor.email, publicProfileId: supervisor.publicProfileId || null },
       sourceFile: file.name,
-      matched: matched.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0) })),
-      pendingCreation: pendingCreation.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0) })),
+      ignoredFutureRecords: parsed.reduce((sum, item) => sum + item.ignoredFutureRecords, 0),
+      matched: matched.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0), ignoredFutureRecords: item.ignoredFutureRecords })),
+      pendingCreation: pendingCreation.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0), ignoredFutureRecords: item.ignoredFutureRecords })),
       conflicts,
     };
     if (!commit) return NextResponse.json({ ok: true, preview });
