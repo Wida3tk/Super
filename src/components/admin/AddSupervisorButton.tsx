@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { providerProfiles } from "@/data/providerProfiles";
 
-export default function AddSupervisorButton() {
+type LinkedSupervisor = { publicProfileId?: string };
+
+export default function AddSupervisorButton({
+  supervisors = [],
+}: {
+  supervisors?: LinkedSupervisor[];
+}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -13,7 +20,14 @@ export default function AddSupervisorButton() {
     password: "",
     bio: "",
     accountType: "supervisor",
+    publicProfileId: "",
   });
+  const linkedProfileIds = new Set(
+    supervisors.map((item) => item.publicProfileId).filter(Boolean),
+  );
+  const availableProfiles = providerProfiles.filter(
+    (profile) => !linkedProfileIds.has(profile.id),
+  );
 
   const reset = () => {
     setForm({
@@ -22,6 +36,7 @@ export default function AddSupervisorButton() {
       password: "",
       bio: "",
       accountType: "supervisor",
+      publicProfileId: "",
     });
     setMsg("");
     setIsError(false);
@@ -55,6 +70,7 @@ export default function AddSupervisorButton() {
           password: "",
           bio: "",
           accountType: "supervisor",
+          publicProfileId: "",
         });
         setTimeout(() => {
           close();
@@ -66,6 +82,8 @@ export default function AddSupervisorButton() {
           EMAIL_EXISTS: "البريد الإلكتروني مسجل مسبقاً",
           MISSING_FIELDS: "يرجى تعبئة جميع الحقول المطلوبة",
           BIO_REQUIRED: "النبذة التعريفية إلزامية",
+          INVALID_PROFILE: "الصفحة التعريفية المختارة غير موجودة",
+          PROFILE_ALREADY_LINKED: "هذه الصفحة مرتبطة بحساب مشرف آخر",
           SERVER_ERROR: "حدث خطأ، حاولي مرة أخرى",
         };
         setMsg(errMap[data.error] ?? data.error);
@@ -154,6 +172,13 @@ export default function AddSupervisorButton() {
           background: #fff;
         }
         .field input::placeholder { color: #B0BEC5; }
+        .field select {
+          width: 100%; background: #F8FAFC;
+          border: 1.5px solid #D1D9E6; color: #001442;
+          border-radius: 10px; padding: 11px 14px;
+          font-size: 13px; font-family: inherit; direction: rtl;
+        }
+        .profile-hint { margin-top: 6px; color: #64748B; font-size: 11px; line-height: 1.6; }
 
         .pass-hint {
           font-size: 11px; color: #94A3B8;
@@ -219,6 +244,34 @@ export default function AddSupervisorButton() {
 
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
+                <div className="field">
+                  <label>ربط بصفحة تعريفية جاهزة</label>
+                  <select
+                    value={form.publicProfileId}
+                    onChange={(event) => {
+                      const publicProfileId = event.target.value;
+                      const profile = providerProfiles.find(
+                        (item) => item.id === publicProfileId,
+                      );
+                      setForm((current) => ({
+                        ...current,
+                        publicProfileId,
+                        name: profile?.name || current.name,
+                        bio: profile?.bio.join(" ") || current.bio,
+                      }));
+                    }}
+                  >
+                    <option value="">بدون ربط — إنشاء صفحة من بيانات الحساب</option>
+                    {availableProfiles.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.name} — {profile.credential}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="profile-hint">
+                    تظهر هنا الصفحات الجاهزة غير المرتبطة فقط، وسيبقى رابطها الحالي كما هو.
+                  </div>
+                </div>
                 <div className="field">
                   <label>
                     نوع الحساب <span>*</span>
