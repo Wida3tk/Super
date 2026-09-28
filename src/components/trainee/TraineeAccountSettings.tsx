@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
+  const router = useRouter();
   const [form, setForm] = useState({
     email: String(trainee.email || ""),
     phone: String(trainee.phone || ""),
@@ -36,11 +38,12 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
         INVALID_PHONE: "تحقق من رقم الهاتف.",
         WEAK_PASSWORD: "كلمة المرور يجب أن تكون 8 أحرف على الأقل.",
         EMAIL_EXISTS: "البريد الإلكتروني مستخدم في حساب آخر.",
+        RECENT_LOGIN_REQUIRED: "لأمان حسابك، سجّل الخروج ثم ادخل مجددًا قبل تعديل بيانات الحساب.",
       };
       setMessage(errors[data.error] || "تعذر حفظ التعديلات.");
     } else {
-      setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
-      setMessage("تم تحديث بيانات حسابك بنجاح.");
+      const locale = window.location.pathname.startsWith("/en") ? "en" : "ar";
+      router.replace(`/${locale}/login?accountUpdated=1`);
     }
     setSaving(false);
   }

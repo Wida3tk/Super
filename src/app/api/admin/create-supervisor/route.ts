@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
         availableSeats: 0,
       });
 
+    await adminAuth.setCustomUserClaims(userRecord.uid, {
+      role: accountType === "consultant" ? "consultant" : "supervisor",
+      supervisorId: userRecord.uid,
+    });
+
     return NextResponse.json({ success: true, uid: userRecord.uid });
   } catch (error: any) {
     const msg =

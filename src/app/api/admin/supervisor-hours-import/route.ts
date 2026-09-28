@@ -343,12 +343,10 @@ export async function POST(request: NextRequest) {
         return String(row.activityType || "").startsWith("supervision_")
           && (row.supervisorHoursImport?.version === 1 || row.legacyImport?.version === 1);
       });
-      for (let offset = 0; offset < priorImportedDocs.length; offset += 400) {
-        const cleanup = adminDb.batch();
-        priorImportedDocs.slice(offset, offset + 400).forEach((doc) => cleanup.delete(doc.ref));
-        await cleanup.commit();
-      }
       const priorImportedIds = new Set(priorImportedDocs.map((doc) => doc.id));
+      const replacementIds = new Set(
+        item.hours.map((row) => sourceId(supervisorId, item.email, row)),
+      );
       const manualFingerprintCounts = new Map<string, number>();
       existingSnap.docs
         .filter((doc) => !priorImportedIds.has(doc.id))
@@ -403,6 +401,18 @@ export async function POST(request: NextRequest) {
           }
         });
         await batch.commit();
+      }
+      // Keep the previous import intact until every replacement row is safely
+      // written. If a write fails, a retry remains possible without data loss.
+      const obsoleteImportedDocs = priorImportedDocs.filter(
+        (doc) => !replacementIds.has(doc.id),
+      );
+      for (let offset = 0; offset < obsoleteImportedDocs.length; offset += 400) {
+        const cleanup = adminDb.batch();
+        obsoleteImportedDocs
+          .slice(offset, offset + 400)
+          .forEach((doc) => cleanup.delete(doc.ref));
+        await cleanup.commit();
       }
       const totals = await syncTraineeFieldworkTotals(traineeDoc.id);
       await traineeDoc.ref.set({

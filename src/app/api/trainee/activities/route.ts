@@ -36,6 +36,15 @@ function durationBetween(start: string, end: string) {
   return Math.round(((eh * 60 + em - (sh * 60 + sm)) / 60) * 100) / 100;
 }
 
+function validActivityDate(value: unknown) {
+  const date = String(value || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === date &&
+    date <= new Date().toISOString().slice(0, 10);
+}
+
 export async function GET() {
   const trainee = await getAuthenticatedTrainee();
   if (!trainee) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -73,7 +82,7 @@ export async function POST(req: NextRequest) {
     evidenceNote,
   } = body;
   if (
-    !date ||
+    !validActivityDate(date) ||
     !startTime ||
     !endTime ||
     !TYPES.has(activityType) ||
@@ -192,7 +201,7 @@ export async function PATCH(req: NextRequest) {
       startTime,
       endTime,
     );
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || duration <= 0 || duration > 16 || !TYPES.has(body.activityType))
+    if (!validActivityDate(date) || duration <= 0 || duration > 16 || !TYPES.has(body.activityType))
       return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
     const isSupervision = String(body.activityType).startsWith("supervision_");
     if (!isSupervision && !CATEGORIES.has(body.activityCategory))

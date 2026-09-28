@@ -7,6 +7,7 @@ import {
   reverseSessionFromTrainee,
 } from "@/lib/supervision/sessionAccounting";
 import type { SessionType } from "@/types";
+import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -41,6 +42,23 @@ export async function POST(req: NextRequest) {
       { error: "Invalid session type" },
       { status: 400 },
     );
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
+  const parsedDate = new Date(`${date}T00:00:00Z`);
+  if (
+    !Number.isFinite(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== date ||
+    date > new Date().toISOString().slice(0, 10)
+  ) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
+  if (
+    (type === "individual" || type === "group") &&
+    (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0 || duration > 16)
+  ) {
+    return NextResponse.json({ error: "Invalid duration" }, { status: 400 });
   }
 
   const uniqueTraineeIds = [
@@ -79,6 +97,9 @@ export async function POST(req: NextRequest) {
       { error: "الجلسة الجماعية تتطلب متدربَين على الأقل" },
       { status: 400 },
     );
+  }
+  if ((type === "absence" || type === "warning") && traineeIds.length !== 1) {
+    return NextResponse.json({ error: "Invalid trainees" }, { status: 400 });
   }
 
   const batch = adminDb.batch();
@@ -149,77 +170,31 @@ export async function POST(req: NextRequest) {
 
   // تحديث snapshots والإجماليات
   if (type === "individual" || type === "group") {
-    const dur = duration || 1;
+    const dur = duration;
 
     for (const traineeId of uniqueTraineeIds) {
       const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
       const snapshotRef = adminDb
         .collection("monthlySnapshots")
         .doc(snapshotId);
-      const snapshotSnap = await snapshotRef.get();
-
-      if (snapshotSnap.exists) {
-        const current = snapshotSnap.data() as any;
-        const newInd =
-          type === "individual"
-            ? (current.individualHours || 0) + dur
-            : current.individualHours || 0;
-        const newGrp =
-          type === "group"
-            ? (current.groupHours || 0) + dur
-            : current.groupHours || 0;
-        const newTotal = newInd + newGrp;
-        batch.update(snapshotRef, {
-          individualHours: newInd,
-          groupHours: newGrp,
-          totalHours: newTotal,
-          groupPercentage:
-            newTotal > 0 ? Math.round((newGrp / newTotal) * 1000) / 10 : 0,
-          updatedAt: now,
-        });
-      } else {
-        const newInd = type === "individual" ? dur : 0;
-        const newGrp = type === "group" ? dur : 0;
-        const newTotal = newInd + newGrp;
-        batch.set(snapshotRef, {
+      batch.set(snapshotRef, {
           supervisorId: supervisor.id,
           traineeId,
           month,
-          workHours: 0,
-          requiredHours: 0,
-          individualHours: newInd,
-          groupHours: newGrp,
-          totalHours: newTotal,
-          groupPercentage:
-            newTotal > 0 ? Math.round((newGrp / newTotal) * 1000) / 10 : 0,
-          absenceCount: 0,
-          warningCount: 0,
-          lockedAt: null,
-          lockedBy: null,
+          individualHours: FieldValue.increment(type === "individual" ? dur : 0),
+          groupHours: FieldValue.increment(type === "group" ? dur : 0),
+          totalHours: FieldValue.increment(dur),
           updatedAt: now,
-        });
-      }
+        }, { merge: true });
 
       // تحديث إجمالي المتدرب
       const traineeRef = adminDb.collection("trainees").doc(traineeId);
-      const traineeSnap = await traineeRef.get();
-      if (traineeSnap.exists) {
-        const t = traineeSnap.data() as any;
-        const newIndTotal =
-          type === "individual"
-            ? (t.totalIndividualHours || 0) + dur
-            : t.totalIndividualHours || 0;
-        const newGrpTotal =
-          type === "group"
-            ? (t.totalGroupHours || 0) + dur
-            : t.totalGroupHours || 0;
-        batch.update(traineeRef, {
-          totalIndividualHours: newIndTotal,
-          totalGroupHours: newGrpTotal,
-          totalSupervisionSessionHours: newIndTotal + newGrpTotal,
+      batch.set(traineeRef, {
+          totalIndividualHours: FieldValue.increment(type === "individual" ? dur : 0),
+          totalGroupHours: FieldValue.increment(type === "group" ? dur : 0),
+          totalSupervisionSessionHours: FieldValue.increment(dur),
           updatedAt: now,
-        });
-      }
+        }, { merge: true });
     }
   }
 
@@ -232,9 +207,8 @@ export async function POST(req: NextRequest) {
     const field = type === "absence" ? "absenceCount" : "warningCount";
 
     if (snapshotSnap.exists) {
-      const current = snapshotSnap.data() as any;
-      const nextCount = (current[field] || 0) + 1;
-      batch.update(snapshotRef, { [field]: nextCount, updatedAt: now });
+      const nextCount = Number(snapshotSnap.data()?.[field] || 0) + 1;
+      batch.update(snapshotRef, { [field]: FieldValue.increment(1), updatedAt: now });
       if (type === "absence" && nextCount === 3)
         absenceEscalation = {
           traineeId,
@@ -252,12 +226,11 @@ export async function POST(req: NextRequest) {
         groupHours: 0,
         totalHours: 0,
         groupPercentage: 0,
-        absenceCount: type === "absence" ? 1 : 0,
-        warningCount: type === "warning" ? 1 : 0,
+        [field]: FieldValue.increment(1),
         lockedAt: null,
         lockedBy: null,
         updatedAt: now,
-      });
+      }, { merge: true });
     }
   }
 
@@ -304,9 +277,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { traineeId, month, workHours } = await req.json();
+  const monthMatch = typeof month === "string" ? /^(\d{4})-(\d{2})$/.exec(month) : null;
+  const monthNumber = monthMatch ? Number(monthMatch[2]) : 0;
   if (
     typeof traineeId !== "string" ||
-    !/^\d{4}-\d{2}$/.test(month) ||
+    !monthMatch ||
+    monthNumber < 1 ||
+    monthNumber > 12 ||
     typeof workHours !== "number" ||
     !Number.isFinite(workHours) ||
     workHours < 0 ||

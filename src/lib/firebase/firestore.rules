@@ -9,7 +9,15 @@ service cloud.firestore {
 
     function isSupervisor() {
       return request.auth != null &&
-        exists(/databases/$(database)/documents/supervisors/$(request.auth.uid));
+        (exists(/databases/$(database)/documents/supervisors/$(request.auth.uid)) ||
+          (request.auth.token.supervisorId != null &&
+            exists(/databases/$(database)/documents/supervisors/$(request.auth.token.supervisorId))));
+    }
+
+    function supervisorId() {
+      return request.auth.token.supervisorId != null
+        ? request.auth.token.supervisorId
+        : request.auth.uid;
     }
 
     function isSupervisorOwner(supervisorId) {
@@ -76,8 +84,9 @@ service cloud.firestore {
 
     match /trainees/{traineeId} {
       allow read: if isAdmin() ||
+        isAssignedTrainee(traineeId) ||
         (isSupervisor() &&
-          resource.data.currentSupervisorId == request.auth.uid);
+          resource.data.currentSupervisorId == supervisorId());
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if false;
@@ -85,7 +94,7 @@ service cloud.firestore {
 
     match /assignments/{assignmentId} {
       allow read: if isAdmin() ||
-        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && resource.data.supervisorId == supervisorId());
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if false;
@@ -93,26 +102,30 @@ service cloud.firestore {
 
     match /sessions/{sessionId} {
       allow read: if isAdmin() ||
-        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && resource.data.supervisorId == supervisorId()) ||
+        (request.auth != null &&
+          request.auth.token.traineeId != null &&
+          request.auth.token.traineeId in resource.data.traineeIds);
       allow create: if isAdmin() ||
         (isSupervisor() &&
-          request.resource.data.supervisorId == request.auth.uid &&
+          request.resource.data.supervisorId == supervisorId() &&
           isCurrentMonth(request.resource.data.month));
       allow update: if isAdmin();
       allow delete: if isAdmin() ||
         (isSupervisor() &&
-          resource.data.supervisorId == request.auth.uid &&
+          resource.data.supervisorId == supervisorId() &&
           isCurrentMonth(resource.data.month));
     }
 
     match /monthlySnapshots/{snapshotId} {
       allow read: if isAdmin() ||
-        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && resource.data.supervisorId == supervisorId()) ||
+        isAssignedTrainee(resource.data.traineeId);
       allow create: if isAdmin() ||
-        (isSupervisor() && request.resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && request.resource.data.supervisorId == supervisorId());
       allow update: if isAdmin() ||
         (isSupervisor() &&
-          resource.data.supervisorId == request.auth.uid &&
+          resource.data.supervisorId == supervisorId() &&
           resource.data.lockedAt == null &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["workHours", "requiredHours", "updatedAt"]));
@@ -122,7 +135,7 @@ service cloud.firestore {
     match /fieldworkActivities/{activityId} {
       allow read: if isAdmin() ||
         isAssignedTrainee(resource.data.traineeId) ||
-        (isSupervisor() && resource.data.supervisorId == request.auth.uid);
+        (isSupervisor() && resource.data.supervisorId == supervisorId());
       allow write: if false;
     }
 

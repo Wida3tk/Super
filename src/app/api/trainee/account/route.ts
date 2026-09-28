@@ -14,6 +14,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "DEMO_READ_ONLY_ACCOUNT" }, { status: 403 });
   }
 
+  const authenticatedAt = Number(sessionUser.auth_time || 0) * 1000;
+  if (!authenticatedAt || Date.now() - authenticatedAt > 10 * 60 * 1000) {
+    return NextResponse.json(
+      { error: "RECENT_LOGIN_REQUIRED" },
+      { status: 401 },
+    );
+  }
+
   try {
     const body = await request.json();
     const email = String(body.email || "")
@@ -56,7 +64,16 @@ export async function PATCH(request: NextRequest) {
       );
       if (!bookings.empty) await batch.commit();
     }
-    return NextResponse.json({ success: true, email, phone });
+    await adminAuth.revokeRefreshTokens(sessionUser.uid);
+    const response = NextResponse.json({ success: true, email, phone, signedOut: true });
+    response.cookies.set("__session", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    });
+    return response;
   } catch (error: any) {
     const code =
       error?.code === "auth/email-already-exists"

@@ -53,8 +53,9 @@ export default function TraineeMonthlyView({ traineeId }: { traineeId: string; s
   }, [traineeId]);
 
   const saveWorkHours = async (month: string) => {
+    if (workHoursInput.trim() === "") return;
     const val = Number(workHoursInput);
-    if (!val || val <= 0) return;
+    if (!Number.isFinite(val) || val < 0) return;
     setSavingMonth(month);
     try {
       const res = await fetch('/api/supervisor/session', {
