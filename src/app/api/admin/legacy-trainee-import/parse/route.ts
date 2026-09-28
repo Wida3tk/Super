@@ -109,13 +109,20 @@ export async function POST(request: NextRequest) {
         || infoSheet.getCell("C6").value
         || infoSheet.getCell("B3").value,
     ).toLowerCase();
-    const startDate = dateValue(
+    let startDate = dateValue(
       scalar(
         labeledValue(infoSheet, ["بداية الخبرة", "تاريخ بدء الإشراف", "supervision start", "start date"])
           || infoSheet.getCell("C10").value
           || infoSheet.getCell("B5").value,
       ),
     );
+    if (!startDate) {
+      const firstMonth = workbook.getWorksheet("Month 1");
+      const overview = workbook.getWorksheet("Activity Overview");
+      startDate = dateValue(
+        scalar(firstMonth?.getCell("C4").value || overview?.getCell("C6").value),
+      );
+    }
     if (!name || !email.includes("@") || !startDate) {
       return NextResponse.json({ error: "MISSING_TRAINEE_INFORMATION" }, { status: 400 });
     }
