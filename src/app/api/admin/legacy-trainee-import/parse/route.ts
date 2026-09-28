@@ -16,7 +16,33 @@ function scalar(value: ExcelJS.CellValue): unknown {
   if (value && typeof value === "object" && "result" in value) {
     return value.result;
   }
+  if (value && typeof value === "object" && "richText" in value) {
+    return value.richText.map((part) => part.text).join("");
+  }
   return value;
+}
+
+function textValue(value: ExcelJS.CellValue) {
+  return String(scalar(value) || "").trim();
+}
+
+function labeledValue(
+  sheet: ExcelJS.Worksheet,
+  labels: string[],
+): ExcelJS.CellValue | null {
+  const normalizedLabels = labels.map((label) => label.toLowerCase());
+  for (let rowNumber = 1; rowNumber <= Math.min(sheet.rowCount, 30); rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    for (let column = 1; column <= Math.min(row.cellCount || 10, 10); column += 1) {
+      const label = textValue(row.getCell(column).value).toLowerCase();
+      if (!normalizedLabels.some((candidate) => label.includes(candidate))) continue;
+      for (let valueColumn = column + 1; valueColumn <= Math.min(column + 2, 10); valueColumn += 1) {
+        const value = row.getCell(valueColumn).value;
+        if (textValue(value)) return value;
+      }
+    }
+  }
+  return null;
 }
 
 function dateValue(value: unknown) {
@@ -32,6 +58,12 @@ function dateValue(value: unknown) {
   if (dotted) {
     return `${dotted[3]}-${dotted[2].padStart(2, "0")}-${dotted[1].padStart(2, "0")}`;
   }
+  const slashed = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (slashed) {
+    return `${slashed[3]}-${slashed[2].padStart(2, "0")}-${slashed[1].padStart(2, "0")}`;
+  }
+  const parsed = new Date(text);
+  if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
   return "";
 }
 
@@ -67,9 +99,23 @@ export async function POST(request: NextRequest) {
     if (!infoSheet) {
       return NextResponse.json({ error: "UNSUPPORTED_TRACKER_FILE" }, { status: 400 });
     }
-    const name = String(scalar(infoSheet.getCell("C5").value) || "").trim();
-    const email = String(scalar(infoSheet.getCell("C6").value) || "").trim().toLowerCase();
-    const startDate = dateValue(scalar(infoSheet.getCell("C10").value));
+    const name = textValue(
+      labeledValue(infoSheet, ["اسم المتدرب", "supervisee name", "trainee name"])
+        || infoSheet.getCell("C5").value
+        || infoSheet.getCell("B2").value,
+    );
+    const email = textValue(
+      labeledValue(infoSheet, ["البريد الإلكتروني", "البريد الالكتروني", "email"])
+        || infoSheet.getCell("C6").value
+        || infoSheet.getCell("B3").value,
+    ).toLowerCase();
+    const startDate = dateValue(
+      scalar(
+        labeledValue(infoSheet, ["بداية الخبرة", "تاريخ بدء الإشراف", "supervision start", "start date"])
+          || infoSheet.getCell("C10").value
+          || infoSheet.getCell("B5").value,
+      ),
+    );
     if (!name || !email.includes("@") || !startDate) {
       return NextResponse.json({ error: "MISSING_TRAINEE_INFORMATION" }, { status: 400 });
     }
