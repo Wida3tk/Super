@@ -1276,7 +1276,7 @@ export default function AdminSupervisionPanel({
                       (s) => s.id === t.currentSupervisorId,
                     );
                     const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license).supervisionTarget);
-                    const approvedHours = Number(t.approvedSupervisionHours ?? ((t.totalIndividualHours || 0) + (t.totalGroupHours || 0)));
+                    const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
                     const pct = Math.min(
                       Math.round((approvedHours / targetHours) * 100),
                       100,

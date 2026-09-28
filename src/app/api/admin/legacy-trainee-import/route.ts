@@ -363,8 +363,13 @@ export async function POST(request: NextRequest) {
       );
 
       let createdActivities = 0;
-      for (let offset = 0; offset < trainee.activities.length; offset += 400) {
-        const chunk: LegacyActivity[] = trainee.activities.slice(offset, offset + 400);
+      // A trainee tracker is authoritative for fieldwork only. Supervision
+      // hours must come from the supervisor's records.
+      const fieldworkActivities = trainee.activities.filter(
+        (row) => row.activityType === "direct" || row.activityType === "indirect",
+      );
+      for (let offset = 0; offset < fieldworkActivities.length; offset += 400) {
+        const chunk: LegacyActivity[] = fieldworkActivities.slice(offset, offset + 400);
         const refs = chunk.map((row) =>
           adminDb.collection("fieldworkActivities").doc(activityId(trainee.email, row)),
         );
@@ -424,11 +429,6 @@ export async function POST(request: NextRequest) {
       const totals = await syncTraineeFieldworkTotals(traineeRef.id);
       await traineeRef.set(
         {
-          totalIndividualHours: Math.max(
-            0,
-            totals.approvedSupervisionHours - totals.approvedGroupSupervisionHours,
-          ),
-          totalGroupHours: totals.approvedGroupSupervisionHours,
           updatedAt: new Date().toISOString(),
         },
         { merge: true },

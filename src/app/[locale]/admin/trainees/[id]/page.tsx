@@ -56,7 +56,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
   const activities = activitiesSnap.docs.map(d => {const a=d.data() as any;return {id:d.id,date:String(a.date||""),month:String(a.month||a.date||"").slice(0,7),startTime:String(a.startTime||""),endTime:String(a.endTime||""),activityType:String(a.activityType||""),category:String(a.category||""),setting:String(a.setting||""),format:String(a.format||""),duration:Number(a.duration||0),status:String(a.status||""),description:String(a.description||"")};}).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
   const documents = documentsSnap.docs.map(d => ({id:d.id,...d.data()} as any)).sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   const target = Number(trainee.supervisionTargetHours || credentialRules(trainee.license || "QASP-S").supervisionTarget);
-  const supervision = Number(trainee.approvedSupervisionHours || 0);
+  const supervision = Number(trainee.totalIndividualHours || 0) + Number(trainee.totalGroupHours || 0);
   const fieldwork = Number(trainee.approvedFieldworkHours || 0);
   const fieldworkTarget = Number(trainee.fieldworkTargetHours || credentialRules(trainee.license || "QASP-S").total);
   const cards = [

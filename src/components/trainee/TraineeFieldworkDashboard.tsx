@@ -118,7 +118,6 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
-  const activitySupervision = sum(["supervision_direct", "supervision_indirect"]);
   const total = direct + indirect;
   const pathway = credentialRules(trainee.license || "QASP-S");
   const requiredHours = pathway.total;
@@ -126,30 +125,10 @@ export default function TraineeFieldworkDashboard({
     trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
   const progress = Math.min(100, (total / requiredHours) * 100);
-  const activitySupervisionIndividual = approved
-    .filter(
-      (a) => a.activityType.startsWith("supervision_") && a.format !== "group",
-    )
-    .reduce((n, a) => n + a.duration, 0);
-  const activitySupervisionGroup = approved
-    .filter(
-      (a) => a.activityType.startsWith("supervision_") && a.format === "group",
-    )
-    .reduce((n, a) => n + a.duration, 0);
-  // جلسات المشرف هي المصدر الرسمي لساعات الإشراف. نستخدم الأكبر من
-  // إجمالي الجلسات أو السجلات القديمة لتفادي مضاعفة الملفات المستوردة.
-  const supervisionIndividual = Math.max(
-    activitySupervisionIndividual,
-    Number(trainee.totalIndividualHours || 0),
-  );
-  const supervisionGroup = Math.max(
-    activitySupervisionGroup,
-    Number(trainee.totalGroupHours || 0),
-  );
-  const supervision = Math.max(
-    activitySupervision,
-    supervisionIndividual + supervisionGroup,
-  );
+  // المصدر الرسمي هو ما سجله المشرف: الفردي + الجماعي فقط.
+  const supervisionIndividual = Number(trainee.totalIndividualHours || 0);
+  const supervisionGroup = Number(trainee.totalGroupHours || 0);
+  const supervision = supervisionIndividual + supervisionGroup;
   const supervisionPct = total ? (supervision / total) * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
   const supervisionProgress = Math.min(
