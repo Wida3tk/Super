@@ -11,6 +11,15 @@ export default function SupervisorMonthlyWork({supervisor,trainees,activities,se
   const [search,setSearch]=useState("");
   const [sort,setSort]=useState<"remaining"|"cumulative"|"name">("remaining");
   const [expanded,setExpanded]=useState<Record<string,boolean>>({});
+  const [repairing,setRepairing]=useState(false);
+  const [repairMessage,setRepairMessage]=useState("");
+  const future2028=activities.filter(x=>String(x.date||"").startsWith("2028-")&&(x.supervisorHoursImport?.version===1||x.legacyImport?.version===1));
+  const repairFutureDates=async()=>{
+    setRepairing(true);setRepairMessage("");
+    const response=await fetch("/api/admin/repair-import-dates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({supervisorId:supervisor.id,fromYear:2028,toYear:2025})});
+    const data=await response.json();
+    if(response.ok){setRepairMessage(`تم تصحيح ${data.repaired} سجل من 2028 إلى 2025.`);setTimeout(()=>location.reload(),700);}else{setRepairMessage("تعذر تصحيح التواريخ. حاولي مرة أخرى.");setRepairing(false);}
+  };
   const toggle=(id:string)=>setExpanded(e=>({...e,[id]:!e[id]}));
   const label=(m:string)=>{const [y,i]=m.split("-");return `${MONTHS[Number(i)-1]||i} ${y}`};
   const inMonth=(items:any[])=>items.filter(x=>monthOf(x)===selected);
@@ -49,7 +58,7 @@ export default function SupervisorMonthlyWork({supervisor,trainees,activities,se
   return <section dir="rtl" style={{marginBottom:18}}>
     <div style={{background:"linear-gradient(125deg,#001442,#0D40FC)",color:"white",borderRadius:18,padding:"20px 24px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div><small style={{color:"#8FE8FF"}}>ملف العمل وكشف المتدربين</small><h2 style={{margin:"5px 0"}}>{supervisor.name}</h2><span style={{color:"#D6E1FF",fontSize:12}}>{supervisor.email}</span></div><a href={`/${locale}/admin/supervisors/${supervisor.id}?view=schedule`} style={{color:"#001442",background:"white",textDecoration:"none",padding:"9px 13px",borderRadius:9,fontSize:12,fontWeight:700}}>{supervisor.accountType === "consultant" ? "إدارة المواعيد" : "إدارة المواعيد والمقاعد"}</a></div>
     <div style={{background:"white",border:"1px solid #E2E8F0",borderRadius:16,overflow:"hidden"}}>
-      <div style={{padding:"17px 18px 12px"}}><h3 style={{margin:0,color:"#001442"}}>المتابعة حسب الشهر</h3><p style={{fontSize:12,color:"#64748B",margin:"5px 0 0"}}>بنفس تنظيم ملف المشرف: اختر الشهر لمراجعة جميع المتدربين والجلسات المسجلة خلاله.</p></div>
+      <div style={{padding:"17px 18px 12px"}}><h3 style={{margin:0,color:"#001442"}}>المتابعة حسب الشهر</h3><p style={{fontSize:12,color:"#64748B",margin:"5px 0 0"}}>بنفس تنظيم ملف المشرف: اختر الشهر لمراجعة جميع المتدربين والجلسات المسجلة خلاله.</p>{future2028.length>0&&<div style={{marginTop:12,padding:12,borderRadius:10,background:"#FFF7ED",border:"1px solid #FED7AA",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}><span style={{fontSize:12,color:"#9A3412",fontWeight:700}}>يوجد {future2028.length} سجل مستورد خطأً في 2028.</span><button onClick={repairFutureDates} disabled={repairing} style={{border:0,borderRadius:8,background:"#C2410C",color:"white",padding:"8px 12px",fontFamily:"inherit",fontWeight:800,cursor:"pointer"}}>{repairing?"جارٍ التصحيح...":"تصحيحها إلى 2025"}</button></div>}{repairMessage&&<p style={{color:repairMessage.startsWith("تم")?"#047857":"#B91C1C",fontSize:12,fontWeight:700}}>{repairMessage}</p>}</div>
       <div style={{display:"flex",gap:7,overflowX:"auto",padding:"0 18px 13px",borderBottom:"1px solid #E2E8F0"}}>{months.map(m=><button key={m} onClick={()=>setSelected(m)} style={{whiteSpace:"nowrap",border:selected===m?"1px solid #0D40FC":"1px solid #DCE5F0",background:selected===m?"#0D40FC":"#F8FAFC",color:selected===m?"white":"#475569",padding:"9px 14px",borderRadius:9,fontWeight:700,fontFamily:"inherit",cursor:"pointer"}}>{label(m)}</button>)}</div>
       {!selected?<p style={{padding:30,textAlign:"center",color:"#64748B"}}>لا توجد بيانات شهرية مسجلة.</p>:<>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9,padding:16,background:"#F8FAFC"}}>{[["فردي",individual,"#0D40FC"],["جماعي",group,"#7C3AED"],["إجمالي الإشراف",individual+group,"#059669"],["متدربون بلغوا الهدف",`${reachedTarget}/${trainees.length}`,"#0891B2"],["إجمالي المتبقي (كل المتدربين)",totalRemaining,"#C2410C"]].map(([l,v,c])=><div key={String(l)} style={{background:"white",border:"1px solid #E2E8F0",borderRight:`4px solid ${c}`,borderRadius:11,padding:12}}><b style={{display:"block",fontSize:22,color:String(c)}}>{String(v)}</b><span style={{fontSize:11,color:"#64748B"}}>{String(l)}</span></div>)}</div>
