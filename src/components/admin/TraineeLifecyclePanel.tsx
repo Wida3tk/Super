@@ -138,10 +138,7 @@ export default function TraineeLifecyclePanel({
   async function move(trainee: any, nextStage: string) {
     const current = stageOf(trainee);
     if (current === nextStage) return;
-    const reason = window.prompt(
-      `سبب نقل ${trainee.name} إلى ${STAGES.find((s) => s.key === nextStage)?.short}:`,
-    );
-    if (reason === null) return;
+    const reason = `تحديث مرحلة ${trainee.name} من لوحة الإدارة`;
     setBusy(trainee.id);
     const response = await fetch("/api/admin/trainee", {
       method: "PATCH",
