@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadTraineeFile } from "@/lib/drive/uploadClient";
+import PriorSupervisorImport from "./PriorSupervisorImport";
 
 export default function PriorSupervisionCredits({ traineeId, records, documents }: { traineeId: string; records: any[]; documents: any[] }) {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function PriorSupervisionCredits({ traineeId, records, documents 
   return <section dir="rtl" className="prior-credit-panel">
     <style>{`.prior-credit-panel label{display:grid;gap:6px;font-size:13px}.prior-credit-panel input,.prior-credit-panel select{width:100%;padding:10px;border:1px solid #CBD5E1;border-radius:8px;font:inherit;background:white}.prior-credit-panel button{padding:10px 14px;border:0;border-radius:9px;background:#0D40FC;color:white;font:inherit;cursor:pointer}.prior-credit-panel button:disabled{opacity:.5;cursor:wait}.prior-credit-panel p{font-size:13px;line-height:1.8;color:#475569}`}</style>
     <h3>ساعات الإشراف السابقة</h3>
+    <PriorSupervisorImport traineeId={traineeId} />
     <p>رصيد مستقل موثق من مشرف خارج المنصة. لا يتطلب حسابًا له، ولا يغير المشرف الحالي أو مراحل المتدرب. إجمالي المعتمد هنا: {approved.reduce((n, r) => n + r.individualHours + r.groupHours, 0)} ساعة.</p>
     <p>أضيفي سجلًا لكل شهر سابق بحسب الإثبات. إذا كانت الساعات مستوردة بالفعل، اختاري «توثيق ساعات مستوردة» لتجنب احتسابها مرتين.</p>
     <form onSubmit={e => { e.preventDefault(); void submit("draft"); }} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 }}>
@@ -49,7 +51,7 @@ export default function PriorSupervisionCredits({ traineeId, records, documents 
     {records.map(r => <div key={r.id} style={{ padding: 12, marginTop: 12, background: "#F8FAFC", borderRadius: 10 }}>
       <b>{r.supervisorName}</b> — {r.startDate} إلى {r.endDate} — فردي: {r.individualHours} / جماعي: {r.groupHours} — {r.mode === "existing" ? "توثيق المستورد دون إضافة" : "رصيد سابق"} — {r.status === "approved" ? "معتمد" : "مسودة غير محتسبة"}
       {r.status === "draft" && <button disabled={busy} onClick={() => { if (confirm("هل راجعتِ الإثبات والساعات؟ الاعتماد يثبت الرصيد السابق، ولن ينشئ جلسات للمشرف الحالي.")) void submit("approve", r.id); }}>اعتماد الإدارة</button>}
-      <a href={`/api/files?documentId=${encodeURIComponent(r.evidenceId)}`} target="_blank" rel="noopener noreferrer"> عرض الإثبات</a>
+      <a href={r.sourceFileHash ? `/api/admin/prior-supervision-import?source=${encodeURIComponent(r.sourceFileHash)}` : `/api/files?documentId=${encodeURIComponent(r.evidenceId)}`} target="_blank" rel="noopener noreferrer"> عرض الإثبات</a>
     </div>)}
   </section>;
 }
