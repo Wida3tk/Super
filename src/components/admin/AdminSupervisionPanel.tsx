@@ -151,11 +151,12 @@ async function apiPut(data: any) {
 // ===========================
 // Modal إضافة متدرب
 // ===========================
-function AddTraineeModal({ onClose }: { onClose: () => void }) {
+function AddTraineeModal({ onClose, supervisors }: { onClose: () => void; supervisors: any[] }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [license, setLicense] = useState<License>("QASP-S");
+  const [supervisorId, setSupervisorId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -166,7 +167,8 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
     }
     setLoading(true);
     try {
-      await apiPost({ name, email, phone, license });
+      const result = await apiPost({ name, email, phone, license, supervisorId });
+      if (result.assignmentError) alert("تمت إضافة المتدرب، لكن تعذر الإسناد. أكمل الإسناد من ملفه ولا تعِد إضافته.");
       window.location.reload();
     } catch (e: any) {
       setError(e.message || "حدث خطأ");
@@ -218,8 +220,7 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
             borderRadius: 8,
           }}
         >
-          سيُضاف في مرحلة &quot;مقابلة أولية&quot; — الإسناد لمشرف يتم لاحقاً
-          بعد التعاقد
+          اختيار مشرف يفعّل الإشراف مباشرة. دون اختيار مشرف، يبقى المتدرب في مرحلة المقابلة الأولية.
         </p>
         <div
           style={{
@@ -351,6 +352,13 @@ function AddTraineeModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+        <label style={{ display: "block", marginBottom: 16 }}>
+          المشرف (اختياري)
+          <select value={supervisorId} onChange={event => setSupervisorId(event.target.value)} style={{ width: "100%", padding: 10, marginTop: 6 }}>
+            <option value="">دون إسناد حاليًا</option>
+            {supervisors.filter(s => s.isActive !== false && s.accountType !== "consultant").map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
         {error && (
           <p
             style={{
@@ -1642,7 +1650,6 @@ export default function AdminSupervisionPanel({
                       <td style={{ padding: "12px 16px" }}>
                         <button
                           onClick={() => setAssigningTrainee(t)}
-                          disabled={!["ready_assignment", "contracting"].includes(String(t.onboardingStage))}
                           style={{
                             padding: "6px 14px",
                             border: `1px solid ${COLORS.success}`,
@@ -1651,8 +1658,7 @@ export default function AdminSupervisionPanel({
                             color: COLORS.success,
                             fontSize: 12,
                             fontWeight: 600,
-                            cursor: ["ready_assignment", "contracting"].includes(String(t.onboardingStage)) ? "pointer" : "not-allowed",
-                            opacity: ["ready_assignment", "contracting"].includes(String(t.onboardingStage)) ? 1 : .45,
+                            cursor: "pointer",
                             fontFamily: "inherit",
                             whiteSpace: "nowrap",
                           }}
@@ -1916,7 +1922,7 @@ export default function AdminSupervisionPanel({
       )}
 
       {showAddModal && (
-        <AddTraineeModal onClose={() => setShowAddModal(false)} />
+        <AddTraineeModal onClose={() => setShowAddModal(false)} supervisors={supervisors} />
       )}
       {assigningTrainee && (
         <AssignModal

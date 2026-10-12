@@ -8,14 +8,33 @@ export async function POST(req: NextRequest) {
   if (!(await requireAdmin()))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, email, phone, license } = await req.json();
+  const { name, email, phone, license, supervisorId } = await req.json();
+  if (supervisorId) {
+    const supervisor = await adminDb
+      .collection("supervisors")
+      .doc(String(supervisorId))
+      .get();
+    if (
+      !supervisor.exists ||
+      supervisor.data()?.isActive === false ||
+      supervisor.data()?.accountType === "consultant"
+    )
+      return NextResponse.json(
+        { error: "INVALID_ACTIVE_SUPERVISOR" },
+        { status: 400 },
+      );
+  }
   if (!name || !email || !phone || !license) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
   if (!new Set(["QASP-S", "QBA"]).has(String(license)))
     return NextResponse.json({ error: "INVALID_LICENSE" }, { status: 400 });
   const normalizedEmail = String(email).trim().toLowerCase();
-  const existing = await adminDb.collection("trainees").where("email", "==", normalizedEmail).limit(1).get();
+  const existing = await adminDb
+    .collection("trainees")
+    .where("email", "==", normalizedEmail)
+    .limit(1)
+    .get();
   if (!existing.empty)
     return NextResponse.json({ error: "EMAIL_EXISTS" }, { status: 409 });
 
@@ -42,7 +61,17 @@ export async function POST(req: NextRequest) {
     updatedAt: new Date().toISOString(),
   });
   const createdAt = new Date().toISOString();
-  await adminDb.collection("traineeLifecycleTransitions").add({ traineeId: ref.id, fromStage: null, toStage: "initial_interview", reason: "إضافة متدرب من الإدارة", changedAt: createdAt, changedMonth: createdAt.slice(0, 7), changedBy: "admin" });
+  await adminDb
+    .collection("traineeLifecycleTransitions")
+    .add({
+      traineeId: ref.id,
+      fromStage: null,
+      toStage: "initial_interview",
+      reason: "إضافة متدرب من الإدارة",
+      changedAt: createdAt,
+      changedMonth: createdAt.slice(0, 7),
+      changedBy: "admin",
+    });
 
   await logActivity({
     type: "trainee_added",
@@ -51,7 +80,32 @@ export async function POST(req: NextRequest) {
     meta: { license },
   });
 
-  return NextResponse.json({ id: ref.id });
+  if (supervisorId) {
+    try {
+      const assigned = await PATCH(
+        new NextRequest(req.url, {
+          method: "PATCH",
+          headers: req.headers,
+          body: JSON.stringify({
+            traineeId: ref.id,
+            action: "assign",
+            supervisorId,
+          }),
+        }),
+      );
+      if (!assigned.ok)
+        return NextResponse.json({
+          id: ref.id,
+          assignmentError: (await assigned.json()).error,
+        });
+    } catch {
+      return NextResponse.json({
+        id: ref.id,
+        assignmentError: "ASSIGNMENT_FAILED",
+      });
+    }
+  }
+  return NextResponse.json({ id: ref.id, assigned: Boolean(supervisorId) });
 }
 
 // تحديث حالة متدرب أو مرحلة البوردنق
@@ -77,7 +131,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "TRAINEE_NOT_FOUND" }, { status: 404 });
 
     const trainee = traineeSnap.data() as any;
-    const email = String(trainee.email || "").trim().toLowerCase();
+    const email = String(trainee.email || "")
+      .trim()
+      .toLowerCase();
     if (!email)
       return NextResponse.json({ error: "MISSING_EMAIL" }, { status: 400 });
 
@@ -108,12 +164,25 @@ export async function PATCH(req: NextRequest) {
         traineeId,
       });
     } catch (error: any) {
-      const code = error?.code === "auth/user-not-found" ? "AUTH_USER_NOT_FOUND" : "PASSWORD_UPDATE_FAILED";
+      const code =
+        error?.code === "auth/user-not-found"
+          ? "AUTH_USER_NOT_FOUND"
+          : "PASSWORD_UPDATE_FAILED";
       console.error("Admin trainee password update failed:", error);
-      return NextResponse.json({ error: code }, { status: code === "AUTH_USER_NOT_FOUND" ? 404 : 500 });
+      return NextResponse.json(
+        { error: code },
+        { status: code === "AUTH_USER_NOT_FOUND" ? 404 : 500 },
+      );
     }
   } else if (action === "updateStatus") {
-    const allowedStatuses = new Set(["onboarding", "active", "paused", "withdrawn", "terminated", "completed"]);
+    const allowedStatuses = new Set([
+      "onboarding",
+      "active",
+      "paused",
+      "withdrawn",
+      "terminated",
+      "completed",
+    ]);
     if (!allowedStatuses.has(String(data.status)))
       return NextResponse.json({ error: "INVALID_STATUS" }, { status: 400 });
     await ref.update({
@@ -127,24 +196,86 @@ export async function PATCH(req: NextRequest) {
       meta: { status: data.status, adminOverride: true },
     });
   } else if (action === "updateLifecycle") {
-    const stages = new Set(["registered", "initial_interview", "post_interview", "contracting", "active_service", "approved_pause", "supervisor_transfer", "platform_suspension", "financial_clearance", "completed"]);
+    const stages = new Set([
+      "registered",
+      "initial_interview",
+      "post_interview",
+      "contracting",
+      "active_service",
+      "approved_pause",
+      "supervisor_transfer",
+      "platform_suspension",
+      "financial_clearance",
+      "completed",
+    ]);
     const nextStage = String(data.stage || "");
-    if (!stages.has(nextStage)) return NextResponse.json({ error: "INVALID_LIFECYCLE_STAGE" }, { status: 400 });
+    if (!stages.has(nextStage))
+      return NextResponse.json(
+        { error: "INVALID_LIFECYCLE_STAGE" },
+        { status: 400 },
+      );
     const before = await ref.get();
-    if (!before.exists) return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
-    const previousStage = String(before.data()?.lifecycleStage || before.data()?.onboardingStage || (before.data()?.status === "active" ? "active_service" : "initial_interview"));
+    if (!before.exists)
+      return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
+    const previousStage = String(
+      before.data()?.lifecycleStage ||
+        before.data()?.onboardingStage ||
+        (before.data()?.status === "active"
+          ? "active_service"
+          : "initial_interview"),
+    );
     const now = new Date().toISOString();
-    const statusByStage: Record<string, string> = { registered: "onboarding", initial_interview: "onboarding", post_interview: "onboarding", contracting: "onboarding", active_service: "active", approved_pause: "paused", supervisor_transfer: "paused", platform_suspension: "terminated", financial_clearance: "paused", completed: "completed" };
+    const statusByStage: Record<string, string> = {
+      registered: "onboarding",
+      initial_interview: "onboarding",
+      post_interview: "onboarding",
+      contracting: "onboarding",
+      active_service: "active",
+      approved_pause: "paused",
+      supervisor_transfer: "paused",
+      platform_suspension: "terminated",
+      financial_clearance: "paused",
+      completed: "completed",
+    };
     const batch = adminDb.batch();
-    batch.update(ref, { lifecycleStage: nextStage, lifecycleStageChangedAt: now, serviceAccessEnabled: nextStage === "active_service", status: statusByStage[nextStage], updatedAt: now });
+    batch.update(ref, {
+      lifecycleStage: nextStage,
+      lifecycleStageChangedAt: now,
+      serviceAccessEnabled: nextStage === "active_service",
+      status: statusByStage[nextStage],
+      updatedAt: now,
+    });
     const historyRef = adminDb.collection("traineeLifecycleTransitions").doc();
-    batch.set(historyRef, { traineeId, fromStage: previousStage, toStage: nextStage, reason: String(data.reason || "تحديث إداري").slice(0, 500), changedAt: now, changedMonth: now.slice(0, 7), changedBy: "admin" });
+    batch.set(historyRef, {
+      traineeId,
+      fromStage: previousStage,
+      toStage: nextStage,
+      reason: String(data.reason || "تحديث إداري").slice(0, 500),
+      changedAt: now,
+      changedMonth: now.slice(0, 7),
+      changedBy: "admin",
+    });
     await batch.commit();
-    await logActivity({ type: "admin_lifecycle_transition", message: `نقلت الإدارة المتدرب من ${previousStage} إلى ${nextStage}`, traineeId, meta: { previousStage, nextStage, reason: data.reason || "" } });
+    await logActivity({
+      type: "admin_lifecycle_transition",
+      message: `نقلت الإدارة المتدرب من ${previousStage} إلى ${nextStage}`,
+      traineeId,
+      meta: { previousStage, nextStage, reason: data.reason || "" },
+    });
   } else if (action === "updateOnboarding") {
-    const allowedStages = new Set(["initial_interview", "awaiting_decisions", "interview_declined", "admin_review", "contracting", "ready_assignment"]);
+    const allowedStages = new Set([
+      "initial_interview",
+      "awaiting_decisions",
+      "interview_declined",
+      "admin_review",
+      "contracting",
+      "ready_assignment",
+    ]);
     if (!allowedStages.has(String(data.stage)))
-      return NextResponse.json({ error: "INVALID_ONBOARDING_STAGE" }, { status: 400 });
+      return NextResponse.json(
+        { error: "INVALID_ONBOARDING_STAGE" },
+        { status: 400 },
+      );
     await ref.update({
       onboardingStage: data.stage,
       updatedAt: new Date().toISOString(),
@@ -154,17 +285,32 @@ export async function PATCH(req: NextRequest) {
     if (!traineeBefore.exists)
       return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
     const traineeData = traineeBefore.data() as any;
-    const assignmentStart = /^\d{4}-\d{2}-\d{2}$/.test(String(data.startDate || ""))
+    const assignmentStart = /^\d{4}-\d{2}-\d{2}$/.test(
+      String(data.startDate || ""),
+    )
       ? String(data.startDate)
       : new Date().toISOString().slice(0, 10);
     const supervisorId = String(data.supervisorId || "");
-    const supervisorRecord = await adminDb.collection("supervisors").doc(supervisorId).get();
-    if (!supervisorRecord.exists || supervisorRecord.data()?.isActive === false || supervisorRecord.data()?.accountType === "consultant") {
-      return NextResponse.json({ error: "INVALID_ACTIVE_SUPERVISOR" }, { status: 400 });
+    const supervisorRecord = await adminDb
+      .collection("supervisors")
+      .doc(supervisorId)
+      .get();
+    if (
+      !supervisorRecord.exists ||
+      supervisorRecord.data()?.isActive === false ||
+      supervisorRecord.data()?.accountType === "consultant"
+    ) {
+      return NextResponse.json(
+        { error: "INVALID_ACTIVE_SUPERVISOR" },
+        { status: 400 },
+      );
     }
     // Administrators are intentionally allowed to override continuation and
     // onboarding state. The override is recorded in assignments/activity log.
-    const isTransfer = Boolean(traineeData.currentSupervisorId && traineeData.currentSupervisorId !== supervisorId);
+    const isTransfer = Boolean(
+      traineeData.currentSupervisorId &&
+      traineeData.currentSupervisorId !== supervisorId,
+    );
     const normalizedEmail = String(traineeData.email || "")
       .trim()
       .toLowerCase();
@@ -256,18 +402,26 @@ export async function PATCH(req: NextRequest) {
       authUid: authUser.uid,
       accountStatus: selfRegistered ? "active" : "invited",
       fieldworkStartDate: traineeData.fieldworkStartDate || assignmentStart,
-      courseworkStartDate: traineeData.courseworkStartDate || data.courseworkStartDate || assignmentStart,
+      courseworkStartDate:
+        traineeData.courseworkStartDate ||
+        data.courseworkStartDate ||
+        assignmentStart,
       updatedAt: assignedAt,
     });
     if (isTransfer) {
-      const activeAssignments = await adminDb.collection("assignments")
-        .where("traineeId", "==", traineeId).where("status", "==", "active").get();
-      activeAssignments.docs.forEach((assignment) => batch.update(assignment.ref, {
-        status: "completed",
-        endDate: assignmentStart,
-        endedBy: "admin",
-        updatedAt: new Date().toISOString(),
-      }));
+      const activeAssignments = await adminDb
+        .collection("assignments")
+        .where("traineeId", "==", traineeId)
+        .where("status", "==", "active")
+        .get();
+      activeAssignments.docs.forEach((assignment) =>
+        batch.update(assignment.ref, {
+          status: "completed",
+          endDate: assignmentStart,
+          endedBy: "admin",
+          updatedAt: new Date().toISOString(),
+        }),
+      );
     }
     const assignRef = adminDb.collection("assignments").doc();
     batch.set(assignRef, {
@@ -281,9 +435,18 @@ export async function PATCH(req: NextRequest) {
       status: "active",
     });
     batch.set(adminDb.collection("traineeLifecycleTransitions").doc(), {
-      traineeId, fromStage: traineeData.lifecycleStage || traineeData.onboardingStage || "contracting", toStage: "active_service",
-      reason: isTransfer ? "اكتمال الانتقال وإسناد المشرف الجديد" : "اعتماد الإسناد وبدء الخدمة",
-      changedAt: assignedAt, changedMonth: assignedAt.slice(0, 7), changedBy: "admin",
+      traineeId,
+      fromStage:
+        traineeData.lifecycleStage ||
+        traineeData.onboardingStage ||
+        "contracting",
+      toStage: "active_service",
+      reason: isTransfer
+        ? "اكتمال الانتقال وإسناد المشرف الجديد"
+        : "اعتماد الإسناد وبدء الخدمة",
+      changedAt: assignedAt,
+      changedMonth: assignedAt.slice(0, 7),
+      changedBy: "admin",
     });
     await batch.commit();
     if (action === "assign") {
@@ -368,27 +531,35 @@ export async function PUT(req: NextRequest) {
   const { supervisorId, traineeId, month, action } = await req.json();
   if (!traineeId || !/^\d{4}-\d{2}$/.test(String(month)))
     return NextResponse.json({ error: "INVALID_DATA" }, { status: 400 });
-  const ref = adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`);
+  const ref = adminDb
+    .collection("monthlyApprovals")
+    .doc(`${traineeId}_${month}`);
 
   if (action === "lock") {
-    await ref.set({
-      traineeId,
-      supervisorId: supervisorId || null,
-      month,
-      locked: true,
-      lockedAt: new Date().toISOString(),
-      lockedBy: "admin",
-      updatedAt: new Date().toISOString(),
-      adminOverride: true,
-    }, { merge: true });
+    await ref.set(
+      {
+        traineeId,
+        supervisorId: supervisorId || null,
+        month,
+        locked: true,
+        lockedAt: new Date().toISOString(),
+        lockedBy: "admin",
+        updatedAt: new Date().toISOString(),
+        adminOverride: true,
+      },
+      { merge: true },
+    );
   } else if (action === "unlock") {
-    await ref.set({
-      locked: false,
-      lockedAt: null,
-      lockedBy: null,
-      updatedAt: new Date().toISOString(),
-      reopenedBy: "admin",
-    }, { merge: true });
+    await ref.set(
+      {
+        locked: false,
+        lockedAt: null,
+        lockedBy: null,
+        updatedAt: new Date().toISOString(),
+        reopenedBy: "admin",
+      },
+      { merge: true },
+    );
   }
 
   return NextResponse.json({ success: true });

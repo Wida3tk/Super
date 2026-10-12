@@ -139,6 +139,20 @@ export default function TraineeLifecyclePanel({
         ))
     );
   });
+  async function assign(trainee: any, supervisorId: string) {
+    if (!supervisorId || !confirm(`إسناد ${trainee.name} للمشرف المختار وتفعيل الإشراف مباشرة دون المراحل التمهيدية؟`)) return;
+    setBusy(trainee.id);
+    try {
+      const response = await fetch("/api/admin/trainee", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ traineeId: trainee.id, action: "assign", supervisorId }),
+      });
+      if (response.ok) location.reload();
+      else alert("تعذر الإسناد. تحقق من بيانات المتدرب والمشرف.");
+    } catch { alert("تعذر الاتصال. حدّث الصفحة للتحقق من حالة الإسناد."); }
+    finally { setBusy(""); }
+  }
   async function move(trainee: any, nextStage: string) {
     const current = stageOf(trainee);
     if (current === nextStage) return;
@@ -427,6 +441,10 @@ export default function TraineeLifecyclePanel({
                     </div>
                   </td>
                   <td style={{ padding: 12 }}>
+                    {!t.currentSupervisorId && t.status === "onboarding" && <select aria-label={`اختيار مشرف لـ ${t.name}`} value="" disabled={busy === t.id} onChange={event => void assign(t, event.target.value)} style={{ display: "block", padding: 7, marginBottom: 8, border: "1px solid #CBD5E1", borderRadius: 8, maxWidth: 170 }}>
+                      <option value="">اختيار مشرف وتفعيل الإشراف</option>
+                      {supervisors.filter(s => s.isActive !== false && s.accountType !== "consultant").map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>}
                     <select
                       disabled={busy === t.id}
                       value={stage.key}
