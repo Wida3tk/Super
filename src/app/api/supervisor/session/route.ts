@@ -120,7 +120,10 @@ export async function POST(req: NextRequest) {
         transaction.get(adminDb.collection("monthlySnapshots")
           .doc(`${supervisor.id}_${traineeId}_${month}`)),
       ));
-      if (snapshots.some((snapshot) => snapshot.data()?.lockedAt)) {
+      const approvals = await Promise.all(uniqueTraineeIds.map((traineeId) =>
+        transaction.get(adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`)),
+      ));
+      if (snapshots.some((snapshot) => snapshot.data()?.lockedAt) || approvals.some((approval) => approval.data()?.locked)) {
         throw new Error("MONTH_LOCKED");
       }
       writes.forEach((write) => write(transaction));
@@ -196,6 +199,14 @@ export async function POST(req: NextRequest) {
     const dur = duration;
 
     for (const traineeId of uniqueTraineeIds) {
+      batch.set(adminDb.collection("fieldworkActivities").doc(`session_${sessionRef.id}_${traineeId}`), {
+        traineeId, supervisorId: supervisor.id, sessionId: sessionRef.id,
+        date, month, duration: dur, activityType: "supervision_indirect",
+        format: type, status: "approved", setting: "video",
+        description: notes || "جلسة إشراف مسجلة بواسطة المشرف",
+        createdAt: now, updatedAt: now, reviewedAt: now, reviewedBy: supervisor.id,
+        supervisionSource: "supervisor_session",
+      });
       const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
       const snapshotRef = adminDb
         .collection("monthlySnapshots")
@@ -216,6 +227,10 @@ export async function POST(req: NextRequest) {
           totalIndividualHours: FieldValue.increment(type === "individual" ? dur : 0),
           totalGroupHours: FieldValue.increment(type === "group" ? dur : 0),
           totalSupervisionSessionHours: FieldValue.increment(dur),
+          approvedSupervisionHours: FieldValue.increment(dur),
+          approvedGroupSupervisionHours: FieldValue.increment(type === "group" ? dur : 0),
+          approvedFieldworkHours: FieldValue.increment(dur),
+          totalHours: FieldValue.increment(dur),
           updatedAt: now,
         }, { merge: true });
     }
@@ -333,9 +348,10 @@ export async function PATCH(req: NextRequest) {
 
   const snapshotRef = adminDb.collection("monthlySnapshots").doc(snapshotId);
   const snapshot = await snapshotRef.get();
+  const approval = await adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`).get();
   if (!snapshot.exists)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (snapshot.data()?.lockedAt)
+  if (snapshot.data()?.lockedAt || approval.data()?.locked)
     return NextResponse.json({ error: "Month locked" }, { status: 409 });
 
   await snapshotRef.update({
@@ -402,12 +418,15 @@ export async function DELETE(req: NextRequest) {
         adminDb.collection("trainees").doc(traineeId),
       );
 
-      const [snapshotDocs, traineeDocs] = await Promise.all([
+      const ledgerRefs = traineeIds.map((traineeId) => adminDb.collection("fieldworkActivities").doc(`session_${sessionId}_${traineeId}`));
+      const [snapshotDocs, traineeDocs, approvalDocs, ledgerDocs] = await Promise.all([
         Promise.all(snapshotRefs.map((ref) => transaction.get(ref))),
         Promise.all(traineeRefs.map((ref) => transaction.get(ref))),
+        Promise.all(traineeIds.map((traineeId) => transaction.get(adminDb.collection("monthlyApprovals").doc(`${traineeId}_${session.month}`)))),
+        Promise.all(ledgerRefs.map((ref) => transaction.get(ref))),
       ]);
 
-      if (snapshotDocs.some((snapshot) => snapshot.data()?.lockedAt)) {
+      if (snapshotDocs.some((snapshot) => snapshot.data()?.lockedAt) || approvalDocs.some((approval) => approval.data()?.locked)) {
         throw new Error("MONTH_LOCKED");
       }
 
@@ -420,10 +439,19 @@ export async function DELETE(req: NextRequest) {
       });
 
       if (type === "individual" || type === "group") {
+        ledgerDocs.forEach((ledger, index) => {
+          if (ledger.exists) transaction.update(ledgerRefs[index], { status: "rejected", deletedAt: now, deletedBy: supervisor.id });
+        });
         traineeDocs.forEach((trainee, index) => {
           if (!trainee.exists) return;
           transaction.update(traineeRefs[index], {
             ...reverseSessionFromTrainee(trainee.data() || {}, type, duration),
+            ...(ledgerDocs[index].exists ? {
+              approvedSupervisionHours: FieldValue.increment(-duration),
+              approvedGroupSupervisionHours: FieldValue.increment(type === "group" ? -duration : 0),
+              approvedFieldworkHours: FieldValue.increment(-duration),
+              totalHours: FieldValue.increment(-duration),
+            } : {}),
             updatedAt: now,
           });
         });

@@ -57,7 +57,7 @@ export default async function TraineeFilePage({ params }: { params: Promise<{loc
   const documents = documentsSnap.docs.map(d => ({id:d.id,...d.data()} as any)).sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   const target = Number(trainee.supervisionTargetHours || credentialRules(trainee.license || "QASP-S").supervisionTarget);
   const supervision = Number(trainee.totalIndividualHours || 0) + Number(trainee.totalGroupHours || 0);
-  const fieldwork = Number(trainee.approvedFieldworkHours || 0);
+  const fieldwork = Number(trainee.approvedDirectHours || 0) + Number(trainee.approvedIndirectHours || 0) + supervision;
   const fieldworkTarget = Number(trainee.fieldworkTargetHours || credentialRules(trainee.license || "QASP-S").total);
   const cards = [
     ["ساعات الإشراف", supervision, target, "#0D40FC"],

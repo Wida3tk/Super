@@ -53,7 +53,7 @@ export function buildCompliance(
   const group = supervisionRows
     .filter((a) => a.format === "group")
     .reduce((n, a) => n + a.duration, 0);
-  const fieldwork = direct + indirect;
+  const fieldwork = direct + indirect + supervision;
   const directRate = fieldwork ? direct / fieldwork : 0;
   const indirectRate = fieldwork ? indirect / fieldwork : 0;
   const byMonth = new Map<
@@ -75,6 +75,7 @@ export function buildCompliance(
       group: 0,
     };
     if (a.activityType.startsWith("supervision_")) {
+      row.fieldwork += a.duration;
       row.supervision += a.duration;
       if (a.format === "group") row.group += a.duration;
     } else {

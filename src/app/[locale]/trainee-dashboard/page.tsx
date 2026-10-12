@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee } from "@/lib/auth/serverAuth";
 import TraineeFieldworkDashboard from "@/components/trainee/TraineeFieldworkDashboard";
-import type { FieldworkActivity } from "@/types";
 import TraineePreAssignmentPortal from "@/components/trainee/TraineePreAssignmentPortal";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 
 export default async function TraineeDashboardPage({
   params,
@@ -33,7 +33,6 @@ export default async function TraineeDashboardPage({
   }
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [
-    activitySnap,
     supervisorSnap,
     planSnap,
     assessmentsSnap,
@@ -50,10 +49,6 @@ export default async function TraineeDashboardPage({
     bookingsSnap,
     notificationsSnap,
   ] = await Promise.all([
-    adminDb
-      .collection("fieldworkActivities")
-      .where("traineeId", "==", trainee.id)
-      .get(),
     trainee.currentSupervisorId
       ? adminDb.collection("supervisors").doc(trainee.currentSupervisorId).get()
       : Promise.resolve(null),
@@ -107,12 +102,7 @@ export default async function TraineeDashboardPage({
     adminDb.collection("bookings").where("studentEmail", "==", trainee.email).limit(30).get(),
     adminDb.collection("notifications").where("traineeId", "==", trainee.id).limit(30).get(),
   ]);
-  const activities = (
-    activitySnap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    })) as FieldworkActivity[]
-  ).sort((a, b) => b.date.localeCompare(a.date));
+  const activities = (await getTraineeActivityLedger(trainee.id)).sort((a, b) => b.date.localeCompare(a.date));
   const supervisorName = supervisorSnap?.exists
     ? String(supervisorSnap.data()?.name || "")
     : "";

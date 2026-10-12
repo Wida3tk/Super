@@ -38,12 +38,14 @@ function setupDocuments(
   session: Record<string, unknown>,
   snapshot: Record<string, unknown> = {},
   trainee: Record<string, unknown> = {},
+  approval: Record<string, unknown> = {},
 ) {
   const refs = new Map<string, { path: string; get: ReturnType<typeof vi.fn> }>();
   const values: Record<string, StoredDocument> = {
     "sessions/session-1": document(session),
     "monthlySnapshots/supervisor-1_trainee-1_2026-09": document(snapshot),
     "trainees/trainee-1": document(trainee),
+    "monthlyApprovals/trainee-1_2026-09": document(approval),
   };
 
   mocks.collection.mockImplementation((collectionName: string) => ({
@@ -61,6 +63,8 @@ function setupDocuments(
     callback({
       get: async (ref: { path: string }) => values[ref.path] || document(),
       update: (ref: { path: string }, data: Record<string, unknown>) =>
+        updates.push({ path: ref.path, data }),
+      set: (ref: { path: string }, data: Record<string, unknown>) =>
         updates.push({ path: ref.path, data }),
     }),
   );
@@ -110,6 +114,26 @@ describe("DELETE /api/supervisor/session", () => {
     const response = await DELETE(request("session-1"));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "الشهر مقفل" });
+  });
+  it("rejects a new session when only the administrative approval is locked", async () => {
+    const { updates } = setupDocuments({}, {}, { currentSupervisorId: "supervisor-1" }, { locked: true });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(409);
+    expect(updates).toEqual([]);
+  });
+  it("atomically saves the supervisor session and its activity ledger row", async () => {
+    const { updates } = setupDocuments({}, {}, { currentSupervisorId: "supervisor-1" });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1.5, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(200);
+    expect(updates.filter((item) => item.path.startsWith("fieldworkActivities/")).map((item) => item.data))
+      .toEqual([expect.objectContaining({ traineeId: "trainee-1", duration: 1.5, format: "individual", status: "approved", supervisionSource: "supervisor_session" })]);
+    expect(updates.some((item) => item.path.startsWith("sessions/"))).toBe(true);
   });
 
   it.each(["individual", "group", "absence", "warning"])(

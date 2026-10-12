@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 import ExcelJS from "exceljs";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { buildCompliance } from "@/lib/qaba/compliance";
-import type { FieldworkActivity } from "@/types";
 
 const activityLabels: Record<string, string> = {
   direct: "مباشرة",
@@ -28,18 +28,12 @@ export async function GET(req: NextRequest) {
   )
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   const [
-    activitySnap,
     documentsSnap,
     assessmentsSnap,
     meetingsSnap,
     planSnap,
     approvalsSnap,
   ] = await Promise.all([
-    adminDb
-      .collection("fieldworkActivities")
-      .where("traineeId", "==", traineeId)
-      .limit(2000)
-      .get(),
     adminDb
       .collection("supervisionDocuments")
       .where("traineeId", "==", traineeId)
@@ -63,10 +57,7 @@ export async function GET(req: NextRequest) {
       .get(),
   ]);
   const trainee = { id: traineeSnap.id, ...traineeSnap.data() } as any;
-  const activities = activitySnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as FieldworkActivity[];
+  const activities = await getTraineeActivityLedger(traineeId);
   const approved = activities
     .filter((a) => a.status === "approved")
     .sort((a, b) => a.date.localeCompare(b.date));

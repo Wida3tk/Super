@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { buildCompliance } from "@/lib/qaba/compliance";
-import type { FieldworkActivity } from "@/types";
 
 export async function GET(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -56,16 +56,7 @@ export async function POST(req: NextRequest) {
       { error: "SUPERVISOR_CREDENTIAL_EXPIRED" },
       { status: 409 },
     );
-  const activitiesSnap = await adminDb
-    .collection("fieldworkActivities")
-    .where("traineeId", "==", traineeId)
-    .where("month", "==", month)
-    .limit(500)
-    .get();
-  const activities = activitiesSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as FieldworkActivity[];
+  const activities = (await getTraineeActivityLedger(traineeId)).filter((activity) => activity.month === month);
   const trainee = traineeSnap.data() as any;
   const result = buildCompliance(
     activities,

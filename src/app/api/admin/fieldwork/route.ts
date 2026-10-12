@@ -5,8 +5,8 @@ import { requireAdmin } from "@/lib/auth/serverAuth";
 import { adminDb } from "@/lib/firebase/admin";
 import { buildCompliance } from "@/lib/qaba/compliance";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
-import type { FieldworkActivity } from "@/types";
 import { logActivity } from "@/lib/activityLog";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 
 export async function PATCH(request: NextRequest) {
   const admin = await requireAdmin();
@@ -66,14 +66,10 @@ export async function POST(request: NextRequest) {
   if (body.action !== "finalizeMonth" || !/^\d{4}-\d{2}$/.test(String(body.month || "")))
     return NextResponse.json({ error: "INVALID_ACTION" }, { status: 400 });
 
-  const [traineeSnapshot, activitiesSnapshot] = await Promise.all([
-    adminDb.collection("trainees").doc(traineeId).get(),
-    adminDb.collection("fieldworkActivities").where("traineeId", "==", traineeId)
-      .where("month", "==", body.month).get(),
-  ]);
+  const traineeSnapshot = await adminDb.collection("trainees").doc(traineeId).get();
   if (!traineeSnapshot.exists) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   const trainee = traineeSnapshot.data() as any;
-  const activities = activitiesSnapshot.docs.map((document) => ({ id: document.id, ...document.data() })) as FieldworkActivity[];
+  const activities = (await getTraineeActivityLedger(traineeId)).filter((activity) => activity.month === body.month);
   const compliance = buildCompliance(activities, trainee.license || "QASP-S", trainee.fieldworkStartDate);
   const summary = compliance.months.find((item) => item.month === body.month);
   if (!summary) return NextResponse.json({ error: "NO_APPROVED_HOURS" }, { status: 409 });

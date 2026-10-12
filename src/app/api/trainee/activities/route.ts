@@ -4,12 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 import type { FieldworkActivityType } from "@/types";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 
 const TYPES = new Set<FieldworkActivityType>([
   "direct",
   "indirect",
-  "supervision_direct",
-  "supervision_indirect",
 ]);
 const CATEGORIES = new Set([
   "service_delivery",
@@ -50,12 +49,7 @@ export async function GET() {
   if (!trainee) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!hasActiveTraineeService(trainee))
     return NextResponse.json({ error: "ASSIGNMENT_REQUIRED" }, { status: 403 });
-  const snap = await adminDb
-    .collection("fieldworkActivities")
-    .where("traineeId", "==", trainee.id)
-    .get();
-  const activities = snap.docs
-    .map((doc) => ({ id: doc.id, ...doc.data() }) as any)
+  const activities = (await getTraineeActivityLedger(trainee.id))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)));
   return NextResponse.json({ activities });
 }
@@ -182,6 +176,7 @@ export async function PATCH(req: NextRequest) {
   const snap = await ref.get();
   if (
     !snap.exists ||
+    String(snap.data()?.activityType || "").startsWith("supervision_") ||
     snap.data()?.traineeId !== trainee.id ||
     !["draft", "revision_requested"].includes(snap.data()?.status)
   ) {

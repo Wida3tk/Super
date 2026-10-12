@@ -43,9 +43,9 @@ describe("QABA compliance", () => {
       },
     ] as any;
     const result = buildCompliance(rows, "QASP-S");
-    expect(result.fieldwork).toBe(20);
+    expect(result.fieldwork).toBe(21);
     expect(result.supervision).toBe(1);
-    expect(result.months[0].meetsSupervision).toBe(true);
+    expect(result.months[0].meetsSupervision).toBe(false);
   });
 
   it("applies the 40/60 activity distribution cumulatively, not per month", () => {

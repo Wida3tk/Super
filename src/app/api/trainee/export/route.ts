@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 
@@ -27,12 +28,7 @@ export async function GET(req: NextRequest) {
     if (!locked)
       return NextResponse.json({ error: "MONTH_NOT_LOCKED" }, { status: 409 });
   }
-  const snap = await adminDb
-    .collection("fieldworkActivities")
-    .where("traineeId", "==", trainee.id)
-    .limit(2000)
-    .get();
-  let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any);
+  let rows = await getTraineeActivityLedger(trainee.id);
   if (month)
     rows = rows.filter((x) => x.month === month && x.status === "approved");
   else rows = rows.filter((x) => x.status !== "rejected");

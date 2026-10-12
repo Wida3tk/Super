@@ -119,17 +119,17 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
-  const total = direct + indirect;
+  const supervisionIndividual = Number(trainee.totalIndividualHours || 0);
+  const supervisionGroup = Number(trainee.totalGroupHours || 0);
+  const supervision = supervisionIndividual + supervisionGroup;
+  const total = direct + indirect + supervision;
   const pathway = credentialRules(trainee.license || "QASP-S");
-  const requiredHours = pathway.total;
+  const requiredHours = Number(trainee.fieldworkTargetHours || trainee.requiredHours || pathway.total);
   const supervisionTargetHours = Number(
     trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
   const progress = Math.min(100, (total / requiredHours) * 100);
   // المصدر الرسمي هو ما سجله المشرف: الفردي + الجماعي فقط.
-  const supervisionIndividual = Number(trainee.totalIndividualHours || 0);
-  const supervisionGroup = Number(trainee.totalGroupHours || 0);
-  const supervision = supervisionIndividual + supervisionGroup;
   const supervisionPct = total ? (supervision / total) * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
   const supervisionProgress = Math.min(
@@ -945,7 +945,7 @@ export default function TraineeFieldworkDashboard({
                     })
                   }
                 >
-                  {Object.entries(labels).map(([v, l]) => (
+                  {Object.entries(labels).filter(([v]) => v === "direct" || v === "indirect").map(([v, l]) => (
                     <option value={v} key={v}>
                       {l}
                     </option>
