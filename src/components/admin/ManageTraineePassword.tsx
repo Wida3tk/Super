@@ -47,13 +47,14 @@ export default function ManageTraineePassword({ traineeId }: { traineeId: string
           <h3 style={{ margin: "0 0 6px", color: "#001442" }}>تغيير كلمة مرور المتدرب</h3>
           <p style={{ color: "#64748B", fontSize: 12, margin: "0 0 18px" }}>تغيير إداري مباشر. لا تُحفظ كلمة المرور ولا تظهر بعد تنفيذ العملية.</p>
           <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
-        <label style={{ display: "grid", gap: 6, fontSize: 13, fontWeight: 700 }}>
+        <label style={{ display: "grid", gap: 6, fontSize: 13, fontWeight: 700, color: "#001442" }}>
           كلمة المرور الجديدة
-          <input type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} style={{ padding: "11px 12px", border: "1px solid #CBD5E1", borderRadius: 10 }} />
+          <input type="password" placeholder="أدخلي كلمة المرور الجديدة" required autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} style={{ padding: "11px 12px", border: "1px solid #CBD5E1", borderRadius: 10, color: "#001442", background: "#FFFFFF", font: "inherit", fontWeight: 400 }} />
+          <small style={{ color: "#64748B", fontSize: 11, fontWeight: 400 }}>كلمة المرور يجب أن تكون 8 أحرف على الأقل.</small>
         </label>
-        <label style={{ display: "grid", gap: 6, fontSize: 13, fontWeight: 700 }}>
+        <label style={{ display: "grid", gap: 6, fontSize: 13, fontWeight: 700, color: "#001442" }}>
           تأكيد كلمة المرور
-          <input type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} style={{ padding: "11px 12px", border: "1px solid #CBD5E1", borderRadius: 10 }} />
+          <input type="password" placeholder="أعيدي إدخال كلمة المرور الجديدة" required autoComplete="new-password" minLength={8} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} style={{ padding: "11px 12px", border: "1px solid #CBD5E1", borderRadius: 10, color: "#001442", background: "#FFFFFF", font: "inherit", fontWeight: 400 }} />
         </label>
         <button type="submit" disabled={saving || !password || !confirmation} style={{ padding: "12px 18px", border: 0, borderRadius: 10, background: "#0D40FC", color: "white", fontWeight: 800, cursor: "pointer", opacity: saving || !password || !confirmation ? .55 : 1 }}>
           {saving ? "جاري التغيير..." : "تغيير كلمة المرور"}

@@ -13,6 +13,12 @@ export default async function TraineeDashboardPage({
   const { locale } = await params;
   const trainee = await getAuthenticatedTrainee();
   if (!trainee) redirect(`/${locale}/login`);
+  const [lifecycleSnap, lifecycleRequestsSnap] = await Promise.all([
+    adminDb.collection("traineeLifecycleTransitions").where("traineeId", "==", trainee.id).get(),
+    adminDb.collection("traineeRequests").where("traineeId", "==", trainee.id).get(),
+  ]);
+  const lifecycleTransitions = lifecycleSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const lifecycleRequests = lifecycleRequestsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   const legacyActive = !trainee.lifecycleStage && trainee.status === "active" && Boolean(trainee.currentSupervisorId);
   if (!trainee.currentSupervisorId || (!legacyActive && trainee.lifecycleStage !== "active_service")) {
     const bookings = await adminDb.collection("bookings")
@@ -23,7 +29,7 @@ export default async function TraineeDashboardPage({
       (bookings.docs.map(document => ({ id: document.id, ...document.data() } as any))
         .filter(item => item.bookingType !== "consultation" && item.meetingStatus === "completed")
         .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]) || null;
-    return <TraineePreAssignmentPortal trainee={trainee} booking={booking} locale={locale} />;
+    return <TraineePreAssignmentPortal trainee={trainee} booking={booking} locale={locale} transitions={JSON.parse(JSON.stringify(lifecycleTransitions))} requests={JSON.parse(JSON.stringify(lifecycleRequests))} />;
   }
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [
@@ -111,6 +117,7 @@ export default async function TraineeDashboardPage({
     ? String(supervisorSnap.data()?.name || "")
     : "";
   const supervisionFile = {
+    lifecycleTransitions: JSON.parse(JSON.stringify(lifecycleTransitions)),
     notifications: notificationsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as any))
       .filter((item: any) => !item.read && item.targetType !== "admin" && item.audience !== "admin")

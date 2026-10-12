@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { TraineeLifecycleStage } from "@/types";
+import { MAIN_STAGES, EXCEPTIONAL_ACTIONS, mainStageIndex } from "@/lib/lifecycle/presentation";
 
 const STAGES: Array<{
   key: TraineeLifecycleStage;
@@ -12,6 +13,7 @@ const STAGES: Array<{
   color: string;
   icon: string;
 }> = [
+  { key: "registered", label: "تقديم الطلب", short: "تقديم الطلب", color: "#8B5CF6", icon: "📋" },
   {
     key: "initial_interview",
     label: "مرحلة المقابلة الأولية",
@@ -124,7 +126,9 @@ export default function TraineeLifecyclePanel({
   const visible = trainees.filter((t) => {
     const q = search.trim().toLowerCase();
     return (
-      (selectedStage === "all" || stageOf(t) === selectedStage) &&
+      (selectedStage === "all" || (selectedStage.startsWith("main:")
+        ? MAIN_STAGES[mainStageIndex(t, transitions)].key === selectedStage.slice(5)
+        : stageOf(t) === selectedStage)) &&
       (supervisor === "all" || t.currentSupervisorId === supervisor) &&
       (license === "all" || t.license === license) &&
       (!q ||
@@ -193,6 +197,8 @@ export default function TraineeLifecyclePanel({
           />
         </label>
       </section>
+      {[{ title: "المراحل الأساسية للإشراف", stages: MAIN_STAGES }, { title: "الإجراءات الاستثنائية", stages: EXCEPTIONAL_ACTIONS }].map((group, groupIndex) => <section key={group.title}>
+      <h3 style={{color:"#001442",margin:"16px 0 12px"}}>{group.title}</h3>
       <div
         style={{
           display: "grid",
@@ -201,8 +207,10 @@ export default function TraineeLifecyclePanel({
           marginBottom: 20,
         }}
       >
-        {STAGES.map((stage) => {
-          const total = trainees.filter((t) => stageOf(t) === stage.key).length;
+        {group.stages.map((item) => {
+          const stage = { ...STAGES.find((s) => s.key === item.key)!, short: item.label };
+          const filterKey = groupIndex === 0 ? `main:${stage.key}` : stage.key;
+          const total = trainees.filter((t) => groupIndex === 0 ? MAIN_STAGES[mainStageIndex(t, transitions)].key === stage.key : stageOf(t) === stage.key).length;
           const entered = movements.filter(
             (m) => m.toStage === stage.key,
           ).length;
@@ -214,13 +222,13 @@ export default function TraineeLifecyclePanel({
               key={stage.key}
               onClick={() =>
                 setSelectedStage(
-                  selectedStage === stage.key ? "all" : stage.key,
+                  selectedStage === filterKey ? "all" : filterKey,
                 )
               }
               style={{
                 textAlign: "right",
-                background: selectedStage === stage.key ? "#F1F5FF" : "white",
-                border: `1px solid ${selectedStage === stage.key ? stage.color : "#E2E8F0"}`,
+                background: selectedStage === filterKey ? "#F1F5FF" : "white",
+                border: `1px solid ${selectedStage === filterKey ? stage.color : "#E2E8F0"}`,
                 borderTop: `3px solid ${stage.color}`,
                 borderRadius: 15,
                 padding: 17,
@@ -257,6 +265,7 @@ export default function TraineeLifecyclePanel({
           );
         })}
       </div>
+      </section>)}
       <div
         style={{
           display: "flex",

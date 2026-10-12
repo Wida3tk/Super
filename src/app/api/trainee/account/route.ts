@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminAuth } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee, getSessionUser } from "@/lib/auth/serverAuth";
 
 export async function PATCH(request: NextRequest) {
@@ -24,48 +24,17 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const email = String(body.email || "")
-      .trim()
-      .toLowerCase();
-    const phone = String(body.phone ?? trainee.phone ?? "").trim();
+    if (body.email !== undefined || body.phone !== undefined) {
+      return NextResponse.json({ error: "ADMIN_MANAGED_CONTACT" }, { status: 403 });
+    }
     const password = String(body.password || "");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
-    }
-    if (phone && !/^\+?[\d\s-]{8,15}$/.test(phone)) {
-      return NextResponse.json({ error: "INVALID_PHONE" }, { status: 400 });
-    }
-    if (password && password.length < 8) {
+    if (password.length < 8) {
       return NextResponse.json({ error: "WEAK_PASSWORD" }, { status: 400 });
     }
 
-    const previousEmail = String(trainee.email || "")
-      .trim()
-      .toLowerCase();
-    await adminAuth.updateUser(sessionUser.uid, {
-      email,
-      ...(password ? { password } : {}),
-    });
-    await adminDb.collection("trainees").doc(trainee.id).update({
-      email,
-      phone,
-      authUid: sessionUser.uid,
-      updatedAt: new Date().toISOString(),
-    });
-
-    if (previousEmail && previousEmail !== email) {
-      const bookings = await adminDb
-        .collection("bookings")
-        .where("studentEmail", "==", previousEmail)
-        .get();
-      const batch = adminDb.batch();
-      bookings.docs.forEach((doc) =>
-        batch.update(doc.ref, { studentEmail: email }),
-      );
-      if (!bookings.empty) await batch.commit();
-    }
+    await adminAuth.updateUser(sessionUser.uid, { password });
     await adminAuth.revokeRefreshTokens(sessionUser.uid);
-    const response = NextResponse.json({ success: true, email, phone, signedOut: true });
+    const response = NextResponse.json({ success: true, signedOut: true });
     response.cookies.set("__session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

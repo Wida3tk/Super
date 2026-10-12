@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
+import SupervisionProgress from "./SupervisionProgress";
 
-export default function TraineePreAssignmentPortal({ trainee, booking, locale }: any) {
+export default function TraineePreAssignmentPortal({ trainee, booking, locale, transitions = [], requests = [] }: any) {
   const [decision, setDecision] = useState(trainee.traineeContinuationIntent || booking?.traineeContinuationIntent || "pending");
   const [loading, setLoading] = useState(false);
   const completed = booking?.meetingStatus === "completed";
@@ -35,7 +36,8 @@ export default function TraineePreAssignmentPortal({ trainee, booking, locale }:
         <img src="/logo.svg" alt="سلوكيرا" style={{height:42}} />
         <LogoutButton />
       </header>
-      <section style={{maxWidth:720,margin:"12vh auto 0",background:"#fff",border:"1px solid #DCE6F4",borderRadius:24,padding:"40px",boxShadow:"0 22px 65px rgba(0,20,66,.1)",textAlign:"center"}}>
+      <div style={{maxWidth:960,margin:"24px auto 0"}}><SupervisionProgress trainee={trainee} transitions={transitions} requests={requests} /></div>
+      <section style={{maxWidth:720,margin:"24px auto 0",background:"#fff",border:"1px solid #DCE6F4",borderRadius:24,padding:"40px",boxShadow:"0 22px 65px rgba(0,20,66,.1)",textAlign:"center"}}>
         <div style={{width:58,height:58,borderRadius:18,background:"#EAF0FF",display:"grid",placeItems:"center",margin:"0 auto 18px",fontSize:28}}>{stageMessage?.icon || "👋"}</div>
         <h1 style={{color:"#001442",fontSize:28,margin:"0 0 10px"}}>أهلًا {trainee.name}</h1>
         {stageMessage ? <><h2 style={{color:"#001442",fontSize:22}}>{stageMessage.title}</h2><p style={{color:"#64748B",lineHeight:1.9,maxWidth:560,margin:"0 auto"}}>{stageMessage.body}</p></> : !booking ? <>

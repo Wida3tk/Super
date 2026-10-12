@@ -9,7 +9,7 @@ import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 import TraineeHoursGuide from "@/components/trainee/TraineeHoursGuide";
 import TraineeFilesWorkspace from "@/components/trainee/TraineeFilesWorkspace";
 import { credentialRules } from "@/lib/qaba/compliance";
-import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
+import SupervisionProgress from "./SupervisionProgress";
 import {
   AttendanceRecord,
   FinancialPlan,
@@ -139,10 +139,6 @@ export default function TraineeFieldworkDashboard({
     ? (supervisionIndividual / supervision) * 100
     : 0;
   const groupSharePct = supervision ? (supervisionGroup / supervision) * 100 : 0;
-  const currentStageKey = resolveLifecycleStage(trainee);
-  const currentStageIndex = LIFECYCLE_STAGES.findIndex(
-    (s) => s.key === currentStageKey,
-  );
   const pendingCount = activities.filter(
     (a) => a.status === "submitted",
   ).length;
@@ -471,24 +467,7 @@ export default function TraineeFieldworkDashboard({
             </div>
           </aside>
         </section>
-        {currentStageIndex >= 0 && (
-          <section className="stage-strip">
-            <div className="stage-strip-head">رحلتك في منصة سلوكيرا</div>
-            <div className="stage-row">
-              {LIFECYCLE_STAGES.map((stage, index) => (
-                <div
-                  key={stage.key}
-                  className={`stage-step${index < currentStageIndex ? " done" : ""}${index === currentStageIndex ? " current" : ""}`}
-                >
-                  <div className="stage-dot">
-                    {index < currentStageIndex ? "✓" : index + 1}
-                  </div>
-                  <div className="stage-label">{stage.short}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <SupervisionProgress trainee={trainee} transitions={supervisionFile?.lifecycleTransitions || []} requests={supervisionFile?.requests || []} />
         {(supervisionFile?.notifications || []).length > 0 && (
           <section className="panel" style={{marginBottom:18,borderRight:"4px solid #0D40FC"}}>
             <h3 style={{margin:"0 0 10px"}}>رسائل الإدارة</h3>
@@ -500,7 +479,8 @@ export default function TraineeFieldworkDashboard({
             ))}
           </section>
         )}
-        <div className="trainee-tabs">
+        <style>{`.fw-page button,.fw-page input,.fw-page select,.fw-page textarea{font-family:inherit}.trainee-tabs{flex-wrap:wrap;overflow:visible;gap:6px}.trainee-tabs button{font-size:14px;line-height:1.5;flex:1 0 auto}.trainee-tabs button:focus-visible{outline:2px solid #57ddff;outline-offset:2px}.account-form input[readonly]{background:#f1f5f9;color:#475569;cursor:default}@media(max-width:600px){.trainee-tabs button{flex:1 1 calc(50% - 6px);white-space:normal;font-size:13px}}`}</style>
+        <div className="trainee-tabs" aria-label="أقسام لوحة المتدرب">
           {(
             [
               ["overview", "نظرة عامة"],
@@ -522,6 +502,7 @@ export default function TraineeFieldworkDashboard({
           ).map(([key, label]) => (
             <button
               key={key}
+              aria-pressed={activeTab === key}
               className={activeTab === key ? "active" : ""}
               onClick={() => setActiveTab(key)}
             >

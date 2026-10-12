@@ -26,8 +26,6 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: form.email,
-        phone: form.phone,
         password: form.password,
       }),
     });
@@ -54,7 +52,7 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
       <div className="account-heading">
         <div>
           <h3>إعدادات الحساب</h3>
-          <p className="muted">حدّث بيانات التواصل أو عيّن كلمة مرور جديدة.</p>
+          <p className="muted">يمكنك تغيير كلمة المرور. تحديث البريد الإلكتروني ورقم الهاتف يتم عن طريق الإدارة.</p>
         </div>
         <span className="account-lock" aria-hidden="true">
           ●
@@ -67,8 +65,8 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
             type="email"
             autoComplete="email"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
+            readOnly
+            dir="ltr"
           />
         </label>
         <label>
@@ -76,17 +74,19 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
           <input
             type="tel"
             autoComplete="tel"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            required
+            value={form.phone || "لم تضف الإدارة رقم هاتف بعد"}
+            readOnly
+            dir="ltr"
           />
         </label>
         <label>
-          كلمة مرور جديدة <small>اختياري</small>
+          كلمة المرور الجديدة <small>8 أحرف على الأقل</small>
           <input
             type="password"
             autoComplete="new-password"
             minLength={8}
+            required
+            placeholder="أدخل كلمة المرور الجديدة"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
@@ -97,6 +97,8 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
             type="password"
             autoComplete="new-password"
             minLength={8}
+            required
+            placeholder="أعد إدخال كلمة المرور الجديدة"
             value={form.confirmPassword}
             onChange={(e) =>
               setForm({ ...form, confirmPassword: e.target.value })
@@ -112,8 +114,8 @@ export default function TraineeAccountSettings({ trainee }: { trainee: any }) {
             {message}
           </div>
         )}
-        <button className="primary account-save" disabled={saving}>
-          {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
+        <button className="primary account-save" disabled={saving || !form.password || !form.confirmPassword}>
+          {saving ? "جاري الحفظ..." : "تغيير كلمة المرور"}
         </button>
       </form>
     </section>
