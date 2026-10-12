@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import SupervisionProgress from "./SupervisionProgress";
+import TraineeWelcome from "./TraineeWelcome";
 
 export default function TraineePreAssignmentPortal({ trainee, booking, locale, transitions = [], requests = [] }: any) {
   const [decision, setDecision] = useState(trainee.traineeContinuationIntent || booking?.traineeContinuationIntent || "pending");
@@ -32,6 +33,7 @@ export default function TraineePreAssignmentPortal({ trainee, booking, locale, t
   };
   return (
     <main dir="rtl" style={{minHeight:"100vh",background:"linear-gradient(145deg,#F4FAFF,#EEF4FF)",fontFamily:"inherit",padding:"28px"}}>
+      <div style={{maxWidth:960,margin:"0 auto"}}><TraineeWelcome traineeId={trainee.id} name={trainee.name} /></div>
       <header style={{maxWidth:960,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <img src="/logo.svg" alt="سلوكيرا" style={{height:42}} />
         <LogoutButton />
