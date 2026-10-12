@@ -7,7 +7,7 @@ import {
   reverseSessionFromTrainee,
 } from "@/lib/supervision/sessionAccounting";
 import type { SessionType } from "@/types";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type Transaction, type DocumentReference, type DocumentData, type SetOptions } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -102,7 +102,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid trainees" }, { status: 400 });
   }
 
-  const batch = adminDb.batch();
+  // Read locks and apply every write in the same transaction so a concurrent
+  // administrative lock cannot be bypassed between validation and saving.
+  const writes: Array<(transaction: Transaction) => void> = [];
+  const batch = {
+    set: (ref: DocumentReference, data: DocumentData, options?: SetOptions) => {
+      writes.push((transaction) => {
+        if (options) transaction.set(ref, data, options);
+        else transaction.set(ref, data);
+      });
+    },
+    update: (ref: DocumentReference, data: DocumentData) => {
+      writes.push((transaction) => { transaction.update(ref, data); });
+    },
+    commit: () => adminDb.runTransaction(async (transaction) => {
+      const snapshots = await Promise.all(uniqueTraineeIds.map((traineeId) =>
+        transaction.get(adminDb.collection("monthlySnapshots")
+          .doc(`${supervisor.id}_${traineeId}_${month}`)),
+      ));
+      if (snapshots.some((snapshot) => snapshot.data()?.lockedAt)) {
+        throw new Error("MONTH_LOCKED");
+      }
+      writes.forEach((write) => write(transaction));
+    }),
+  };
   const now = new Date().toISOString();
   let absenceSequence: number | null = null;
   if (type === "absence") {
@@ -234,7 +257,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await batch.commit();
+  try {
+    await batch.commit();
+  } catch (error) {
+    if (error instanceof Error && error.message === "MONTH_LOCKED") {
+      return NextResponse.json({ error: "الشهر مقفل" }, { status: 409 });
+    }
+    throw error;
+  }
   if (absenceEscalation) {
     await adminDb.collection("notifications").add({
       type: "warning",

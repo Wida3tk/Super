@@ -131,14 +131,7 @@ export default function SupervisorMonthlyWork({
           String(x.format || "").toLowerCase() === "group",
       )
       .reduce((n, x) => n + num(x.duration), 0);
-    const cumulative = activities
-      .filter(
-        (x) =>
-          x.traineeId === t.id &&
-          x.status === "approved" &&
-          String(x.activityType || "").startsWith("supervision_"),
-      )
-      .reduce((n, x) => n + num(x.duration), 0);
+    const cumulative = num(t.totalIndividualHours) + num(t.totalGroupHours);
     const target = Number(
       t.supervisionTargetHours ||
         (/QBA/i.test(String(t.license || "")) &&

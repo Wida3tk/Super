@@ -19,7 +19,7 @@ vi.mock("@/lib/firebase/admin", () => ({
   },
 }));
 
-import { DELETE } from "./route";
+import { DELETE, POST } from "./route";
 
 type StoredDocument = { exists: boolean; data: () => Record<string, unknown> };
 
@@ -111,6 +111,37 @@ describe("DELETE /api/supervisor/session", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "الشهر مقفل" });
   });
+
+  it.each(["individual", "group", "absence", "warning"])(
+    "rejects creating %s records when any trainee month is locked",
+    async (type) => {
+      const { updates } = setupDocuments(
+        {},
+        { lockedAt: "2026-09-20T00:00:00.000Z" },
+        { currentSupervisorId: "supervisor-1" },
+      );
+      // A group request includes another owned trainee; the first is locked.
+      if (type === "group") {
+        const original = mocks.collection.getMockImplementation()!;
+        mocks.collection.mockImplementation((name: string) => {
+          const collection = original(name);
+          return { ...collection, doc: (id: string) => id === "trainee-2"
+            ? { path: "trainees/trainee-2", get: async () => document({ currentSupervisorId: "supervisor-1" }) }
+            : collection.doc(id) };
+        });
+      }
+      const response = await POST(new Request("http://localhost/api/supervisor/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, date: "2026-09-20", duration: 1,
+          traineeIds: type === "group" ? ["trainee-1", "trainee-2"] : ["trainee-1"] }),
+      }) as never);
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "الشهر مقفل" });
+      expect(updates).toEqual([]);
+      expect(mocks.logActivity).not.toHaveBeenCalled();
+    },
+  );
 
   it("atomically reverses totals and soft-deletes an individual session", async () => {
     const { updates } = setupDocuments(
