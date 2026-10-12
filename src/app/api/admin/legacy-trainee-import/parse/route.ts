@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireAdmin } from "@/lib/auth/serverAuth";
+import { scalarCellValue as scalar } from "@/lib/imports/cellValue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,16 +12,6 @@ const TYPE_MAP: Record<string, string> = {
   "Supervision (Direct)": "supervision_direct",
   "Supervision (Indirect)": "supervision_indirect",
 };
-
-function scalar(value: ExcelJS.CellValue): unknown {
-  if (value && typeof value === "object" && "result" in value) {
-    return value.result;
-  }
-  if (value && typeof value === "object" && "richText" in value) {
-    return value.richText.map((part) => part.text).join("");
-  }
-  return value;
-}
 
 function textValue(value: ExcelJS.CellValue) {
   return String(scalar(value) || "").trim();
