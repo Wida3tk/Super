@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { requireAdmin } from "@/lib/auth/serverAuth";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
+import { priorSafeImportBatch } from "@/lib/imports/priorSafeBatch";
 import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/normalize";
 import { isHistoricalImportDate } from "@/lib/imports/dateValidation";
 
@@ -360,7 +361,7 @@ export async function POST(request: NextRequest) {
       let updated = 0;
       let unchanged = 0;
       for (let offset = 0; offset < item.hours.length; offset += 400) {
-        const batch = adminDb.batch();
+        const batch = priorSafeImportBatch(traineeDoc.id);
         const chunk = item.hours.slice(offset, offset + 400);
         const refs = chunk.map((row) => adminDb.collection("fieldworkActivities").doc(sourceId(supervisorId, item.email, row)));
         const managed = await adminDb.getAll(...refs);
@@ -408,10 +409,10 @@ export async function POST(request: NextRequest) {
         (doc) => !replacementIds.has(doc.id),
       );
       for (let offset = 0; offset < obsoleteImportedDocs.length; offset += 400) {
-        const cleanup = adminDb.batch();
+        const cleanup = priorSafeImportBatch(traineeDoc.id);
         obsoleteImportedDocs
           .slice(offset, offset + 400)
-          .forEach((doc) => cleanup.delete(doc.ref));
+          .forEach((doc) => cleanup.delete(doc.ref, doc.data()));
         await cleanup.commit();
       }
       const totals = await syncTraineeFieldworkTotals(traineeDoc.id);
@@ -439,6 +440,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, committed: true, preview, createdAccounts, results });
   } catch (error) {
     console.error("Supervisor hours import failed", error);
-    return NextResponse.json({ error: "SUPERVISOR_HOURS_IMPORT_FAILED" }, { status: 400 });
+    return NextResponse.json({ error: error instanceof Error && error.message === "PRIOR_SUPERVISION_RECONCILIATION_REQUIRED" ? error.message : "SUPERVISOR_HOURS_IMPORT_FAILED" }, { status: 400 });
   }
 }

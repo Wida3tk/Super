@@ -119,8 +119,8 @@ export default function TraineeFieldworkDashboard({
       .reduce((n, a) => n + a.duration, 0);
   const direct = sum(["direct"]),
     indirect = sum(["indirect"]);
-  const supervisionIndividual = Number(trainee.totalIndividualHours || 0);
-  const supervisionGroup = Number(trainee.totalGroupHours || 0);
+  const supervisionIndividual = approved.filter(a => a.activityType.startsWith("supervision_") && a.format !== "group").reduce((n, a) => n + a.duration, 0);
+  const supervisionGroup = approved.filter(a => a.activityType.startsWith("supervision_") && a.format === "group").reduce((n, a) => n + a.duration, 0);
   const supervision = supervisionIndividual + supervisionGroup;
   const total = direct + indirect + supervision;
   const pathway = credentialRules(trainee.license || "QASP-S");
@@ -129,7 +129,7 @@ export default function TraineeFieldworkDashboard({
     trainee.supervisionTargetHours || pathway.supervisionTarget,
   );
   const progress = Math.min(100, (total / requiredHours) * 100);
-  // المصدر الرسمي هو ما سجله المشرف: الفردي + الجماعي فقط.
+  // Approved ledger includes current sessions and certified historical hours once.
   const supervisionPct = total ? (supervision / total) * 100 : 0;
   const maxBar = Math.max(direct, indirect, supervision, 1);
   const supervisionProgress = Math.min(
@@ -515,6 +515,11 @@ export default function TraineeFieldworkDashboard({
         </div>
         {activeTab === "overview" && (
           <>
+            {(supervisionFile?.priorCredits || []).length > 0 && <section className="fw-card" dir="rtl">
+              <h3>رصيد الإشراف السابق</h3>
+              <p>محتسب ضمن إجمالي الإشراف بعد اعتماد الإدارة، وليس جلسات للمشرف الحالي.</p>
+              {supervisionFile.priorCredits.map((r: any) => <p key={r.id}>{r.supervisorName} — {r.startDate} إلى {r.endDate} — فردي: {r.individualHours} / جماعي: {r.groupHours} ساعة</p>)}
+            </section>}
             <div className="motivation-strip">
               <b>✨ {motivation}</b>
               <span>

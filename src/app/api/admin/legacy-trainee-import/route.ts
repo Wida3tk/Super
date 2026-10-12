@@ -5,6 +5,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { requireAdmin } from "@/lib/auth/serverAuth";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import { sendTraineeInvitationEmail } from "@/lib/email/emailService";
+import { priorSafeImportBatch } from "@/lib/imports/priorSafeBatch";
 
 export const dynamic = "force-dynamic";
 
@@ -374,7 +375,7 @@ export async function POST(request: NextRequest) {
           adminDb.collection("fieldworkActivities").doc(activityId(trainee.email, row)),
         );
         const existingActivities = await adminDb.getAll(...refs);
-        const batch = adminDb.batch();
+        const batch = priorSafeImportBatch(traineeRef.id);
         chunk.forEach((row, rowIndex) => {
           if (existingActivities[rowIndex].exists) return;
           const isSupervision = row.activityType.startsWith("supervision_");

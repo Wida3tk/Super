@@ -22,6 +22,7 @@ export default function TraineeHoursUpdate({ trainee, supervisor }: Props) {
     FILE_TOO_LARGE: "حجم الملف يتجاوز الحد المسموح.",
     UNSUPPORTED_TRACKER_FILE: "هذا ليس نموذج تتبع الساعات المعتمد.",
     MISSING_TRAINEE_INFORMATION: "تعذر قراءة اسم المتدرب أو بريده أو تاريخ بدء الإشراف.",
+    PRIOR_SUPERVISION_RECONCILIATION_REQUIRED: "توجد ساعات إشراف سابقة معتمدة لهذا الشهر. راجعي الرصيد السابق قبل استيراد ساعات إشراف إضافية لتجنب التكرار.",
     NO_VALID_ACTIVITIES: "لم نجد ساعات صالحة داخل الملف.",
     TRACKER_TRAINEE_MISMATCH: "الملف يخص متدربًا آخر. لم يتم تعديل أي بيانات.",
     SUPERVISOR_NOT_FOUND: "لا يوجد مشرف مرتبط يمكن اعتماد الملف من خلاله.",

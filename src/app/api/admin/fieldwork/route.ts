@@ -19,12 +19,16 @@ export async function PATCH(request: NextRequest) {
   const reference = adminDb.collection("fieldworkActivities").doc(activityId);
   const activity = await reference.get();
   if (!activity.exists) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (activity.data()?.priorCreditId) return NextResponse.json({ error: "PRIOR_CREDIT_PROTECTED" }, { status: 409 });
   const approval = await adminDb.collection("monthlyApprovals")
     .doc(`${activity.data()?.traineeId}_${activity.data()?.month}`).get();
   if (approval.data()?.locked && body.force !== true)
     return NextResponse.json({ error: "MONTH_LOCKED", canForce: true }, { status: 409 });
   const now = new Date().toISOString();
-  await reference.update({
+  const updated = await adminDb.runTransaction(async tx => {
+    const current = await tx.get(reference);
+    if (!current.exists || current.data()?.priorCreditId) return false;
+    tx.update(reference, {
     status,
     reviewerNote: String(body.note || "").trim().slice(0, 1000),
     reviewedAt: now,
@@ -32,7 +36,10 @@ export async function PATCH(request: NextRequest) {
     reviewedByRole: "admin",
     adminOverride: true,
     updatedAt: now,
+    });
+    return true;
   });
+  if (!updated) return NextResponse.json({ error: "PRIOR_CREDIT_PROTECTED" }, { status: 409 });
   const totals = await syncTraineeFieldworkTotals(String(activity.data()?.traineeId));
   await logActivity({
     type: "admin_fieldwork_review",

@@ -185,6 +185,8 @@ export type FieldworkActivityStatus =
   "draft" | "submitted" | "approved" | "revision_requested" | "rejected";
 
 export interface FieldworkActivity {
+  priorCreditId?: string;
+  previousSupervisorName?: string;
   id: string;
   traineeId: string;
   supervisorId: string;

@@ -31,6 +31,8 @@ export default async function TraineeDashboardPage({
         .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]) || null;
     return <TraineePreAssignmentPortal trainee={trainee} booking={booking} locale={locale} transitions={JSON.parse(JSON.stringify(lifecycleTransitions))} requests={JSON.parse(JSON.stringify(lifecycleRequests))} />;
   }
+  const priorCreditsSnap = await adminDb.collection("priorSupervisionCredits").where("traineeId", "==", trainee.id).get();
+  const priorCredits = priorCreditsSnap.docs.filter(d => d.data().status === "approved").map(d => ({ id: d.id, ...d.data() }));
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [
     supervisorSnap,
@@ -142,6 +144,7 @@ export default async function TraineeDashboardPage({
       ? { id: monthlyApprovalSnap.id, ...monthlyApprovalSnap.data() }
       : null,
     currentMonth,
+    priorCredits,
     attendance: attendanceSnap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter(

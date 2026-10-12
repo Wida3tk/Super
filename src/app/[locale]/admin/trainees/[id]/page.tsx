@@ -7,6 +7,8 @@ import { credentialRules } from "@/lib/qaba/compliance";
 import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 import TraineeHoursUpdate from "@/components/admin/TraineeHoursUpdate";
 import EditTraineeProfile from "@/components/admin/EditTraineeProfile";
+import PriorSupervisionCredits from "@/components/admin/PriorSupervisionCredits";
+import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 
 const value = (input: unknown) => {
   if (!input) return "—";
@@ -56,6 +58,8 @@ export default async function TraineeFilePage({
   const traineeSnap = await adminDb.collection("trainees").doc(id).get();
   if (!traineeSnap.exists) notFound();
   const trainee = { id: traineeSnap.id, ...traineeSnap.data() } as any;
+  const previousCredits = await adminDb.collection("priorSupervisionCredits").where("traineeId", "==", id).get();
+  const priorRecords = previousCredits.docs.map(d => ({ id: d.id, ...d.data() }));
   const [
     supervisorSnap,
     activitiesSnap,
@@ -114,9 +118,11 @@ export default async function TraineeFilePage({
     trainee.supervisionTargetHours ||
       credentialRules(trainee.license || "QASP-S").supervisionTarget,
   );
-  const supervision =
-    Number(trainee.totalIndividualHours || 0) +
-    Number(trainee.totalGroupHours || 0);
+  const ledger = await getTraineeActivityLedger(id);
+  const approvedSupervision = ledger.filter(a => a.status === "approved" && a.activityType.startsWith("supervision_"));
+  const individualHours = approvedSupervision.filter(a => a.format !== "group").reduce((n, a) => n + a.duration, 0);
+  const groupHours = approvedSupervision.filter(a => a.format === "group").reduce((n, a) => n + a.duration, 0);
+  const supervision = individualHours + groupHours;
   const fieldwork =
     Number(trainee.approvedDirectHours || 0) +
     Number(trainee.approvedIndirectHours || 0) +
@@ -129,13 +135,13 @@ export default async function TraineeFilePage({
     ["ساعات الإشراف", supervision, target, "#0D40FC"],
     [
       "الإشراف الفردي",
-      Number(trainee.totalIndividualHours || 0),
+      individualHours,
       target,
       "#7C3AED",
     ],
     [
       "الإشراف الجماعي",
-      Number(trainee.totalGroupHours || 0),
+      groupHours,
       target,
       "#0891B2",
     ],
@@ -241,6 +247,7 @@ export default async function TraineeFilePage({
           })}
         </div>
         <section className="profile-section">
+          <PriorSupervisionCredits traineeId={id} records={priorRecords} documents={documents} />
           <div className="section-heading">
             <div>
               <small>معلومات أساسية</small>
