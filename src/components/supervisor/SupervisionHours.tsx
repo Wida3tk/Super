@@ -1377,7 +1377,7 @@ export default function SupervisionHours({
             ساعات الإشراف
           </h2>
           <p style={{ fontSize: 12, color: COLORS.gray500, marginTop: 2 }}>
-            {formatMonth(selectedMonth)}
+            {formatMonth(selectedMonth)} — الشهور السابقة مفتوحة لتسجيل وتصحيح الساعات
           </p>
         </div>
         <button

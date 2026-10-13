@@ -7,6 +7,7 @@ import {
   reverseSessionFromTrainee,
 } from "@/lib/supervision/sessionAccounting";
 import type { SessionType } from "@/types";
+import { SUPERVISOR_RECONCILIATION_OPEN } from "@/lib/supervision/editingPolicy";
 import { FieldValue, type Transaction, type DocumentReference, type DocumentData, type SetOptions } from "firebase-admin/firestore";
 
 export async function POST(req: NextRequest) {
@@ -83,14 +84,6 @@ export async function POST(req: NextRequest) {
   }
 
   const month = date.slice(0, 7);
-  const currentMonth = new Date().toISOString().slice(0, 7);
-
-  if (month !== currentMonth) {
-    return NextResponse.json(
-      { error: "لا يمكن تسجيل جلسة لشهر مختلف عن الشهر الحالي" },
-      { status: 400 },
-    );
-  }
 
   if (type === "group" && traineeIds.length < 2) {
     return NextResponse.json(
@@ -123,7 +116,7 @@ export async function POST(req: NextRequest) {
       const approvals = await Promise.all(uniqueTraineeIds.map((traineeId) =>
         transaction.get(adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`)),
       ));
-      if (snapshots.some((snapshot) => snapshot.data()?.lockedAt) || approvals.some((approval) => approval.data()?.locked)) {
+      if (!SUPERVISOR_RECONCILIATION_OPEN && (snapshots.some((snapshot) => snapshot.data()?.lockedAt) || approvals.some((approval) => approval.data()?.locked))) {
         throw new Error("MONTH_LOCKED");
       }
       writes.forEach((write) => write(transaction));
@@ -351,7 +344,7 @@ export async function PATCH(req: NextRequest) {
   const approval = await adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`).get();
   if (!snapshot.exists)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (snapshot.data()?.lockedAt || approval.data()?.locked)
+  if (!SUPERVISOR_RECONCILIATION_OPEN && (snapshot.data()?.lockedAt || approval.data()?.locked))
     return NextResponse.json({ error: "Month locked" }, { status: 409 });
 
   await snapshotRef.update({
@@ -383,12 +376,6 @@ export async function DELETE(req: NextRequest) {
   const initialData = initialSession.data()!;
   if (initialData.supervisorId !== supervisor.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (initialData.month !== new Date().toISOString().slice(0, 7)) {
-    return NextResponse.json(
-      { error: "لا يمكن حذف جلسات من شهر سابق" },
-      { status: 409 },
-    );
   }
 
   const now = new Date().toISOString();
@@ -426,7 +413,7 @@ export async function DELETE(req: NextRequest) {
         Promise.all(ledgerRefs.map((ref) => transaction.get(ref))),
       ]);
 
-      if (snapshotDocs.some((snapshot) => snapshot.data()?.lockedAt) || approvalDocs.some((approval) => approval.data()?.locked)) {
+      if (!SUPERVISOR_RECONCILIATION_OPEN && (snapshotDocs.some((snapshot) => snapshot.data()?.lockedAt) || approvalDocs.some((approval) => approval.data()?.locked))) {
         throw new Error("MONTH_LOCKED");
       }
 

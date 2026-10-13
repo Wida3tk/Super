@@ -1,4 +1,5 @@
 "use client";
+import { SUPERVISOR_RECONCILIATION_OPEN } from "@/lib/supervision/editingPolicy";
 
 import { useState, useEffect } from "react";
 
@@ -100,7 +101,7 @@ export default function TraineeMonthlyView({ traineeId }: { traineeId: string; s
         <tbody>
           {snapshots.map(snap => {
             const isCurrentMonth = snap.month === currentMonth;
-            const isLocked = !!snap.lockedAt;
+            const isLocked = !SUPERVISOR_RECONCILIATION_OPEN && !!snap.lockedAt;
             const isEditing = editingMonth === snap.month;
             const pct = snap.requiredHours > 0 ? Math.min(Math.round((snap.totalHours / snap.requiredHours) * 100), 100) : 0;
             const metTarget = snap.totalHours >= snap.requiredHours && snap.requiredHours > 0;
