@@ -64,7 +64,6 @@ export async function GET(req: NextRequest) {
     adminDb
       .collection("fieldworkActivities")
       .where("traineeId", "==", traineeId)
-      .limit(1000)
       .get(),
     adminDb.collection("supervisionAgreements").doc(traineeId).get(),
     adminDb
