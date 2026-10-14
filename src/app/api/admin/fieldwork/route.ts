@@ -76,7 +76,10 @@ export async function POST(request: NextRequest) {
   const traineeSnapshot = await adminDb.collection("trainees").doc(traineeId).get();
   if (!traineeSnapshot.exists) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   const trainee = traineeSnapshot.data() as any;
-  const activities = (await getTraineeActivityLedger(traineeId)).filter((activity) => activity.month === body.month);
+  const reconciliation = await adminDb.collection("supervisionReconciliations").where("traineeId", "==", traineeId).where("status", "==", "pending").get();
+  if (reconciliation.docs.some(d => String(d.data().candidate?.date || "").slice(0, 7) === body.month))
+    return NextResponse.json({ error: "PENDING_RECONCILIATION" }, { status: 409 });
+  const activities = await getTraineeActivityLedger(traineeId);
   const compliance = buildCompliance(activities, trainee.license || "QASP-S", trainee.fieldworkStartDate);
   const summary = compliance.months.find((item) => item.month === body.month);
   if (!summary) return NextResponse.json({ error: "NO_APPROVED_HOURS" }, { status: 409 });

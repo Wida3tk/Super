@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { credentialRules, exceedsGroupSupervisionLimit } from "@/lib/qaba/compliance";
 import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 
 interface Props {
@@ -90,7 +90,7 @@ export default async function AdminDashboardPage({ params }: Props) {
   const weekSessions = sessions.filter((s) => s.date >= weekAgo);
 
   // تنبيهات
-  const over25 = snapshots.filter((s) => (s.groupPercentage || 0) > 25);
+  const over25 = snapshots.filter((s) => exceedsGroupSupervisionLimit(s));
   const atRisk = trainees.filter((t) => {
     if (t.status !== "active") return false;
     const snap = snapshots.find((s) => s.traineeId === t.id);
@@ -261,7 +261,7 @@ export default async function AdminDashboardPage({ params }: Props) {
               </div>
               <div className="kpi-item">
                 <b>{over25.length}</b>
-                <span>تجاوزوا 25% جماعية</span>
+                <span>تجاوزوا نسبة الإشراف الجماعي المسموحة</span>
               </div>
               <div className="kpi-item">
                 <b>{maxLoad}</b>
@@ -310,7 +310,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                   <div className="alert-count" style={{ color: "#854F0B" }}>
                     {over25.length}
                   </div>
-                  <div className="alert-label">تجاوزوا 25% جماعية</div>
+                  <div className="alert-label">تجاوزوا نسبة الإشراف الجماعي المسموحة</div>
                   <div className="alert-sub">يحتاجون مراجعة</div>
                 </div>
               </div>

@@ -59,5 +59,8 @@ export default async function MonthsPage({ params }: Props) {
         <AdminSupervisionPanel supervisors={supervisors} initialTrainees={trainees} initialSnapshots={snapshots} />
       </AdminPageLayout>
     );
-  } catch { redirect(`/${locale}/login?portal=admin`); }
+  } catch (error) {
+    if (String((error as { code?: string }).code || '').startsWith('auth/')) redirect(`/${locale}/login?portal=admin`);
+    throw error;
+  }
 }

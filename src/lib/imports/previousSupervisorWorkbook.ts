@@ -11,12 +11,17 @@ export function reconcilePreviousHours(hours: PreviousHour[], existing: Array<{ 
   }
   let duplicates = 0;
   const fresh = hours.filter(h => { const fp = hourFingerprint(h), count = counts.get(fp) || 0; if (count) { counts.set(fp, count - 1); duplicates++; return false; } return true; });
+  const conflicts: Array<{ hour: PreviousHour; matches: typeof existing }> = [];
+  const safe: PreviousHour[] = [];
   for (const h of fresh) {
     const month = h.date.slice(0, 7);
     if (lockedMonths.includes(month)) issues.push(`الشهر ${month} مقفل`);
-    if (protectedMonths.includes(month)) issues.push(`رصيد سابق معتمد في ${month} يحتاج مطابقة قبل الإضافة`);
+    const matches = existing.filter(row => row.date === h.date);
+    const sameDayInFile = safe.some(row => row.date === h.date);
+    if (matches.length || sameDayInFile || protectedMonths.includes(month)) conflicts.push({ hour: h, matches });
+    else safe.push(h);
   }
-  return { issues: [...new Set(issues)], duplicates, fresh };
+  return { issues: [...new Set(issues)], duplicates, fresh: safe, conflicts };
 }
 const text = (value: unknown) => String(scalarCellValue(value) ?? "").trim();
 function dateOf(value: unknown) {

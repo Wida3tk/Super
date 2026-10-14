@@ -1,6 +1,14 @@
 import type { FieldworkActivity } from "@/types";
+import { approvedHourRows, calculateHourTotals } from "@/lib/fieldwork/hourTotals";
 
 export type QabaCredential = "QASP-S" | "QBA";
+
+export function exceedsGroupSupervisionLimit(snapshot: { groupHours?: number; totalHours?: number; groupPercentage?: number }, credential: QabaCredential = "QASP-S") {
+  const rate = Number(snapshot.totalHours) > 0
+    ? Number(snapshot.groupHours || 0) / Number(snapshot.totalHours)
+    : Number(snapshot.groupPercentage || 0) / 100;
+  return rate > credentialRules(credential).maxGroupRate;
+}
 
 export function credentialRules(
   credential: QabaCredential,
@@ -39,21 +47,10 @@ export function buildCompliance(
   // transition windows are represented in the ruleset.
   void fieldworkStartDate;
   const rules = credentialRules(credential);
-  const approved = activities.filter((a) => a.status === "approved");
-  const direct = approved
-    .filter((a) => a.activityType === "direct")
-    .reduce((n, a) => n + a.duration, 0);
-  const indirect = approved
-    .filter((a) => a.activityType === "indirect")
-    .reduce((n, a) => n + a.duration, 0);
-  const supervisionRows = approved.filter((a) =>
-    a.activityType.startsWith("supervision_"),
-  );
-  const supervision = supervisionRows.reduce((n, a) => n + a.duration, 0);
-  const group = supervisionRows
-    .filter((a) => a.format === "group")
-    .reduce((n, a) => n + a.duration, 0);
-  const fieldwork = direct + indirect + supervision;
+  const approved = approvedHourRows(activities);
+  const totals = calculateHourTotals(approved);
+  const { direct, indirect } = totals;
+  const fieldwork = totals.fieldwork;
   const directRate = fieldwork ? direct / fieldwork : 0;
   const indirectRate = fieldwork ? indirect / fieldwork : 0;
   const byMonth = new Map<
@@ -108,10 +105,10 @@ export function buildCompliance(
     }));
   return {
     rules,
-    direct,
-    indirect,
-    supervision,
-    group,
+    direct: totals.direct,
+    indirect: totals.indirect,
+    supervision: totals.supervision,
+    group: totals.group,
     fieldwork,
     directRate,
     indirectRate,

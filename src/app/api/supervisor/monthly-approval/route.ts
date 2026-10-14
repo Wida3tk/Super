@@ -56,10 +56,14 @@ export async function POST(req: NextRequest) {
       { error: "SUPERVISOR_CREDENTIAL_EXPIRED" },
       { status: 409 },
     );
-  const activities = (await getTraineeActivityLedger(traineeId)).filter((activity) => activity.month === month);
+  const ledger = await getTraineeActivityLedger(traineeId);
+  const activities = ledger.filter((activity) => activity.month === month);
+  const reconciliation = await adminDb.collection("supervisionReconciliations").where("traineeId", "==", traineeId).where("status", "==", "pending").get();
+  if (reconciliation.docs.some(d => String(d.data().candidate?.date || "").slice(0, 7) === month))
+    return NextResponse.json({ error: "PENDING_RECONCILIATION" }, { status: 409 });
   const trainee = traineeSnap.data() as any;
   const result = buildCompliance(
-    activities,
+    ledger,
     trainee.license || "QASP-S",
     trainee.fieldworkStartDate,
   );

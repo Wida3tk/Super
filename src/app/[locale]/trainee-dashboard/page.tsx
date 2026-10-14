@@ -77,7 +77,6 @@ export default async function TraineeDashboardPage({
     adminDb
       .collection("sessions")
       .where("traineeIds", "array-contains", trainee.id)
-      .limit(100)
       .get(),
     adminDb
       .collection("traineeRequests")
@@ -104,7 +103,7 @@ export default async function TraineeDashboardPage({
     adminDb.collection("bookings").where("studentEmail", "==", trainee.email).limit(30).get(),
     adminDb.collection("notifications").where("traineeId", "==", trainee.id).limit(30).get(),
   ]);
-  const activities = (await getTraineeActivityLedger(trainee.id)).sort((a, b) => b.date.localeCompare(a.date));
+  const activities = (await getTraineeActivityLedger(trainee.id, { sessions: attendanceSnap })).sort((a, b) => b.date.localeCompare(a.date));
   const supervisorName = supervisorSnap?.exists
     ? String(supervisorSnap.data()?.name || "")
     : "";
@@ -145,7 +144,7 @@ export default async function TraineeDashboardPage({
       : null,
     currentMonth,
     priorCredits,
-    attendance: attendanceSnap.docs
+    attendance: attendanceSnap.docs.slice(0, 100)
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter(
         (item: any) =>
@@ -153,7 +152,7 @@ export default async function TraineeDashboardPage({
           (item.type === "absence" || item.type === "warning"),
       )
       .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),
-    supervisionSessions: attendanceSnap.docs
+    supervisionSessions: attendanceSnap.docs.slice(0, 100)
       .map((d) => ({ id: d.id, ...d.data() } as any))
       .filter((item: any) => !item.deleted && (item.type === "individual" || item.type === "group"))
       .sort((a: any, b: any) => String(b.date).localeCompare(String(a.date))),

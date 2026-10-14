@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     },
     { merge: true },
   );
-  await adminDb.collection("activityLogs").add({
+  await adminDb.collection("activityLog").add({
     type: "agreement_updated",
     traineeId,
     actorId: admin.uid,

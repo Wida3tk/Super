@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const traineeIds = Array.from(new Set(targets.map((doc) => String(doc.data().traineeId || "")).filter(Boolean)));
     await Promise.all(traineeIds.map((id) => syncTraineeFieldworkTotals(id)));
-    await adminDb.collection("activityLogs").add({
+    await adminDb.collection("activityLog").add({
       type: "repair_import_dates",
       message: `تم تصحيح ${targets.length} سجل مستورد من 2028 إلى 2025 للمشرف ${supervisor.data()?.name || supervisorId}`,
       supervisorId,

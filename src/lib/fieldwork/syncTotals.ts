@@ -2,42 +2,43 @@ import "server-only";
 
 import { adminDb } from "@/lib/firebase/admin";
 import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
+import { calculateHourTotals } from "./hourTotals";
 
 /**
  * Keeps the trainee summary cache aligned with the authoritative activity ledger.
  * Dashboards may read these cached values, but fieldworkActivities remains the
  * source of truth and this function can safely rebuild the cache at any time.
  */
-export async function syncTraineeFieldworkTotals(traineeId: string) {
-  const activities = await getTraineeActivityLedger(traineeId);
-
-  let direct = 0;
-  let indirect = 0;
-  let supervision = 0;
-  let groupSupervision = 0;
-  for (const activity of activities) {
-    if (activity.status !== "approved") continue;
-    const duration = Number(activity.duration || 0);
-    if (!Number.isFinite(duration) || duration <= 0) continue;
-    if (activity.activityType === "direct") direct += duration;
-    else if (activity.activityType === "indirect") indirect += duration;
-    else if (String(activity.activityType).startsWith("supervision_")) {
-      supervision += duration;
-      if (activity.format === "group") groupSupervision += duration;
-    }
-  }
-
-  const round = (value: number) => Math.round(value * 100) / 100;
+export async function syncTraineeFieldworkTotals(traineeId: string, options?: { reconcileSupervisionCounters?: boolean }) {
+  return adminDb.runTransaction(async tx => {
+  const reference = adminDb.collection("trainees").doc(traineeId);
+  const [trainee, activities, sessions] = await Promise.all([
+    tx.get(reference),
+    tx.get(adminDb.collection("fieldworkActivities").where("traineeId", "==", traineeId)),
+    tx.get(adminDb.collection("sessions").where("traineeIds", "array-contains", traineeId)),
+  ]);
+  if (!trainee.exists) throw new Error("TRAINEE_NOT_FOUND");
+  const ledger = await getTraineeActivityLedger(traineeId, { activities, sessions });
+  const hours = calculateHourTotals(ledger);
   const totals = {
-    approvedDirectHours: round(direct),
-    approvedIndirectHours: round(indirect),
-    approvedFieldworkHours: round(direct + indirect + supervision),
-    approvedSupervisionHours: round(supervision),
-    approvedGroupSupervisionHours: round(groupSupervision),
+    approvedDirectHours: hours.direct,
+    approvedIndirectHours: hours.indirect,
+    approvedFieldworkHours: hours.fieldwork,
+    approvedSupervisionHours: hours.supervision,
+    approvedIndividualSupervisionHours: hours.individual,
+    approvedGroupSupervisionHours: hours.group,
     // Total experience includes supervisor hours once, alongside activities.
-    totalHours: round(direct + indirect + supervision),
+    totalHours: hours.fieldwork,
     fieldworkTotalsUpdatedAt: new Date().toISOString(),
+    // Explicit supervisor import already rebuilt these counters; keep that
+    // operation atomic with the ledger read, not a separate stale write.
+    ...(options?.reconcileSupervisionCounters ? {
+      totalIndividualHours: hours.individual,
+      totalGroupHours: hours.group,
+    } : {}),
   };
-  await adminDb.collection("trainees").doc(traineeId).set(totals, { merge: true });
+  // Preserve legacy individual/group balances pending historical reconciliation.
+  tx.update(reference, totals);
   return totals;
+  });
 }

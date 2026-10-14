@@ -18,7 +18,8 @@ function reads(overrides: any = {}) {
     .mockResolvedValueOnce({ docs: overrides.rows || [] })
     .mockResolvedValueOnce({ docs: overrides.sessions || [] })
     .mockResolvedValueOnce(snap(overrides.lock ? { locked: true } : null))
-    .mockResolvedValueOnce({ docs: [] });
+    .mockResolvedValueOnce({ docs: [] })
+    .mockResolvedValueOnce({ docs: overrides.pending || [] });
 }
 describe("administrative prior credit approval", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.get.mockReset(); mocks.auth.mockResolvedValue({ uid: "admin" }); });
@@ -47,6 +48,11 @@ describe("administrative prior credit approval", () => {
   it("rejects old sessions without linked activity rows", async () => {
     reads({ sessions: [{ data: () => ({ date: "2020-02-05", type: "individual" }) }] });
     expect((await POST(request())).status).toBe(409); expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("cannot bypass an unresolved dual approval with a manual balance", async () => {
+    reads({ pending: [{ data: () => ({ status: "pending", candidate: { date: "2020-02-05" } }) }] });
+    expect((await POST(request())).status).toBe(409);
+    expect(mocks.create).not.toHaveBeenCalled(); expect(mocks.update).not.toHaveBeenCalled();
   });
   it("honors historical month locks", async () => {
     reads({ lock: true }); expect((await (await POST(request())).json()).error).toBe("MONTH_LOCKED");

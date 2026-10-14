@@ -84,5 +84,5 @@ export async function enforceRateLimit(
       { merge: true },
     );
     return result;
-  });
+  }, { maxAttempts: 2 });
 }

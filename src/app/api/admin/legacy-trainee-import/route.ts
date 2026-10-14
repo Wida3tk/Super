@@ -453,7 +453,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await adminDb.collection("activityLogs").add({
+      await adminDb.collection("activityLog").add({
         type: "legacy_trainee_import",
         message: `تم استيراد السجل التاريخي للمتدرب ${trainee.name}`,
         traineeId: traineeRef.id,

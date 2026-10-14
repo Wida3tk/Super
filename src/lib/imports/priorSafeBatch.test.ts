@@ -24,3 +24,10 @@ it("does not count draft credits as approved balances", async () => {
   batch.create({} as any, { activityType: "supervision_indirect", date: "2020-02-10" });
   await batch.commit(); expect(mock.create).toHaveBeenCalledTimes(1);
 });
+it("blocks a second supervision import from bypassing pending dual approvals", async () => {
+  mock.get.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({ docs: [{ data: () => ({ status: "pending", candidate: { date: "2020-02-05" } }) }] });
+  const batch = priorSafeImportBatch("trainee");
+  batch.create({} as any, { activityType: "supervision_indirect", date: "2020-02-10" });
+  await expect(batch.commit()).rejects.toThrow("PRIOR_SUPERVISION_RECONCILIATION_REQUIRED");
+  expect(mock.create).not.toHaveBeenCalled();
+});

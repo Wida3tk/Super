@@ -14,8 +14,8 @@ export default function PriorSupervisorImport({ traineeId }: { traineeId: string
       if (commit) { form.set("previewToken", preview.previewToken); form.set("traineeIds", JSON.stringify(selected)); }
       const response = await fetch("/api/admin/prior-supervision-import", { method: "POST", body: form }), result = await response.json();
       if (!response.ok) { setMessage(result.error === "PREVIEW_CHANGED" ? "تغيرت الساعات أو اسم المشرفة؛ أعيدي المعاينة قبل الاعتماد." : "تعذر قراءة أو حفظ الملف. لا تعتمدي أي رصيد يدويًا قبل التحقق؛ جربي المعاينة مجددًا."); return; }
-      if (commit) { setMessage(result.results.map((r: any) => r.success ? `${r.name}: أُضيفت ${r.added} جلسة (${r.individual} فردي، ${r.group} جماعي)، واستُبعد ${r.duplicates} مكرر.` : `${r.name}: ${r.error}`).join("\n")); setPreview(null); router.refresh(); }
-      else { setPreview(result); setName(result.supervisorName); setSelected(result.preview.filter((p: any) => p.traineeId === traineeId && !p.issues.length && p.newSessions > 0).map((p: any) => p.traineeId)); }
+      if (commit) { setMessage(result.results.map((r: any) => r.success ? `${r.name}: أُضيفت ${r.added} جلسة (${r.individual} فردي، ${r.group} جماعي)، واستُبعد ${r.duplicates} مكرر. ${r.pending || 0} سجل معلّق لاعتماد الإدارة والمشرف، دون احتساب.` : `${r.name}: ${r.error}`).join("\n")); setPreview(null); router.refresh(); }
+      else { setPreview(result); setName(result.supervisorName); setSelected(result.preview.filter((p: any) => p.traineeId === traineeId && !p.issues.length && (p.newSessions > 0 || p.conflicts > 0)).map((p: any) => p.traineeId)); }
     } catch { setMessage("تعذر الاتصال. حدّثي الصفحة وأعيدي المعاينة للتحقق من النتائج قبل تكرار الاعتماد."); }
     finally { setBusy(false); }
   }
@@ -28,8 +28,9 @@ export default function PriorSupervisorImport({ traineeId }: { traineeId: string
     {preview && <>
       <p>راجعي النتائج. المحدد تلقائيًا هو صاحب الملف المفتوح فقط؛ اختاري حسابات أخرى إذا أردتِ استيرادها أيضًا.</p>
       {preview.preview.map((p: any) => <div key={p.sheet} style={{ borderBottom: "1px solid #CBD5E1", padding: 10 }}>
-        <label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" style={{width:"auto"}} checked={selected.includes(p.traineeId)} disabled={busy || !p.traineeId || p.issues.length > 0 || !p.newSessions} onChange={e => setSelected(e.target.checked ? [...selected, p.traineeId] : selected.filter(id => id !== p.traineeId))} /> {p.name} — {p.email}</label>
+        <label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" style={{width:"auto"}} checked={selected.includes(p.traineeId)} disabled={busy || !p.traineeId || p.issues.length > 0 || (!p.newSessions && !p.conflicts)} onChange={e => setSelected(e.target.checked ? [...selected, p.traineeId] : selected.filter(id => id !== p.traineeId))} /> {p.name} — {p.email}</label>
         <p>{p.newSessions} جلسة جديدة: {p.individual} فردي + {p.group} جماعي. المكرر: {p.duplicates}. {p.issues.join(" · ")}</p>
+        <p>{p.conflicts || 0} سجل يحتاج مطابقة واعتماد الإدارة والمشرف؛ لن يُحتسب عند الاستيراد.</p>
         <details><summary>تفاصيل الجلسات في الملف</summary>{p.details.map((h: any, i: number) => <div key={i}>{h.date} — {h.format === "individual" ? "فردي" : "جماعي"} — {h.duration} ساعة</div>)}</details>
       </div>)}
       <button disabled={busy || !selected.length} onClick={() => { if (confirm("اعتماد ساعات الإشراف السابقة للحسابات المحددة حسب المعاينة؟ لن تُضاف ساعات عمل أو تُغير الأهداف أو المشرف الحالي.")) void run(true); }}>اعتماد استيراد الحسابات المحددة</button>

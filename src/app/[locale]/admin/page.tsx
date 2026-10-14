@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { credentialRules, exceedsGroupSupervisionLimit } from "@/lib/qaba/compliance";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -86,7 +86,7 @@ export default async function AdminDashboardPage({ params }: Props) {
   );
   const totalHours = trainees.reduce((sum, trainee) => sum + Number(trainee.totalIndividualHours || 0) + Number(trainee.totalGroupHours || 0), 0);
   const weekSessions = sessions.filter((s) => s.date >= weekAgo);
-  const over25 = snapshots.filter((s) => (s.groupPercentage || 0) > 25);
+  const over25 = snapshots.filter((s) => exceedsGroupSupervisionLimit(s));
   const atRisk = trainees.filter((t) => {
     if (t.status !== "active") return false;
     const snap = snapshots.find((s) => s.traineeId === t.id);
@@ -399,7 +399,7 @@ export default async function AdminDashboardPage({ params }: Props) {
                   >
                     {over25.length}
                   </div>
-                  <div className="alert-label">تجاوزوا 25% جماعية</div>
+                  <div className="alert-label">تجاوزوا نسبة الإشراف الجماعي المسموحة</div>
                   <div className="alert-sub">يحتاجون مراجعة</div>
                 </div>
               </Link>

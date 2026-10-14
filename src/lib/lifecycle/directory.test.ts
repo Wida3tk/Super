@@ -1,0 +1,6 @@
+import { expect, it } from "vitest";
+import { directoryState, supervisionProgress } from "./directory";
+it("uses agreed interview labels without changing its workflow substage", () => { const t = { lifecycleStage: "post_interview" }; expect(directoryState(t).main.label).toBe("المقابلة"); expect(directoryState(t).stage).toBe("post_interview"); expect(t.lifecycleStage).toBe("post_interview"); });
+it("separates exceptions from the last basic milestone", () => { const view = directoryState({ id: "t", lifecycleStage: "approved_pause" }, [{ traineeId: "t", fromStage: "active_service", toStage: "approved_pause" }]); expect(view.main.label).toBe("البدء بالإشراف"); expect(view.exception?.label).toBe("طلب تأجيل الإشراف"); expect(view.completed).toBe(false); });
+it("never infers completion from hours or resets completed legacy records", () => { expect(directoryState({ status: "completed", totalIndividualHours: 8 }).completed).toBe(true); expect(directoryState({ status: "active", totalIndividualHours: 100 }).completed).toBe(false); });
+it("preserves legacy targets and individual plus group hours", () => { expect(supervisionProgress({ totalIndividualHours: 15.5, totalGroupHours: 10, supervisionTargetHours: 75 })).toEqual({ hours: 25.5, target: 75, percent: 34 }); });

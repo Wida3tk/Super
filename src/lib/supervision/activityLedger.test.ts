@@ -1,16 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ activities: [] as any[], sessions: [] as any[] }));
+const mocks = vi.hoisted(() => ({ activities: [] as any[], sessions: [] as any[], reads: [] as string[] }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/firebase/admin", () => ({ adminDb: {
-  collection: (name: string) => ({ where: () => ({ get: async () => ({
+  collection: (name: string) => ({ where: () => ({ get: async () => { mocks.reads.push(name); return ({
     docs: (name === "sessions" ? mocks.sessions : mocks.activities).map((row) => ({ id: row.id, data: () => row })),
-  }) }) }),
+  }); } }) }),
 } }));
 import { getTraineeActivityLedger } from "./activityLedger";
 describe("read-only supervisor activity ledger", () => {
   beforeEach(() => {
+    mocks.reads = [];
     mocks.activities = [];
     mocks.sessions = [{ id: "s1", supervisorId: "supervisor", type: "individual", date: "2026-10-12", month: "2026-10", duration: 1 }];
+  });
+  it("reuses complete loaded snapshots with no duplicate database reads", async () => {
+    const snapshot = (rows: any[]) => ({ docs: rows.map(row => ({ id: row.id, data: () => row })) });
+    const rows = await getTraineeActivityLedger("t1", { activities: snapshot([]), sessions: snapshot(mocks.sessions) } as any);
+    expect(rows).toHaveLength(1); expect(mocks.reads).toEqual([]);
+  });
+  it("reads only the missing session snapshot when activities are already loaded", async () => {
+    await getTraineeActivityLedger("t1", { activities: { docs: [] } } as any);
+    expect(mocks.reads).toEqual(["sessions"]);
   });
   it("includes a historical session without writing a new document", async () => {
     expect(await getTraineeActivityLedger("t1")).toEqual([expect.objectContaining({ duration: 1, status: "approved", format: "individual" })]);

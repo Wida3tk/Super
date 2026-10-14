@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
@@ -27,7 +28,7 @@ export function hasActiveTraineeService(trainee: AuthenticatedTrainee): boolean 
   return trainee.status === "active";
 }
 
-export async function getSessionUser(): Promise<DecodedIdToken | null> {
+export const getSessionUser = cache(async (): Promise<DecodedIdToken | null> => {
   const sessionCookie = (await cookies()).get('__session')?.value;
   if (!sessionCookie) return null;
 
@@ -36,7 +37,7 @@ export async function getSessionUser(): Promise<DecodedIdToken | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function requireAdmin(): Promise<DecodedIdToken | null> {
   const user = await getSessionUser();
@@ -79,6 +80,12 @@ export async function getAuthenticatedSupervisor(): Promise<AuthenticatedSupervi
 export async function getAuthenticatedTrainee(): Promise<AuthenticatedTrainee | null> {
   const user = await getSessionUser();
   if (!user) return null;
+  // A verified claim locates the document; live identity/access checks remain.
+  if (typeof user.traineeId === "string" && user.traineeId && !user.traineeId.includes("/")) {
+    const byClaim = await adminDb.collection('trainees').doc(user.traineeId).get();
+    const data = byClaim.data();
+    if (byClaim.exists && data && (data.authUid === user.uid || (user.email && String(data.email || '').trim().toLowerCase() === user.email.trim().toLowerCase()))) return { id: byClaim.id, ...data } as AuthenticatedTrainee;
+  }
 
   const byUid = await adminDb.collection('trainees').where('authUid', '==', user.uid).limit(1).get();
   if (!byUid.empty) {

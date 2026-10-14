@@ -31,12 +31,19 @@ describe("previous supervisor workbook", () => {
     const existing = [{ ...h, status: "approved" }];
     const state = reconcilePreviousHours([h], existing, ["2026-02"], ["2026-02"]);
     expect(state.duplicates).toBe(1); expect(state.fresh).toEqual([]); expect(state.issues).toEqual([]);
-    expect(reconcilePreviousHours([h, h], existing, [], []).fresh).toHaveLength(1);
+    expect(reconcilePreviousHours([h, h], existing, [], []).conflicts).toHaveLength(1);
   });
   it("blocks new hours in locked or previously credited months and pending matches", () => {
     const h = { date: "2026-02-15", duration: 1.5, format: "individual" as const, sourceRow: 23, sourceColumn: 12 };
     expect(reconcilePreviousHours([h], [], ["2026-02"], []).issues).toHaveLength(1);
-    expect(reconcilePreviousHours([h], [], [], ["2026-02"]).issues).toHaveLength(1);
+    expect(reconcilePreviousHours([h], [], [], ["2026-02"]).conflicts).toHaveLength(1);
     expect(reconcilePreviousHours([h], [{ ...h, status: "submitted" }], [], []).issues).toHaveLength(1);
+  });
+  it("holds changed duration or type on the same date for dual approval", () => {
+    const h = { date: "2026-02-15", duration: 2, format: "individual" as const, sourceRow: 23, sourceColumn: 12 };
+    for (const format of ["individual", "group"]) {
+      const result = reconcilePreviousHours([h], [{ ...h, duration: 1, format, status: "approved" }], [], []);
+      expect(result.fresh).toEqual([]); expect(result.conflicts).toHaveLength(1);
+    }
   });
 });

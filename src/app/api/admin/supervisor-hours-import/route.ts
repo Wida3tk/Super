@@ -8,6 +8,7 @@ import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import { priorSafeImportBatch } from "@/lib/imports/priorSafeBatch";
 import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/normalize";
 import { isHistoricalImportDate } from "@/lib/imports/dateValidation";
+import { scalarCellValue } from "@/lib/imports/cellValue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ type ParsedTrainee = {
 };
 
 const text = (value: ExcelJS.CellValue) => {
+  value = scalarCellValue(value) as ExcelJS.CellValue;
   if (value == null) return "";
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "object") {
@@ -415,16 +417,14 @@ export async function POST(request: NextRequest) {
           .forEach((doc) => cleanup.delete(doc.ref, doc.data()));
         await cleanup.commit();
       }
-      const totals = await syncTraineeFieldworkTotals(traineeDoc.id);
+      const totals = await syncTraineeFieldworkTotals(traineeDoc.id, { reconcileSupervisionCounters: true });
       await traineeDoc.ref.set({
-        totalIndividualHours: Math.max(0, totals.approvedSupervisionHours - totals.approvedGroupSupervisionHours),
-        totalGroupHours: totals.approvedGroupSupervisionHours,
         updatedAt: now,
       }, { merge: true });
       results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, replaced: priorImportedDocs.length, totals });
     }
 
-    await adminDb.collection("activityLogs").add({
+    await adminDb.collection("activityLog").add({
       type: "supervisor_hours_import",
       message: `تم تحديث ساعات المشرف ${supervisor.name}`,
       supervisorId,

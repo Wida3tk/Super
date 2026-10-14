@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import UiIcon from "@/components/ui/UiIcon";
+import { withDeadline } from "@/lib/asyncDeadline";
 
 export default function LoginPage() {
   const [portal, setPortal] = useState<"trainee" | "provider" | "admin">(
@@ -94,26 +95,35 @@ export default function LoginPage() {
 
       // Step 2: Get token
       setStep("جارٍ إنشاء الجلسة...");
-      const token = await userCredential.user.getIdToken();
+      const token = await withDeadline(userCredential.user.getIdToken(), 15000);
 
       // Step 3: Create session
       let res;
+      const controller = new AbortController();
+      const sessionTimeout = setTimeout(() => controller.abort(), 35000);
       try {
         res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, portal }),
+          signal: controller.signal,
         });
       } catch {
-        setError("خطأ في الاتصال بالسيرفر");
+        setError("تعذر إنشاء الجلسة في الوقت المحدد. قد تكون الخدمة مزدحمة؛ انتظري قليلًا ثم حاولي مجددًا.");
         setLoading(false);
         setStep("");
         return;
+      } finally {
+        clearTimeout(sessionTimeout);
       }
 
-      const sessionData = await res.json().catch(() => ({}));
+      const sessionData = await withDeadline(res.json().catch(() => ({})), 5000);
 
       if (!res.ok) {
+        if (sessionData.error === "SERVICE_BUSY" || res.status === 503 || res.status === 504) {
+          setError("خدمة الجلسات أو قاعدة البيانات غير متاحة مؤقتًا. انتظري قليلًا ثم حاولي مجددًا؛ لا تحتاجين لتغيير كلمة المرور.");
+          setLoading(false); setStep(""); return;
+        }
         if (sessionData.error === "ADMIN_ONLY") {
           await signOut(auth);
           setError("هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة");
@@ -151,7 +161,7 @@ export default function LoginPage() {
       await new Promise((r) => setTimeout(r, 800));
       window.location.href = dest;
     } catch (err: any) {
-      setError(`خطأ غير متوقع: ${err.message || err}`);
+      setError(err.message === "REQUEST_TIMEOUT" ? "انتهت مهلة إنشاء الجلسة. انتظري قليلًا ثم حاولي مجددًا." : "تعذر إكمال تسجيل الدخول. حاولي مجددًا بعد قليل.");
       setLoading(false);
       setStep("");
     }

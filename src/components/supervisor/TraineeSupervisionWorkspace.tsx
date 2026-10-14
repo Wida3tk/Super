@@ -434,6 +434,8 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
       setMsg(
         x.error === "MONTH_NOT_COMPLIANT"
           ? "لا يمكن إغلاق الشهر قبل استيفاء نطاق الساعات ونسبة الإشراف وحد الجماعي وتوزيع المباشر 40% وغير المباشر 60%."
+          : x.error === "PENDING_RECONCILIATION"
+            ? "توجد ساعات إشراف معلّقة للمطابقة؛ يلزم اعتماد المشرف والإدارة قبل اعتماد الشهر."
           : x.error === "PENDING_ACTIVITIES"
             ? "توجد ساعات ما زالت قيد المراجعة."
             : x.error === "SUPERVISOR_CREDENTIAL_EXPIRED"

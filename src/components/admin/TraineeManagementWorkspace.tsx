@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TraineeLifecyclePanel from "./TraineeLifecyclePanel";
 import LegacyImportClient from "./LegacyImportClient";
+import { directoryState } from "@/lib/lifecycle/directory";
 
 type View = "manage" | "add" | "import";
 
@@ -90,11 +91,10 @@ export default function TraineeManagementWorkspace({
       <style>{css}</style>
       <section className="tm-hero">
         <div>
-          <span>مركز عمليات المتدربين</span>
-          <h2>كل إجراءات المتدربين في صفحة واحدة</h2>
+          <span>مركز إدارة الإشراف</span>
+          <h2>إدارة المتدربين</h2>
           <p>
-            تابعي المراحل، أضيفي الحسابات، واستوردي ملفات الساعات دون الانتقال
-            بين صفحات متفرقة.
+            متابعة الملفات، إسناد المشرفين، وإدارة الساعات والحالات من مكان واحد.
           </p>
         </div>
         <div className="tm-stats">
@@ -107,16 +107,15 @@ export default function TraineeManagementWorkspace({
               {
                 trainees.filter(
                   (t) =>
-                    t.lifecycleStage === "active_service" ||
-                    t.status === "active",
+                    directoryState(t).stage === "active_service",
                 ).length
               }
             </b>
-            <small>في الخدمة</small>
+            <small>بالإشراف حاليًا</small>
           </div>
           <div>
-            <b>{trainees.filter((t) => !t.currentSupervisorId).length}</b>
-            <small>دون مشرف</small>
+            <b>{trainees.filter((t) => directoryState(t).completed).length}</b>
+            <small>مكتملون</small>
           </div>
         </div>
       </section>

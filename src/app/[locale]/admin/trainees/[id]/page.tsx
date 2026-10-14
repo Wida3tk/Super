@@ -8,6 +8,7 @@ import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 import TraineeHoursUpdate from "@/components/admin/TraineeHoursUpdate";
 import EditTraineeProfile from "@/components/admin/EditTraineeProfile";
 import PriorSupervisionCredits from "@/components/admin/PriorSupervisionCredits";
+import SupervisionReconciliationReview from "@/components/SupervisionReconciliationReview";
 import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 
 const value = (input: unknown) => {
@@ -118,7 +119,7 @@ export default async function TraineeFilePage({
     trainee.supervisionTargetHours ||
       credentialRules(trainee.license || "QASP-S").supervisionTarget,
   );
-  const ledger = await getTraineeActivityLedger(id);
+  const ledger = await getTraineeActivityLedger(id, { activities: activitiesSnap });
   const approvedSupervision = ledger.filter(a => a.status === "approved" && a.activityType.startsWith("supervision_"));
   const individualHours = approvedSupervision.filter(a => a.format !== "group").reduce((n, a) => n + a.duration, 0);
   const groupHours = approvedSupervision.filter(a => a.format === "group").reduce((n, a) => n + a.duration, 0);
@@ -248,6 +249,7 @@ export default async function TraineeFilePage({
         </div>
         <section className="profile-section">
           <PriorSupervisionCredits traineeId={id} records={priorRecords} documents={documents} />
+          <SupervisionReconciliationReview role="admin" traineeId={id} />
           <div className="section-heading">
             <div>
               <small>معلومات أساسية</small>

@@ -72,5 +72,8 @@ export default async function BookingsPage({ params }: Props) {
         </div>
       </AdminPageLayout>
     );
-  } catch { redirect(`/${locale}/login?portal=admin`); }
+  } catch (error) {
+    if (String((error as { code?: string }).code || '').startsWith('auth/')) redirect(`/${locale}/login?portal=admin`);
+    throw error;
+  }
 }

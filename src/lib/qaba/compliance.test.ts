@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildCompliance, credentialRules } from "./compliance";
+import { buildCompliance, credentialRules, exceedsGroupSupervisionLimit } from "./compliance";
 
 describe("QABA compliance", () => {
+  it("uses the configured group limit, including exact boundary values", () => {
+    expect(exceedsGroupSupervisionLimit({ groupHours: 25, totalHours: 100 })).toBe(false);
+    expect(exceedsGroupSupervisionLimit({ groupHours: 50, totalHours: 100 })).toBe(false);
+    expect(exceedsGroupSupervisionLimit({ groupHours: 50.01, totalHours: 100, groupPercentage: 50 })).toBe(true);
+    expect(exceedsGroupSupervisionLimit({ groupPercentage: 51 })).toBe(true);
+  });
   it("uses the configured analyst and assistant pathways", () => {
     expect(credentialRules("QASP-S").total).toBe(1000);
     expect(credentialRules("QASP-S").supervisionTarget).toBe(50);

@@ -33,7 +33,7 @@ export default function AdminPageLayout({ locale, title, children, notifCount = 
           <div className="topbar">
             <div className="topbar-title">{title}</div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <Link href={`/${locale}/admin/notifications`}
+              <Link prefetch={false} href={`/${locale}/admin/notifications`}
                 style={{ width: 38, height: 38, borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
                 <i className="ti ti-bell" style={{ fontSize: 18, color: '#64748B' }} aria-hidden="true" />
               </Link>

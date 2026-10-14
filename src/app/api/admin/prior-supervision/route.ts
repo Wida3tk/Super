@@ -29,13 +29,15 @@ export async function POST(req: NextRequest) {
       if (!credit || credit.traineeId !== traineeId) throw new Error("NOT_FOUND");
       if (credit.status === "approved") return; // Idempotent approval, including retries.
       if (credit.status !== "draft" || !validatePriorCredit(credit, now.slice(0, 10))) throw new Error("INVALID_DATA");
-      const [trainee, evidence, activities, sessions, approvals, snapshots] = await Promise.all([
+      const [trainee, evidence, activities, sessions, approvals, snapshots, pending] = await Promise.all([
         tx.get(traineeRef), tx.get(adminDb.collection("supervisionDocuments").doc(credit.evidenceId)),
         tx.get(adminDb.collection("fieldworkActivities").where("traineeId", "==", traineeId)),
         tx.get(adminDb.collection("sessions").where("traineeIds", "array-contains", traineeId)),
         tx.get(adminDb.collection("monthlyApprovals").doc(`${traineeId}_${credit.month}`)),
         tx.get(adminDb.collection("monthlySnapshots").where("traineeId", "==", traineeId)),
+        tx.get(adminDb.collection("supervisionReconciliations").where("traineeId", "==", traineeId)),
       ]);
+      if (pending.docs.some(d => d.data().status === "pending" && String(d.data().candidate?.date || "").slice(0, 7) === credit.month)) throw new Error("EXISTING_HOURS");
       if (!trainee.exists || !evidence.exists || evidence.data()?.traineeId !== traineeId || !evidence.data()?.driveFileId || evidence.data()?.status === "revoked") throw new Error("INVALID_EVIDENCE");
       if (approvals.data()?.locked || snapshots.docs.some(d => d.data().month === credit.month && d.data().lockedAt)) throw new Error("MONTH_LOCKED");
       const rows = activities.docs.filter(d => String(d.data().date || "").slice(0, 7) === credit.month && String(d.data().activityType || "").startsWith("supervision_") && d.data().status !== "rejected");

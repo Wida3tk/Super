@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { withDeadline } from "@/lib/asyncDeadline";
 import {
   enforceRateLimit,
   getRequestIdentifier,
@@ -9,11 +10,15 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimit = await enforceRateLimit(getRequestIdentifier(request), {
+    const { token, portal } = await request.json();
+    if (typeof token !== "string" || !token || token.length > 10000) {
+      return NextResponse.json({ error: "NO_TOKEN" }, { status: 400 });
+    }
+    const rateLimit = await withDeadline(enforceRateLimit(getRequestIdentifier(request), {
       action: "session",
       limit: 20,
       windowMs: 15 * 60 * 1000,
-    });
+    }), 8000);
     if (!rateLimit.allowed)
       return NextResponse.json(
         { error: "TOO_MANY_ATTEMPTS" },
@@ -22,12 +27,6 @@ export async function POST(request: NextRequest) {
           headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
         },
       );
-
-    const { token, portal } = await request.json();
-
-    if (!token) {
-      return NextResponse.json({ error: "NO_TOKEN" }, { status: 400 });
-    }
 
     let decoded;
     try {
@@ -52,22 +51,21 @@ export async function POST(request: NextRequest) {
     let role: "admin" | "supervisor" | "trainee" | "client" | "unknown" =
       isAdmin ? "admin" : "unknown";
     if (!isAdmin && email) {
-      const [supervisor, trainee, client] = await Promise.all([
-        adminDb
+      const supervisor = await withDeadline(adminDb
           .collection("supervisors")
           .where("email", "==", email)
           .limit(1)
-          .get(),
-        adminDb
+          .get(), 8000);
+      if (!supervisor.empty) role = "supervisor";
+      else {
+        const trainee = await withDeadline(adminDb
           .collection("trainees")
           .where("email", "==", email)
           .limit(1)
-          .get(),
-        adminDb.collection("clients").doc(decoded.uid).get(),
-      ]);
-      if (!supervisor.empty) role = "supervisor";
-      else if (!trainee.empty) role = "trainee";
-      else if (client.exists) role = "client";
+          .get(), 8000);
+        if (!trainee.empty) role = "trainee";
+        else if ((await withDeadline(adminDb.collection("clients").doc(decoded.uid).get(), 8000)).exists) role = "client";
+      }
     }
 
     if (portal === "admin" && role !== "admin") {
@@ -86,6 +84,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error: any) {
     console.error("Session API error:", error.message);
+    if (error?.code === 8 || error?.message === "REQUEST_TIMEOUT") return NextResponse.json({ error: "SERVICE_BUSY" }, { status: 503, headers: { "Retry-After": "60" } });
     return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
   }
 }

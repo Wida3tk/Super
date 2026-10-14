@@ -14,12 +14,17 @@ const SERVICE_LABELS: Record<string, string> = {
 export default async function OperationsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!(await requireAdmin())) redirect(`/${locale}/login?portal=admin`);
-  const [incidentsSnapshot, activitiesSnapshot] = await Promise.all([
+  const [incidentsSnapshot, activitiesSnapshot, historicalActivitiesSnapshot] = await Promise.all([
     adminDb.collection("operationalIncidents").orderBy("createdAt", "desc").limit(100).get(),
     adminDb.collection("activityLog").orderBy("createdAt", "desc").limit(50).get(),
+    adminDb.collection("activityLogs").orderBy("createdAt", "desc").limit(50).get(),
   ]);
   const incidents = incidentsSnapshot.docs.map((document) => ({ id: document.id, ...document.data() })) as any[];
-  const activities = activitiesSnapshot.docs.map((document) => ({ id: document.id, ...document.data() })) as any[];
+  const activities = [activitiesSnapshot, historicalActivitiesSnapshot].flatMap((snapshot, source) => snapshot.docs.map(document => {
+    const data = document.data();
+    const createdAt = typeof data.createdAt?.toDate === "function" ? data.createdAt.toDate().toISOString() : String(data.createdAt || "");
+    return { ...data, id: `${source}_${document.id}`, createdAt } as any;
+  })).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
   const open = incidents.filter((incident) => incident.status === "open");
   return (
     <AdminPageLayout locale={locale} title="المراقبة وسجل التدقيق">

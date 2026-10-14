@@ -198,6 +198,7 @@ export default function AdminSidebar({
               const active = isActive(item.href);
               return (
                 <Link
+                  prefetch={false}
                   key={item.href}
                   href={item.href}
                   style={{

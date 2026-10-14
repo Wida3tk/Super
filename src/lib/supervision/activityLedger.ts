@@ -4,10 +4,10 @@ import type { FieldworkActivity } from "@/types";
 
 // Read-only projection for sessions recorded before linked activity rows existed.
 // No historical documents are changed or deleted.
-export async function getTraineeActivityLedger(traineeId: string): Promise<FieldworkActivity[]> {
+export async function getTraineeActivityLedger(traineeId: string, loaded?: { activities?: FirebaseFirestore.QuerySnapshot; sessions?: FirebaseFirestore.QuerySnapshot }): Promise<FieldworkActivity[]> {
   const [activities, sessions] = await Promise.all([
-    adminDb.collection("fieldworkActivities").where("traineeId", "==", traineeId).get(),
-    adminDb.collection("sessions").where("traineeIds", "array-contains", traineeId).get(),
+    loaded?.activities || adminDb.collection("fieldworkActivities").where("traineeId", "==", traineeId).get(),
+    loaded?.sessions || adminDb.collection("sessions").where("traineeIds", "array-contains", traineeId).get(),
   ]);
   const rows = activities.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as FieldworkActivity[];
   const linked = new Set(activities.docs.map((doc) => doc.data().sessionId).filter(Boolean));
