@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildCompliance } from "@/lib/qaba/compliance";
 import { uploadTraineeFile } from "@/lib/drive/uploadClient";
+import AllTraineeHours from "./AllTraineeHours";
 
 const competencyGroups = [
   {
@@ -75,6 +76,7 @@ export default function TraineeSupervisionWorkspace({
   const trainee = trainees.find((t) => t.id === traineeId);
   const [tab, setTab] = useState<
     | "overview"
+    | "hours"
     | "agreement"
     | "documents"
     | "meetings"
@@ -180,6 +182,7 @@ export default function TraineeSupervisionWorkspace({
       <div className="ws-tabs">
         {[
           ["overview", "الملخص والامتثال"],
+          ["hours", "جميع الساعات"],
           ["agreement", "الاتفاقية والإسناد"],
           ["improvement", "تحسين الأداء"],
           ["reports", "التقارير الدورية"],
@@ -202,6 +205,7 @@ export default function TraineeSupervisionWorkspace({
         <div className="loading">جارٍ تحميل ملف المتدرب...</div>
       ) : (
         <>
+          {tab === "hours" && <AllTraineeHours key={traineeId} activities={data.activities || []} />}
           {tab === "overview" && (
             <Overview
               trainee={trainee}

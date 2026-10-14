@@ -5,6 +5,10 @@ const mocks = vi.hoisted(() => ({
   logActivity: vi.fn(),
   collection: vi.fn(),
   runTransaction: vi.fn(),
+  reconciliationOpen: false,
+}));
+vi.mock("@/lib/supervision/editingPolicy", () => ({
+  get SUPERVISOR_RECONCILIATION_OPEN() { return mocks.reconciliationOpen; },
 }));
 
 vi.mock("server-only", () => ({}));
@@ -75,6 +79,7 @@ function setupDocuments(
 describe("DELETE /api/supervisor/session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.reconciliationOpen = false;
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-21T10:00:00.000Z"));
     mocks.getAuthenticatedSupervisor.mockResolvedValue({
@@ -88,6 +93,18 @@ describe("DELETE /api/supervisor/session", () => {
     const response = await DELETE(request("session-1"));
     expect(response.status).toBe(401);
     expect(mocks.collection).not.toHaveBeenCalled();
+  });
+
+  it("allows historical sessions in locked months during reconciliation", async () => {
+    mocks.reconciliationOpen = true;
+    vi.setSystemTime(new Date("2026-10-13T10:00:00Z"));
+    const { updates } = setupDocuments({}, { lockedAt: "2026-09-30" }, { currentSupervisorId: "supervisor-1" }, { locked: true });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(200);
+    expect(updates.some((item) => item.path.startsWith("fieldworkActivities/"))).toBe(true);
   });
 
   it("rejects a session owned by another supervisor", async () => {

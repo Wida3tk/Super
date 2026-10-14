@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { getAuthenticatedSupervisor } from '@/lib/auth/serverAuth';
 import { syncTraineeFieldworkTotals } from '@/lib/fieldwork/syncTotals';
+import { SUPERVISOR_RECONCILIATION_OPEN } from '@/lib/supervision/editingPolicy';
 
 export async function GET() {
   const supervisor = await getAuthenticatedSupervisor();
@@ -25,7 +26,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   }
   const lockSnap=await adminDb.collection('monthlyApprovals').doc(`${snap.data()?.traineeId}_${snap.data()?.month}`).get();
-  if(lockSnap.exists&&lockSnap.data()?.locked)return NextResponse.json({error:'MONTH_LOCKED'},{status:409});
+  if(!SUPERVISOR_RECONCILIATION_OPEN&&lockSnap.exists&&lockSnap.data()?.locked)return NextResponse.json({error:'MONTH_LOCKED'},{status:409});
   await ref.update({
     status: statuses[action], reviewerNote: String(note || '').trim().slice(0, 1000),
     reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), reviewedBy: supervisor.id,
