@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
   if (!supervisor)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { traineeId, month, attestation } = await req.json();
+  const { traineeId, month, attestation, allowIncompleteHours } = await req.json();
   const traineeSnap = await adminDb
     .collection("trainees")
     .doc(String(traineeId))
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     traineeSnap.data()?.currentSupervisorId !== supervisor.id
   )
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  if (!/^\d{4}-\d{2}$/.test(String(month)) || attestation !== true)
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month)) || attestation !== true)
     return NextResponse.json(
       { error: "ATTESTATION_REQUIRED" },
       { status: 400 },
@@ -76,10 +76,8 @@ export async function POST(req: NextRequest) {
   );
   if (
     !check ||
-    !check.validHoursBand ||
-    !check.meetsSupervision ||
-    !check.meetsGroupLimit ||
-    !hasRequiredIndividualContact
+    check.fieldwork > result.rules.monthlyMax ||
+    !check.meetsGroupLimit
   )
     return NextResponse.json(
       { error: "MONTH_NOT_COMPLIANT", compliance: check || null, hasRequiredIndividualContact },
@@ -93,6 +91,15 @@ export async function POST(req: NextRequest) {
       { error: "PENDING_ACTIVITIES", count: pending.length },
       { status: 409 },
     );
+  const incompleteHours = check.fieldwork < result.rules.monthlyMin;
+  const warnings = [
+    ...(incompleteHours ? ["الساعات أقل من الحد الأدنى الشهري."] : []),
+    ...(!check.meetsSupervision ? ["ساعات الإشراف أقل من النسبة الشهرية المطلوبة."] : []),
+    ...(!hasRequiredIndividualContact ? ["لم يكتمل الاتصال الفردي المطلوب لمدة ساعة."] : []),
+  ];
+  if (warnings.length && allowIncompleteHours !== true)
+    return NextResponse.json({ error: "MONTH_HOURS_INCOMPLETE", actualHours: check.fieldwork,
+      minimumHours: result.rules.monthlyMin, warnings }, { status: 409 });
   const now = new Date().toISOString();
   await adminDb
     .collection("monthlyApprovals")
@@ -104,6 +111,14 @@ export async function POST(req: NextRequest) {
         month,
         supervisorApprovedAt: now,
         supervisorName: supervisor.name,
+        monthlyMinimumException: incompleteHours ? {
+          confirmedBy: supervisor.id, confirmedAt: now, actualHours: check.fieldwork,
+          minimumHours: result.rules.monthlyMin,
+          note: "اعتماد الساعات الفعلية رغم عدم بلوغ الحد الأدنى الشهري؛ لا يُعد استيفاءً للحد الأدنى.",
+        } : null,
+        hoursShortfallException: warnings.length ? { confirmedBy: supervisor.id, confirmedAt: now,
+          warnings, meetsSupervision: check.meetsSupervision, hasRequiredIndividualContact,
+          actualHours: check.fieldwork, supervisionHours: check.supervision } : null,
         traineeAcknowledgedAt: null,
         locked: false,
         summary: {

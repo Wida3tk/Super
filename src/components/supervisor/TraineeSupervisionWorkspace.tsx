@@ -377,7 +377,7 @@ function Overview({
           </div>
         </section>
       </div>
-      <MonthlyApprovalCard traineeId={trainee.id} current={current} />
+      <MonthlyApprovalCard key={`${trainee.id}_${current?.month || "current"}`} traineeId={trainee.id} current={current} />
       {(!latestAssessment ||
         (latestAssessment.nextDueDate &&
           latestAssessment.nextDueDate <=
@@ -420,24 +420,37 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
   const month = current?.month || new Date().toISOString().slice(0, 7);
   const [approval, setApproval] = useState<any>(null);
   const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [incomplete, setIncomplete] = useState<{ actualHours: number; minimumHours: number; warnings: string[] } | null>(null);
   useEffect(() => {
+    setIncomplete(null); setMsg(""); setApproval(null);
+    const controller = new AbortController();
     fetch(
       `/api/supervisor/monthly-approval?traineeId=${traineeId}&month=${month}`,
+      { signal: controller.signal, cache: "no-store" },
     )
       .then((r) => r.json())
-      .then((x) => setApproval(x.approval));
+      .then((x) => setApproval(x.approval))
+      .catch(() => { if (!controller.signal.aborted) setMsg("تعذر تحميل حالة الاعتماد؛ حدّث الصفحة قبل الاعتماد."); });
+    return () => controller.abort();
   }, [traineeId, month]);
-  const approve = async () => {
+  const approve = async (allowIncompleteHours = false) => {
+    if (busy) return;
+    setBusy(true);
+    try {
     const r = await fetch("/api/supervisor/monthly-approval", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ traineeId, month, attestation: true }),
+      body: JSON.stringify({ traineeId, month, attestation: true, allowIncompleteHours }),
     });
     const x = await r.json();
     if (!r.ok) {
+      if (x.error === "MONTH_HOURS_INCOMPLETE") {
+        setIncomplete({ actualHours: x.actualHours, minimumHours: x.minimumHours, warnings: x.warnings || [] }); setMsg(""); return;
+      }
       setMsg(
         x.error === "MONTH_NOT_COMPLIANT"
-          ? "لا يمكن إغلاق الشهر قبل استيفاء نطاق الساعات ونسبة الإشراف وحد الجماعي وتوزيع المباشر 40% وغير المباشر 60%."
+          ? "تعذر الاعتماد: تحقّق من وجود ساعات معتمدة وعدم تجاوز الحد الأعلى للساعات أو حد الإشراف الجماعي."
           : x.error === "PENDING_RECONCILIATION"
             ? "توجد ساعات إشراف معلّقة للمطابقة؛ يلزم اعتماد المشرف والإدارة قبل اعتماد الشهر."
           : x.error === "PENDING_ACTIVITIES"
@@ -450,19 +463,22 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
     }
     setMsg("تم اعتماد الشهر من المشرف، وبانتظار إقرار المتدرب.");
     setApproval({ supervisorApprovedAt: new Date().toISOString() });
+    setIncomplete(null);
+    } catch { setMsg("تعذر الاتصال؛ حدّث الصفحة للتحقق من الاعتماد قبل المحاولة مجددًا."); }
+    finally { setBusy(false); }
   };
   return (
     <section className="box" style={{ marginTop: 14 }}>
       <h4>اعتماد وإغلاق شهر {month}</h4>
       <p className="muted" style={{ textAlign: "right", padding: 0 }}>
-        أقر بأن الساعات المعتمدة أنشطة تحليل سلوك مناسبة وأن جلسات الإشراف تمت
-        عن بُعد بصورة متزامنة.
+        أقر بصحة الساعات المسجلة وأنها تعكس الأنشطة وجلسات الإشراف المنفذة فعليًا.
+        يُعرض أي نقص قبل التأكيد، ويُوثّق الاستثناء دون اعتباره استيفاءً للمتطلبات.
       </p>
       <div className="ws-actions">
         <button
           className="save"
-          disabled={!current || approval?.supervisorApprovedAt}
-          onClick={approve}
+          disabled={!current || approval?.supervisorApprovedAt || busy}
+          onClick={() => void approve()}
         >
           {approval?.supervisorApprovedAt ? "✓ اعتمد المشرف" : "اعتماد الشهر"}
         </button>
@@ -470,6 +486,11 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
           <span className="ok">✓ أقر المتدرب وتم إغلاق الشهر</span>
         )}
       </div>
+      {incomplete && !approval?.supervisorApprovedAt && <div role="alert" style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10, padding: 12, marginTop: 12 }}>
+        <p>الساعات الفعلية {incomplete.actualHours} ساعة، والحد الأدنى الشهري {incomplete.minimumHours} ساعة. يمكنك اعتماد الساعات المسجلة كما هي، دون إضافة ساعات أو اعتبار المتطلبات الناقصة مستوفاة.</p>
+        {incomplete.warnings.map(warning => <p key={warning}>{warning}</p>)}
+        <button className="save" disabled={busy} onClick={() => void approve(true)}>تأكيد اعتماد الساعات الفعلية رغم النقص</button>
+      </div>}
       {msg && (
         <p className="muted" style={{ textAlign: "right", padding: 0 }}>
           {msg}
