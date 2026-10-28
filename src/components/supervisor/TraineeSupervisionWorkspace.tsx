@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildCompliance } from "@/lib/qaba/compliance";
 import { uploadTraineeFile } from "@/lib/drive/uploadClient";
 import AllTraineeHours from "./AllTraineeHours";
+import { approvalMonths, workspaceSections } from "@/lib/supervision/workspaceNavigation";
 
 const competencyGroups = [
   {
@@ -98,29 +99,48 @@ export default function TraineeSupervisionWorkspace({
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const loadController = useRef<AbortController | null>(null);
+  const activeTrainee = useRef(traineeId);
+  const [loadedTrainee, setLoadedTrainee] = useState("");
   const refresh = async () => {
-    if (!traineeId) return;
+    if (!traineeId || activeTrainee.current !== traineeId) return;
+    loadController.current?.abort();
+    const controller = new AbortController(); loadController.current = controller;
     setLoading(true);
+    setMessage("");
+    const deadline = setTimeout(() => {
+      if (loadController.current !== controller || controller.signal.aborted) return;
+      controller.abort(); setData(null); setLoadedTrainee(traineeId); setLoading(false);
+      setMessage("انتهت مهلة تحميل الملف. أعد المحاولة؛ لم تتغير السجلات.");
+    }, 20000);
+    try {
     const r = await fetch(
       `/api/supervisor/trainee-workspace?traineeId=${traineeId}`,
+      { signal: controller.signal, cache: "no-store" },
     );
-    setData(await r.json());
-    setLoading(false);
+    if (!r.ok) throw new Error("LOAD_FAILED");
+    const result = await r.json();
+    if (!controller.signal.aborted) { setData(result); setLoadedTrainee(traineeId); }
+    } catch {
+      if (!controller.signal.aborted) { setData(null); setLoadedTrainee(traineeId); setMessage("تعذر تحميل ملف المتدرب. أعد المحاولة؛ لم تتغير السجلات."); }
+    } finally { clearTimeout(deadline); if (!controller.signal.aborted) setLoading(false); }
   };
   useEffect(() => {
+    activeTrainee.current = traineeId;
     refresh();
+    return () => loadController.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [traineeId]);
   const compliance = useMemo(
     () =>
       buildCompliance(
-        data.activities || [],
+        data?.activities || [],
         trainee?.license || "QASP-S",
         trainee?.fieldworkStartDate,
       ),
-    [data.activities, trainee],
+    [data?.activities, trainee],
   );
-  const latestAssessment = data.assessments?.[0];
+  const latestAssessment = data?.assessments?.[0];
   const assessmentPct = latestAssessment?.maxScore
     ? (latestAssessment.totalScore / latestAssessment.maxScore) * 100
     : 0;
@@ -180,17 +200,12 @@ export default function TraineeSupervisionWorkspace({
         </div>
       </div>
       <div className="ws-tabs">
-        {[
-          ["overview", "الملخص والامتثال"],
-          ["hours", "جميع الساعات"],
-          ["agreement", "الاتفاقية والإسناد"],
-          ["improvement", "تحسين الأداء"],
-          ["reports", "التقارير الدورية"],
-          ["documents", "الموافقات والمستندات"],
-          ["meetings", "الجلسات والمحاضر"],
-          ["assessment", "تقييم الكفاءة"],
-          ["plan", "خطة الإشراف"],
-        ].map(([k, l]) => (
+        {workspaceSections.map(section => <button key={section.label}
+          className={section.tabs.some(([key]) => key === tab) ? "active" : ""}
+          onClick={() => setTab(section.tabs[0][0])}>{section.label}</button>)}
+      </div>
+      <div className="ws-tabs" aria-label="تفاصيل القسم">
+        {(workspaceSections.find(section => section.tabs.some(([key]) => key === tab))?.tabs || []).map(([k, l]) => (
           <button
             key={k}
             className={tab === k ? "active" : ""}
@@ -201,14 +216,16 @@ export default function TraineeSupervisionWorkspace({
         ))}
       </div>
       {message && <div className="toast">{message}</div>}
-      {loading ? (
+      {loading || loadedTrainee !== traineeId ? (
         <div className="loading">جارٍ تحميل ملف المتدرب...</div>
-      ) : (
+      ) : !data ? <div className="ws-empty"><button onClick={() => void refresh()}>إعادة تحميل الملف</button></div> : (
         <>
           {tab === "hours" && <AllTraineeHours key={traineeId} activities={data.activities || []} />}
           {tab === "overview" && (
             <Overview
+              key={traineeId}
               trainee={trainee}
+              activities={data.activities || []}
               compliance={compliance}
               documents={data.documents}
               meetings={data.meetings}
@@ -259,6 +276,7 @@ export default function TraineeSupervisionWorkspace({
 
 function Overview({
   trainee,
+  activities,
   compliance,
   documents,
   meetings,
@@ -337,6 +355,7 @@ function Overview({
           </div>
         ))}
       </div>
+      <MonthlyApprovalCard key={trainee.id} traineeId={trainee.id} months={compliance.months} rules={compliance.rules} activities={activities} />
       <div className="overview-grid">
         <section className="box">
           <h4>حالة الشهر الحالي</h4>
@@ -377,7 +396,6 @@ function Overview({
           </div>
         </section>
       </div>
-      <MonthlyApprovalCard key={`${trainee.id}_${current?.month || "current"}`} traineeId={trainee.id} current={current} />
       {(!latestAssessment ||
         (latestAssessment.nextDueDate &&
           latestAssessment.nextDueDate <=
@@ -392,8 +410,8 @@ function Overview({
             : "يجب تنفيذ تقييم الكفاءة الأولي للمتدرب."}
         </div>
       )}
-      <section className="box" style={{ marginTop: 14 }}>
-        <h4>قائمة الجاهزية للتقديم</h4>
+      <details className="box" style={{ marginTop: 14 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>قائمة الجاهزية للتقديم</summary>
         <div
           className="checks"
           style={{
@@ -411,35 +429,54 @@ function Overview({
           الموافقات الورقية تُعرض للتوثيق والمراجعة اليدوية فقط ولا تمنع اعتماد
           الساعات.
         </p>
-      </section>
+      </details>
     </>
   );
 }
 
-function MonthlyApprovalCard({ traineeId, current }: any) {
-  const month = current?.month || new Date().toISOString().slice(0, 7);
+function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
+  const todayMonth = new Date().toISOString().slice(0, 7);
+  const choices = approvalMonths([...months, ...activities.map((row: any) => ({ month: String(row.month || row.date?.slice(0, 7) || "") }))], todayMonth);
+  const [month, setMonth] = useState(todayMonth);
+  const current = months.find((row: any) => row.month === month);
+  const pendingCount = activities.filter((row: any) => row.month === month && ["draft", "submitted", "revision_requested"].includes(row.status)).length;
   const [approval, setApproval] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState(true);
+  const [approvalError, setApprovalError] = useState(false);
+  const [allowShortfall, setAllowShortfall] = useState(false);
+  const shortfall = current && (current.fieldwork < rules.monthlyMin || !current.meetsSupervision ||
+    !activities.some((row: any) => row.month === month && row.status === "approved" &&
+      String(row.activityType).startsWith("supervision_") && row.format === "individual" && Number(row.duration) >= 1));
   const [incomplete, setIncomplete] = useState<{ actualHours: number; minimumHours: number; warnings: string[] } | null>(null);
   useEffect(() => {
     setIncomplete(null); setMsg(""); setApproval(null);
+    setApprovalLoading(true); setApprovalError(false); setAllowShortfall(false);
     const controller = new AbortController();
+    const deadline = setTimeout(() => {
+      controller.abort(); setApprovalError(true); setApprovalLoading(false);
+      setMsg("انتهت مهلة تحميل حالة الاعتماد؛ حدّث الصفحة قبل المحاولة.");
+    }, 20000);
     fetch(
       `/api/supervisor/monthly-approval?traineeId=${traineeId}&month=${month}`,
       { signal: controller.signal, cache: "no-store" },
     )
-      .then((r) => r.json())
-      .then((x) => setApproval(x.approval))
-      .catch(() => { if (!controller.signal.aborted) setMsg("تعذر تحميل حالة الاعتماد؛ حدّث الصفحة قبل الاعتماد."); });
-    return () => controller.abort();
+      .then((r) => { if (!r.ok) throw new Error("LOAD_FAILED"); return r.json(); })
+      .then((x) => { if (!controller.signal.aborted) setApproval(x.approval); })
+      .catch(() => { if (!controller.signal.aborted) { setApprovalError(true); setMsg("تعذر تحميل حالة الاعتماد؛ حدّث الصفحة قبل الاعتماد."); } })
+      .finally(() => { clearTimeout(deadline); if (!controller.signal.aborted) setApprovalLoading(false); });
+    return () => { clearTimeout(deadline); controller.abort(); };
   }, [traineeId, month]);
   const approve = async (allowIncompleteHours = false) => {
     if (busy) return;
     setBusy(true);
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), 30000);
     try {
     const r = await fetch("/api/supervisor/monthly-approval", {
       method: "POST",
+      signal: controller.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ traineeId, month, attestation: true, allowIncompleteHours }),
     });
@@ -461,15 +498,25 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
       );
       return;
     }
-    setMsg("تم اعتماد الشهر من المشرف، وبانتظار إقرار المتدرب.");
-    setApproval({ supervisorApprovedAt: new Date().toISOString() });
+    setMsg(x.approval?.locked ? "هذا الشهر معتمد ومغلق؛ لم تتغير بياناته." : "تم اعتماد الشهر من المشرف، وبانتظار إقرار المتدرب.");
+    setApproval(x.approval || { supervisorApprovedAt: new Date().toISOString() });
     setIncomplete(null);
     } catch { setMsg("تعذر الاتصال؛ حدّث الصفحة للتحقق من الاعتماد قبل المحاولة مجددًا."); }
-    finally { setBusy(false); }
+    finally { clearTimeout(deadline); setBusy(false); }
   };
   return (
     <section className="box" style={{ marginTop: 14 }}>
-      <h4>اعتماد وإغلاق شهر {month}</h4>
+      <h4>اعتماد الساعات الشهرية</h4>
+      <label>شهر الاعتماد<select value={month} disabled={busy} onChange={event => setMonth(event.target.value)}>
+        {choices.map(value => <option key={value} value={value}>{value}{value === todayMonth ? " — الشهر الحالي" : ""}</option>)}
+      </select></label>
+      <p>الساعات المعتمدة لشهر {month}: {current?.fieldwork || 0} ساعة · الإشراف: {current?.supervision || 0} ساعة</p>
+      {!current && <p>لا توجد ساعات معتمدة لهذا الشهر. اختر شهرًا سابقًا من القائمة عند الحاجة.</p>}
+      {pendingCount > 0 && <p role="status">يوجد {pendingCount} سجل بانتظار المراجعة؛ تُراجع السجلات قبل اعتماد الشهر.</p>}
+      {!!shortfall && !approval?.supervisorApprovedAt && !approval?.locked && <div role="note" style={{ background: "#FFF7ED", padding: 12, borderRadius: 10 }}>
+        <p>يوجد نقص في ساعات الشهر أو الإشراف. اعتماد الساعات الفعلية لا يعني استيفاء المتطلبات الناقصة.</p>
+        <label><input type="checkbox" checked={allowShortfall} disabled={busy || approvalLoading || approvalError} onChange={event => setAllowShortfall(event.target.checked)} /> اعتماد الساعات الفعلية رغم النقص، مع توثيق الاستثناء</label>
+      </div>}
       <p className="muted" style={{ textAlign: "right", padding: 0 }}>
         أقر بصحة الساعات المسجلة وأنها تعكس الأنشطة وجلسات الإشراف المنفذة فعليًا.
         يُعرض أي نقص قبل التأكيد، ويُوثّق الاستثناء دون اعتباره استيفاءً للمتطلبات.
@@ -477,10 +524,10 @@ function MonthlyApprovalCard({ traineeId, current }: any) {
       <div className="ws-actions">
         <button
           className="save"
-          disabled={!current || approval?.supervisorApprovedAt || busy}
-          onClick={() => void approve()}
+          disabled={!current || pendingCount > 0 || approval?.supervisorApprovedAt || approval?.locked || busy || approvalLoading || approvalError || (!!shortfall && !allowShortfall)}
+          onClick={() => void approve(allowShortfall)}
         >
-          {approval?.supervisorApprovedAt ? "✓ اعتمد المشرف" : "اعتماد الشهر"}
+          {approvalLoading ? "تحميل حالة الاعتماد…" : approval?.locked ? "✓ الشهر معتمد ومغلق" : approval?.supervisorApprovedAt ? "✓ اعتمد المشرف" : allowShortfall ? "اعتماد الساعات الفعلية رغم النقص" : "اعتماد الشهر"}
         </button>
         {approval?.traineeAcknowledgedAt && (
           <span className="ok">✓ أقر المتدرب وتم إغلاق الشهر</span>

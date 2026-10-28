@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
   const month =
     req.nextUrl.searchParams.get("month") ||
     new Date().toISOString().slice(0, 7);
+  if (!traineeId || traineeId.includes("/") || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+    return NextResponse.json({ error: "INVALID_DATA" }, { status: 400 });
   const trainee = await adminDb.collection("trainees").doc(traineeId).get();
   if (!trainee.exists || trainee.data()?.currentSupervisorId !== supervisor.id)
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
@@ -30,6 +32,9 @@ export async function POST(req: NextRequest) {
   if (!supervisor)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { traineeId, month, attestation, allowIncompleteHours } = await req.json();
+  if (typeof traineeId !== "string" || !traineeId || traineeId.includes("/") ||
+      typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month > new Date().toISOString().slice(0, 7))
+    return NextResponse.json({ error: "INVALID_DATA" }, { status: 400 });
   const traineeSnap = await adminDb
     .collection("trainees")
     .doc(String(traineeId))
@@ -101,11 +106,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "MONTH_HOURS_INCOMPLETE", actualHours: check.fieldwork,
       minimumHours: result.rules.monthlyMin, warnings }, { status: 409 });
   const now = new Date().toISOString();
-  await adminDb
-    .collection("monthlyApprovals")
-    .doc(`${traineeId}_${month}`)
-    .set(
-      {
+  const record = {
         traineeId,
         supervisorId: supervisor.id,
         month,
@@ -131,8 +132,26 @@ export async function POST(req: NextRequest) {
           indirectRate: check.indirectRate,
         },
         createdAt: now,
-      },
-      { merge: true },
-    );
-  return NextResponse.json({ success: true });
+      };
+  try {
+    const saved = await adminDb.runTransaction(async tx => {
+      const reference = adminDb.collection("monthlyApprovals").doc(`${traineeId}_${month}`);
+      const [previous, currentTrainee, currentRequests] = await Promise.all([
+        tx.get(reference), tx.get(adminDb.collection("trainees").doc(traineeId)),
+        tx.get(adminDb.collection("supervisionReconciliations").where("traineeId", "==", traineeId).where("status", "==", "pending")),
+      ]);
+      if (!currentTrainee.exists || currentTrainee.data()?.currentSupervisorId !== supervisor.id) throw new Error("FORBIDDEN");
+      const existing = previous.data();
+      // A retry must never reopen a locked month or erase recorded consent.
+      if (existing?.supervisorApprovedAt || existing?.locked) return existing;
+      if (currentRequests.docs.some(d => String(d.data().candidate?.date || "").slice(0, 7) === month)) throw new Error("PENDING_RECONCILIATION");
+      tx.set(reference, record, { merge: true });
+      return record;
+    });
+    return NextResponse.json({ success: true, approval: saved });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "APPROVAL_FAILED";
+    return NextResponse.json({ error: ["FORBIDDEN", "PENDING_RECONCILIATION"].includes(code) ? code : "APPROVAL_FAILED" },
+      { status: code === "FORBIDDEN" ? 403 : code === "PENDING_RECONCILIATION" ? 409 : 503 });
+  }
 }
