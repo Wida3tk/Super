@@ -69,6 +69,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     cycleSessionsSnap,
     cycleApprovalsSnap,
     pendingReviewSnap,
+    disputedSessionsSnap,
   ] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").get(),
@@ -82,6 +83,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     cycleMonth === currentMonth ? null : adminDb.collection("sessions").where("month", "==", cycleMonth).get(),
     adminDb.collection("monthlyApprovals").where("month", "==", cycleMonth).get(),
     adminDb.collection("fieldworkActivities").where("status", "==", "submitted").get(),
+    adminDb.collection("fieldworkActivities").where("traineeAcknowledgment.status", "==", "disputed").get(),
   ]);
 
   const allTrainees = traineesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
@@ -191,7 +193,11 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
   };
 
   const base = `/${locale}/admin`;
+  // A dispute is only live while the session still counts (not deleted).
+  const disputedSessions = disputedSessionsSnap.docs.filter((d) => d.data().status === "approved");
+  const disputedTrainees = new Set(disputedSessions.map((d) => d.data().traineeId)).size;
   const queue = [
+    { label: "اعتراضات على جلسات إشراف", hint: disputedSessions.length ? `${disputedTrainees} متدرب اعترض على جلسات سجّلها المشرف` : "المتدربون يُقرّون بالجلسات التي يسجلها المشرف", count: disputedSessions.length, href: cycleHref({ alert: "session_disputed", stage: null }), tone: "danger", icon: "alert" },
     { label: "طلبات تسجيل جديدة", hint: "سجّلوا من الموقع وتنتظر بدء المقابلة", count: newRegistrations.length, href: `${base}/onboarding`, tone: "info", icon: "inbox" },
     { label: "جاهزون للإسناد", hint: "أكملوا مرحلة التعاقد", count: readyToAssign.length, href: `${base}/assignment`, tone: "info", icon: "target" },
     { label: "طلبات متدربين بانتظار القرار", hint: "تأجيل، نقل، مستندات وغيرها", count: pendingRequestsSnap.data().count, href: `${base}/trainee-requests`, tone: "warning", icon: "file" },
@@ -333,6 +339,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
                         <td data-label="الحالة">
                           <span className={`sk-chip ${stage.tone === "muted" ? "" : stage.tone}`}>{stage.label}</span>
                           {r.pendingReview > 0 && r.stage !== "awaiting_supervisor" && <small className="sk-faint"> · {r.pendingReview} بانتظار</small>}
+                          {r.sessions.unconfirmed > 0 && <small className="sk-faint sk-block">{r.sessions.unconfirmed} جلسة بلا إقرار المتدرب</small>}
                         </td>
                         <td className="sk-cell-alerts">
                           {r.alerts.length === 0 ? <span className="sk-faint">—</span> : r.alerts.map((key) => {

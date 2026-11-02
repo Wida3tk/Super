@@ -111,7 +111,7 @@ export default async function TraineeDashboardPage({
     lifecycleTransitions: JSON.parse(JSON.stringify(lifecycleTransitions)),
     notifications: notificationsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as any))
-      .filter((item: any) => !item.read && item.targetType !== "admin" && item.audience !== "admin")
+      .filter((item: any) => !item.read && item.targetType !== "admin" && item.targetType !== "supervisor" && item.audience !== "admin")
       .sort((a: any, b: any) => String(b.createdAt).localeCompare(String(a.createdAt))),
     continuationBooking: (bookingsSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as any))

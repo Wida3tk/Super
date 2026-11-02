@@ -50,6 +50,22 @@ describe("buildMonthRow", () => {
   });
 });
 
+describe("session acknowledgment", () => {
+  it("flags disputed supervisor-logged sessions and counts unconfirmed ones", () => {
+    const rows = [
+      row({ activityType: "indirect", duration: 19 }),
+      row({ activityType: "supervision_direct", format: "individual", duration: 1, sessionId: "a" }),
+      row({ activityType: "supervision_direct", format: "individual", duration: 1, sessionId: "b", traineeAcknowledgment: { status: "disputed", at: "x", note: "لم تحدث" } }),
+      row({ activityType: "supervision_direct", format: "individual", duration: 1, sessionId: "c", traineeAcknowledgment: { status: "confirmed", at: "x" } }),
+      // Trainee-logged supervision does not need the trainee's own confirmation.
+      row({ activityType: "supervision_indirect", format: "individual", duration: 1 }),
+    ];
+    const r = buildMonthRow(trainee, rows, null, false);
+    expect(r.sessions).toEqual({ unconfirmed: 1, disputed: 1 });
+    expect(r.alerts[0]).toBe("session_disputed");
+  });
+});
+
 describe("buildMonthCycle", () => {
   it("projects legacy supervisor sessions like the trainee ledger", () => {
     const cycle = buildMonthCycle({

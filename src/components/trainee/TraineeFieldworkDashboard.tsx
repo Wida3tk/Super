@@ -11,6 +11,8 @@ import TraineeFilesWorkspace from "@/components/trainee/TraineeFilesWorkspace";
 import { evaluatePeriod, traineeRules } from "@/lib/qaba/compliance";
 import SupervisionProgress from "./SupervisionProgress";
 import TraineeWelcome from "./TraineeWelcome";
+import SessionAcknowledgments from "./SessionAcknowledgments";
+import { ackState } from "@/lib/supervision/sessionAcknowledgment";
 import {
   AttendanceRecord,
   FinancialPlan,
@@ -44,6 +46,19 @@ const categoryLabels: Record<string, string> = {
   other_aba: "نشاط تحليلي سلوكي آخر",
 };
 
+type TabKey =
+  | "overview" | "hours" | "hoursGuide" | "plan" | "competency" | "meetings" | "documents" | "agreement"
+  | "improvement" | "reports" | "policies" | "attendance" | "requests" | "finance" | "account";
+
+/** Fifteen sections, five groups: the group row stays short, the sub-row shows only what belongs together. */
+const TAB_GROUPS: { key: string; label: string; icon: string; tabs: [TabKey, string][] }[] = [
+  { key: "home", label: "نظرة عامة", icon: "overview", tabs: [["overview", "نظرة عامة"]] },
+  { key: "hours", label: "الساعات", icon: "hours", tabs: [["hours", "سجل الساعات"], ["hoursGuide", "دليل التسجيل"], ["attendance", "الغياب والإنذارات"]] },
+  { key: "supervision", label: "الإشراف والتقييم", icon: "competency", tabs: [["plan", "خطة الإشراف"], ["meetings", "الاجتماعات والمهام"], ["competency", "تقييم الكفاءة"], ["reports", "تقارير التقدم"], ["improvement", "تحسين الأداء"]] },
+  { key: "files", label: "الملفات والاتفاقية", icon: "documents", tabs: [["documents", "المستندات"], ["agreement", "الاتفاقية"], ["finance", "الخطة المالية"], ["policies", "السياسات"]] },
+  { key: "account", label: "حسابي وطلباتي", icon: "account", tabs: [["requests", "طلباتي"], ["account", "إعدادات الحساب"]] },
+];
+
 export default function TraineeFieldworkDashboard({
   trainee,
   supervisorName,
@@ -58,23 +73,8 @@ export default function TraineeFieldworkDashboard({
   const router = useRouter();
   const [activities, setActivities] = useState(initialActivities);
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    | "overview"
-    | "hours"
-    | "hoursGuide"
-    | "plan"
-    | "competency"
-    | "meetings"
-    | "documents"
-    | "agreement"
-    | "improvement"
-    | "reports"
-    | "policies"
-    | "attendance"
-    | "requests"
-    | "finance"
-    | "account"
-  >("overview");
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const activeGroup = TAB_GROUPS.find((group) => group.tabs.some(([key]) => key === activeTab)) || TAB_GROUPS[0];
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -241,9 +241,17 @@ export default function TraineeFieldworkDashboard({
       }),
     });
     if (!response.ok) {
-      setApprovalMessage("يجب أن يعتمد المشرف الشهر أولًا.");
+      const data = await response.json().catch(() => ({}));
+      setApprovalMessage(
+        data.error === "SESSION_DISPUTED"
+          ? "لديك اعتراض مفتوح على جلسة إشراف هذا الشهر؛ يُحل أولًا (يصححها المشرف أو تُقرّ بها)."
+          : "يجب أن يعتمد المشرف الشهر أولًا.",
+      );
       return;
     }
+    setActivities((rows: any[]) => rows.map((row) => ackState(row) === "pending" && row.month === (supervisionFile?.currentMonth || currentMonth)
+      ? { ...row, traineeAcknowledgment: { status: "confirmed", at: new Date().toISOString(), via: "monthly" } }
+      : row));
     setMonthlyApproval({
       ...monthlyApproval,
       traineeAcknowledgedAt: new Date().toISOString(),
@@ -472,6 +480,11 @@ export default function TraineeFieldworkDashboard({
             </div>
           </aside>
         </section>
+        <SessionAcknowledgments
+          activities={activities}
+          supervisorName={supervisorName}
+          onChange={(row) => setActivities((rows: any[]) => rows.map((item) => (item.id === row.id ? { ...item, ...row } : item)))}
+        />
         <SupervisionProgress trainee={trainee} transitions={supervisionFile?.lifecycleTransitions || []} requests={supervisionFile?.requests || []} />
         {(supervisionFile?.notifications || []).length > 0 && (
           <section className="panel" style={{marginBottom:18,borderRight:"4px solid #0D40FC"}}>
@@ -484,38 +497,38 @@ export default function TraineeFieldworkDashboard({
             ))}
           </section>
         )}
-        <style>{`.fw-page button,.fw-page input,.fw-page select,.fw-page textarea{font-family:inherit}.trainee-tabs{flex-wrap:wrap;overflow:visible;gap:6px}.trainee-tabs button{font-size:14px;line-height:1.5;flex:1 0 auto}.trainee-tabs button:focus-visible{outline:2px solid #57ddff;outline-offset:2px}.account-form input[readonly]{background:#f1f5f9;color:#475569;cursor:default}@media(max-width:600px){.trainee-tabs button{flex:1 1 calc(50% - 6px);white-space:normal;font-size:13px}}`}</style>
-        <div className="trainee-tabs" aria-label="أقسام لوحة المتدرب">
-          {(
-            [
-              ["overview", "نظرة عامة"],
-              ["hours", "الساعات"],
-              ["hoursGuide", "دليل تسجيل الساعات"],
-              ["plan", "خطة الإشراف"],
-              ["competency", "تقييم الكفاءة"],
-              ["meetings", "الاجتماعات والمهام"],
-              ["documents", "المستندات"],
-              ["agreement", "الاتفاقية"],
-              ["improvement", "تحسين الأداء"],
-              ["reports", "تقارير التقدم"],
-              ["attendance", "الغياب والإنذارات"],
-              ["requests", "طلباتي"],
-              ["finance", "الخطة المالية"],
-              ["policies", "السياسات"],
-              ["account", "إعدادات الحساب"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              aria-pressed={activeTab === key}
-              className={activeTab === key ? "active" : ""}
-              onClick={() => setActiveTab(key)}
-            >
-              <TabIcon name={key} />
-              {label}
-            </button>
-          ))}
-        </div>
+        <style>{`.fw-page button,.fw-page input,.fw-page select,.fw-page textarea{font-family:inherit}.trainee-tabs{gap:6px;margin-bottom:0}.trainee-tabs button{font-size:14px;line-height:1.5;flex:1 0 auto}.trainee-nav{margin-bottom:18px}.trainee-subtabs{display:flex;gap:4px;padding:8px 4px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid #e2e8f0}.trainee-subtabs::-webkit-scrollbar{display:none}.trainee-subtabs button{font:inherit;font-size:13px;font-weight:600;color:#64748b;background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;cursor:pointer;white-space:nowrap}.trainee-subtabs button:hover{color:#0f172a}.trainee-subtabs button.active{color:#0d40fc;border-bottom-color:#0d40fc}.trainee-subtabs button:focus-visible{outline:2px solid #57ddff;outline-offset:-2px}.trainee-tabs button:focus-visible{outline:2px solid #57ddff;outline-offset:2px}.ack-chip{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px}.ack-confirmed{background:#ecfdf5;color:#047857}.ack-pending{background:#eef4ff;color:#0d40fc}.ack-disputed{background:#fef2f2;color:#b91c1c}.account-form input[readonly]{background:#f1f5f9;color:#475569;cursor:default}@media(max-width:600px){.trainee-tabs{flex-wrap:wrap;overflow:visible}.trainee-tabs button{flex:1 1 calc(33.333% - 6px);font-size:12px;padding:8px 6px;flex-direction:column;gap:4px;min-height:58px;white-space:normal;text-align:center}}`}</style>
+        <nav className="trainee-nav" aria-label="أقسام لوحة المتدرب">
+          <div className="trainee-tabs" role="tablist">
+            {TAB_GROUPS.map((group) => (
+              <button
+                key={group.key}
+                role="tab"
+                aria-selected={activeGroup.key === group.key}
+                className={activeGroup.key === group.key ? "active" : ""}
+                onClick={() => setActiveTab(group.tabs[0][0])}
+              >
+                <TabIcon name={group.icon} />
+                {group.label}
+              </button>
+            ))}
+          </div>
+          {activeGroup.tabs.length > 1 && (
+            <div className="trainee-subtabs" role="tablist" aria-label={activeGroup.label}>
+              {activeGroup.tabs.map(([key, label]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={activeTab === key}
+                  className={activeTab === key ? "active" : ""}
+                  onClick={() => setActiveTab(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </nav>
         {activeTab === "overview" && (
           <>
             {(supervisionFile?.priorCredits || []).length > 0 && <section className="fw-card" dir="rtl">
@@ -607,9 +620,9 @@ export default function TraineeFieldworkDashboard({
                 <b>{indirect.toFixed(2)}</b>
               </div>
               <div className="card">
-                <span className="muted">الإشراف المباشر المستهدف</span>
+                <span className="muted">ساعات الإشراف</span>
                 <b>
-                  {supervision.toFixed(1)} / {supervisionTargetHours}
+                  {supervision.toFixed(1)} <small className="muted" style={{ fontSize: 13, fontWeight: 600 }}>من {supervisionTargetHours}</small>
                 </b>
               </div>
               <div className="card">
@@ -754,6 +767,11 @@ export default function TraineeFieldworkDashboard({
                           </span>
                           {a.reviewerNote && (
                             <div className="muted">{a.reviewerNote}</div>
+                          )}
+                          {ackState(a) && (
+                            <div className={`ack-chip ack-${ackState(a)}`}>
+                              {ackState(a) === "confirmed" ? "أقررت بالجلسة" : ackState(a) === "disputed" ? "اعترضت عليها" : "بانتظار إقرارك"}
+                            </div>
                           )}
                         </td>
                         <td>

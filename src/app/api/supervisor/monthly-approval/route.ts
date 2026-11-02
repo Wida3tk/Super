@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { buildCompliance } from "@/lib/qaba/compliance";
 import { contractDateForTrainee } from "@/lib/qaba/contractDates";
+import { ackState } from "@/lib/supervision/sessionAcknowledgment";
 
 export async function GET(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -95,6 +96,13 @@ export async function POST(req: NextRequest) {
   if (pending.length)
     return NextResponse.json(
       { error: "PENDING_ACTIVITIES", count: pending.length },
+      { status: 409 },
+    );
+  // A session the trainee says did not happen cannot be signed off.
+  const disputed = activities.filter((a) => ackState(a) === "disputed");
+  if (disputed.length)
+    return NextResponse.json(
+      { error: "SESSION_DISPUTED", count: disputed.length },
       { status: 409 },
     );
   const incompleteHours = check.fieldwork < result.rules.monthlyMin;

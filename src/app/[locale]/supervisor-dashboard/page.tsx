@@ -355,7 +355,7 @@ export default async function SupervisorDashboardPage({ params }: Props) {
                         color: "#0F172A",
                       }}
                     >
-                      رسائل الإدارة
+                      الإشعارات
                     </span>
                     {unreadCount > 0 && (
                       <span

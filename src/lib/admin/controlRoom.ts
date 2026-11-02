@@ -1,6 +1,7 @@
 import type { FieldworkActivity } from "@/types";
 import { evaluatePeriod, hourBreakdown, traineeRules } from "@/lib/qaba/compliance";
 import { projectLegacySessions } from "@/lib/supervision/legacySessions";
+import { ackSummary } from "@/lib/supervision/sessionAcknowledgment";
 
 /**
  * The admin control room: where every active trainee stands in the monthly
@@ -26,9 +27,10 @@ export const CYCLE_STAGES: { key: CycleStage; label: string; hint: string; tone:
   { key: "locked", label: "مقفل", hint: "اعتمده المشرف وأقر المتدرب", tone: "success" },
 ];
 
-export type AlertKey = "supervision_below_rate" | "no_individual_contact" | "group_over_limit" | "over_monthly_max" | "under_monthly_min";
+export type AlertKey = "session_disputed" | "supervision_below_rate" | "no_individual_contact" | "group_over_limit" | "over_monthly_max" | "under_monthly_min";
 
 export const ALERTS: { key: AlertKey; label: string; tone: "warning" | "danger" }[] = [
+  { key: "session_disputed", label: "اعتراض على جلسة", tone: "danger" },
   { key: "supervision_below_rate", label: "إشراف أقل من 5%", tone: "warning" },
   { key: "no_individual_contact", label: "لا اتصال فردي (ساعة)", tone: "warning" },
   { key: "group_over_limit", label: "جماعي فوق 50%", tone: "danger" },
@@ -52,6 +54,8 @@ export interface MonthRow {
   /** Everything logged and not rejected — the early-warning view. */
   logged: { total: number; supervision: number; group: number; required: number; shortfall: number; groupRate: number };
   pendingReview: number;
+  /** Supervisor-logged sessions the trainee has not confirmed / has disputed. */
+  sessions: { unconfirmed: number; disputed: number };
   hasIndividualContact: boolean;
   alerts: AlertKey[];
 }
@@ -87,7 +91,9 @@ export function buildMonthRow(trainee: Trainee, rows: FieldworkActivity[], appro
   // Same test the supervisor's monthly approval applies.
   const hasIndividualContact = logged.some((row) => row.activityType.startsWith("supervision_") && row.format === "individual" && Number(row.duration) >= 1);
 
+  const acks = ackSummary(rows);
   const alerts: AlertKey[] = [];
+  if (acks.disputed) alerts.push("session_disputed");
   if (loggedHours.total > 0) {
     if (!period.meetsSupervision) alerts.push("supervision_below_rate");
     if (!hasIndividualContact) alerts.push("no_individual_contact");
@@ -111,6 +117,7 @@ export function buildMonthRow(trainee: Trainee, rows: FieldworkActivity[], appro
       groupRate: period.groupRate,
     },
     pendingReview: rows.filter((row) => row.status === "submitted").length,
+    sessions: { unconfirmed: acks.pending, disputed: acks.disputed },
     hasIndividualContact,
     alerts,
   };
