@@ -802,10 +802,13 @@ export default function AdminSupervisionPanel({
   supervisors,
   initialTrainees = [],
   initialSnapshots = [],
+  visibleTabs = ["supervisors", "trainees", "onboarding", "months"],
 }: {
   supervisors: any[];
   initialTrainees?: any[];
   initialSnapshots?: any[];
+  /** Which tabs this page shows; the first one opens by default. */
+  visibleTabs?: Array<"supervisors" | "trainees" | "onboarding" | "months">;
 }) {
   const { locale } = useParams<{ locale: string }>();
   const [trainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
@@ -814,7 +817,7 @@ export default function AdminSupervisionPanel({
   );
   const [activeTab, setActiveTab] = useState<
     "supervisors" | "trainees" | "onboarding" | "months"
-  >("supervisors");
+  >(visibleTabs[0] || "supervisors");
   const [selectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showAddModal, setShowAddModal] = useState(false);
   const [assigningTrainee, setAssigningTrainee] = useState<Trainee | null>(
@@ -915,10 +918,10 @@ export default function AdminSupervisionPanel({
 
   const tabs = [
     { key: "supervisors", label: "إنتاجية المشرفين" },
-    { key: "trainees", label: "المتدربون" },
-    { key: "onboarding", label: "طلبات الانضمام" },
+    { key: "trainees", label: "المتدربون والإسناد" },
+    { key: "onboarding", label: "مراحل الانضمام" },
     { key: "months", label: "إدارة الأشهر" },
-  ];
+  ].filter((tab) => visibleTabs.includes(tab.key as any));
 
   return (
     <div
@@ -985,7 +988,7 @@ export default function AdminSupervisionPanel({
               cursor: "pointer",
             }}
           >
-            📊 تصدير المشرفين
+            تصدير المشرفين
           </button>
           <button
             onClick={() => handleExport("trainees")}
@@ -1000,7 +1003,7 @@ export default function AdminSupervisionPanel({
               cursor: "pointer",
             }}
           >
-            📋 تصدير المتدربين
+            تصدير المتدربين
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -1032,7 +1035,7 @@ export default function AdminSupervisionPanel({
       )}
 
       {/* Tabs */}
-      <div
+      {tabs.length > 1 && <div
         style={{
           display: "flex",
           gap: 4,
@@ -1062,7 +1065,7 @@ export default function AdminSupervisionPanel({
             {t.label}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* ===== تبويب المشرفين ===== */}
       {activeTab === "supervisors" && (

@@ -21,7 +21,16 @@ const paths: Record<string, ReactNode> = {
   check: <><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></>,
   star: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>,
   eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"/><circle cx="12" cy="12" r="3"/></>,
-  eyeOff: <><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.5 6.5C3.6 8.3 2 12 2 12s3.5 6 10 6c1.9 0 3.5-.5 4.8-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></>,
+  calendarCheck: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-12 5 2 2 4-4"/></>,
+  menu: <path d="M4 6h16M4 12h16M4 18h16"/>,
+  close: <path d="M6 6l12 12M18 6 6 18"/>,
+  logout: <><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/></>,
+  inbox: <><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/></>,
+  alert: <><path d="M12 3 2 20h20z"/><path d="M12 10v4m0 3v.01"/></>,
+  arrowLeft: <path d="M19 12H5m6-6-6 6 6 6"/>,
+  chevronDown: <path d="m6 9 6 6 6-6"/>,
+  activity: <path d="M3 12h4l3-8 4 16 3-8h4"/>,
+  eyeOff:<><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.5 6.5C3.6 8.3 2 12 2 12s3.5 6 10 6c1.9 0 3.5-.5 4.8-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></>,
 };
 
 export default function UiIcon({name,size=18,...props}:{name:string;size?:number}&SVGProps<SVGSVGElement>){

@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import type { CSSProperties } from "react";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import { credentialRules } from "@/lib/qaba/compliance";
@@ -173,10 +172,6 @@ export default async function TraineeFilePage({
     <AdminPageLayout locale={locale} title={`ملف المتدرب — ${trainee.name}`}>
       <div dir="rtl">
         <style>{css}</style>
-        <div className="file-topbar">
-          <Link href={`/${locale}/admin/trainees`}>→ العودة إلى المتدربين</Link>
-          <span>ملف إداري للعرض والمراجعة</span>
-        </div>
         <section className="trainee-hero">
           <div className="hero-identity">
             <div className="hero-avatar">
@@ -248,7 +243,6 @@ export default async function TraineeFilePage({
           })}
         </div>
         <section className="profile-section">
-          <PriorSupervisionCredits traineeId={id} records={priorRecords} documents={documents} />
           <SupervisionReconciliationReview role="admin" traineeId={id} />
           <div className="section-heading">
             <div>
@@ -403,9 +397,16 @@ export default async function TraineeFilePage({
           )}
         </section>
         <TraineeMonthlyHours activities={activities} />
+        <details className="admin-tools">
+          <summary>
+            <b>أدوات إدارية: ساعات الإشراف السابقة</b>
+            <small>استيراد ملف مشرف سابق أو إضافة رصيد موثّق. تُستخدم عند انتقال المتدرب من مشرف خارج المنصة.</small>
+          </summary>
+          <PriorSupervisionCredits traineeId={id} records={priorRecords} documents={documents} />
+        </details>
       </div>
     </AdminPageLayout>
   );
 }
 
-const css = `.file-topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}.file-topbar a{color:#0D40FC;text-decoration:none;font-size:12px;font-weight:800}.file-topbar span{font-size:10px;color:#94A3B8}.trainee-hero{padding:22px 24px;border-radius:20px;color:white;background:linear-gradient(125deg,#001442,#0D40FC);display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 10px 30px #0D40FC18}.hero-identity{display:flex;align-items:center;gap:14px}.hero-avatar{width:54px;height:54px;border-radius:16px;background:#ffffff18;border:1px solid #ffffff28;display:grid;place-items:center;font-size:22px;font-weight:900}.hero-identity small{font-size:10px;color:#9EC5FF}.hero-identity h2{margin:3px 0;font-size:22px}.hero-identity p{margin:0;color:#D6E1FF;font-size:12px}.hero-identity p span{opacity:.45;margin:0 4px}.hero-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.supervisor-pill{padding:9px 13px;border-radius:10px;background:#ffffff12;border:1px solid #ffffff20;font-size:11px}.progress-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:14px 0}.progress-card{--accent:#0D40FC;background:white;border:1px solid #E2E8F0;border-radius:14px;padding:15px;box-shadow:0 3px 10px #00144208}.progress-card-head{display:flex;justify-content:space-between;align-items:start;gap:7px}.progress-card-head>span{font-size:11px;color:#64748B;font-weight:700}.progress-card-head b{font-size:20px;color:var(--accent);white-space:nowrap}.progress-card-head b small{font-size:11px;color:#94A3B8}.progress-track{height:5px;background:#EEF2F7;border-radius:99px;overflow:hidden;margin:11px 0 6px}.progress-track i{display:block;height:100%;background:var(--accent);border-radius:99px}.progress-card>small{font-size:9px;color:#94A3B8}.profile-section{background:#fff;border:1px solid #E2E8F0;border-radius:17px;padding:20px;margin-bottom:16px}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;padding-bottom:14px;border-bottom:1px solid #EEF2F7}.section-heading small{color:#0D40FC;font-size:9px;font-weight:800}.section-heading h3{margin:2px 0 0;color:#001442;font-size:17px}.section-heading>span{font-size:9px;color:#94A3B8}.profile-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:16px}.detail-group{border:1px solid #EEF2F7;border-radius:13px;overflow:hidden}.detail-group h4{margin:0;padding:11px 13px;background:#F8FAFC;color:#334155;font-size:11px}.detail-row{display:flex;align-items:center;gap:10px;padding:10px 13px;border-top:1px solid #F1F5F9}.detail-row i{width:28px;height:28px;border-radius:8px;background:#EEF4FF;color:#0D40FC;display:grid;place-items:center;font-style:normal;font-size:11px;flex:0 0 auto}.detail-row div{min-width:0}.detail-row small{display:block;color:#94A3B8;font-size:9px;margin-bottom:2px}.detail-row b{display:block;color:#001442;font-size:11px;overflow-wrap:anywhere}@media(max-width:900px){.progress-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.trainee-hero{align-items:flex-start}.hero-actions{width:100%}.profile-columns{grid-template-columns:1fr}.progress-grid{grid-template-columns:1fr 1fr}.file-topbar span{display:none}}`;
+const css = `.admin-tools{background:#fff;border:1px solid #E6EBF2;border-radius:14px;margin-top:16px;padding:0 18px}.admin-tools summary{cursor:pointer;padding:16px 0;list-style:none;display:grid;gap:3px}.admin-tools summary::-webkit-details-marker{display:none}.admin-tools summary b{font-size:15px;color:#0F1B33}.admin-tools summary b::before{content:'+ ';color:#0D40FC}.admin-tools[open] summary b::before{content:'− '}.admin-tools summary small{font-size:12px;color:#6B7A92}.admin-tools[open]{padding-bottom:16px}.file-topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}.file-topbar a{color:#0D40FC;text-decoration:none;font-size:12px;font-weight:800}.file-topbar span{font-size:11px;color:#94A3B8}.trainee-hero{padding:20px 22px;border-radius:14px;color:white;background:#001442;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}.hero-identity{display:flex;align-items:center;gap:14px}.hero-avatar{width:54px;height:54px;border-radius:16px;background:#ffffff18;border:1px solid #ffffff28;display:grid;place-items:center;font-size:22px;font-weight:900}.hero-identity small{font-size:11px;color:#9EC5FF}.hero-identity h2{margin:3px 0;font-size:22px}.hero-identity p{margin:0;color:#D6E1FF;font-size:12px}.hero-identity p span{opacity:.45;margin:0 4px}.hero-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.supervisor-pill{padding:9px 13px;border-radius:10px;background:#ffffff12;border:1px solid #ffffff20;font-size:11px}.progress-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:14px 0}.progress-card{--accent:#0D40FC;background:white;border:1px solid #E2E8F0;border-radius:14px;padding:15px;box-shadow:0 3px 10px #00144208}.progress-card-head{display:flex;justify-content:space-between;align-items:start;gap:7px}.progress-card-head>span{font-size:11px;color:#64748B;font-weight:700}.progress-card-head b{font-size:20px;color:var(--accent);white-space:nowrap}.progress-card-head b small{font-size:11px;color:#94A3B8}.progress-track{height:5px;background:#EEF2F7;border-radius:99px;overflow:hidden;margin:11px 0 6px}.progress-track i{display:block;height:100%;background:var(--accent);border-radius:99px}.progress-card>small{font-size:11px;color:#94A3B8}.profile-section{background:#fff;border:1px solid #E2E8F0;border-radius:17px;padding:20px;margin-bottom:16px}.section-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;padding-bottom:14px;border-bottom:1px solid #EEF2F7}.section-heading small{color:#0D40FC;font-size:11px;font-weight:800}.section-heading h3{margin:2px 0 0;color:#001442;font-size:17px}.section-heading>span{font-size:11px;color:#94A3B8}.profile-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:16px}.detail-group{border:1px solid #EEF2F7;border-radius:13px;overflow:hidden}.detail-group h4{margin:0;padding:11px 13px;background:#F8FAFC;color:#334155;font-size:11px}.detail-row{display:flex;align-items:center;gap:10px;padding:10px 13px;border-top:1px solid #F1F5F9}.detail-row i{width:28px;height:28px;border-radius:8px;background:#EEF4FF;color:#0D40FC;display:grid;place-items:center;font-style:normal;font-size:11px;flex:0 0 auto}.detail-row div{min-width:0}.detail-row small{display:block;color:#94A3B8;font-size:11px;margin-bottom:2px}.detail-row b{display:block;color:#001442;font-size:11px;overflow-wrap:anywhere}@media(max-width:900px){.progress-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.trainee-hero{align-items:flex-start}.hero-actions{width:100%}.profile-columns{grid-template-columns:1fr}.progress-grid{grid-template-columns:1fr 1fr}.file-topbar span{display:none}}`;

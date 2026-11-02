@@ -19,6 +19,8 @@ const num = (v: unknown) => Number(v || 0);
 const monthOf = (x: any) =>
   String(x.month || x.date || x.issuedAt || x.createdAt || "").slice(0, 7);
 
+const STATUS_LABELS: Record<string, string> = { active: "نشط", paused: "مؤجل", completed: "مكتمل", onboarding: "قيد الانضمام", withdrawn: "منسحب", terminated: "منتهي" };
+
 export default function SupervisorMonthlyWork({
   supervisor,
   trainees,
@@ -210,9 +212,10 @@ export default function SupervisorMonthlyWork({
     <section dir="rtl" style={{ marginBottom: 18 }}>
       <div
         style={{
-          background: "linear-gradient(125deg,#001442,#0D40FC)",
-          color: "white",
-          borderRadius: 18,
+          background: "#fff",
+          border: "1px solid #E6EBF2",
+          color: "#0F1B33",
+          borderRadius: 14,
           padding: "20px 24px",
           marginBottom: 14,
           display: "flex",
@@ -223,17 +226,17 @@ export default function SupervisorMonthlyWork({
         }}
       >
         <div>
-          <small style={{ color: "#8FE8FF" }}>ملف العمل وكشف المتدربين</small>
+          <small style={{ color: "#0D40FC", fontWeight: 600 }}>ملف العمل وكشف المتدربين</small>
           <h2 style={{ margin: "5px 0" }}>{supervisor.name}</h2>
-          <span style={{ color: "#D6E1FF", fontSize: 12 }}>
+          <span style={{ color: "#6B7A92", fontSize: 12 }}>
             {supervisor.email}
           </span>
         </div>
         <a
           href={`/${locale}/admin/supervisors/${supervisor.id}?view=schedule`}
           style={{
-            color: "#001442",
-            background: "white",
+            color: "#fff",
+            background: "#0D40FC",
             textDecoration: "none",
             padding: "9px 13px",
             borderRadius: 9,
@@ -489,7 +492,7 @@ export default function SupervisorMonthlyWork({
                         </td>
                         <td style={td}>{t.license || "—"}</td>
                         <td style={td}>
-                          {t.lifecycleStageLabel || t.status || "مستمر"}
+                          {t.lifecycleStageLabel || STATUS_LABELS[t.status] || t.status || "مستمر"}
                         </td>
                         <td style={td}>{fw}</td>
                         <td style={td}>{ind}</td>
