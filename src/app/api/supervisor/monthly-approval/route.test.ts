@@ -7,6 +7,7 @@ vi.mock("@/lib/firebase/admin", () => {
   const ref = (name: string): any => ({ name, doc: () => ref(name), where: () => ref(name), set: mock.set,
     get: async () => name === "trainees" ? { exists: true, data: () => ({ currentSupervisorId: mock.owner, license: "QASP-S" }) }
       : name === "monthlyApprovals" ? { data: () => mock.saved }
+      : name === "supervisionAgreements" ? { exists: false, data: () => undefined }
       : { docs: mock.reconciliation ? [{ data: () => ({ candidate: { date: "2026-10-01" } }) }] : [] },
   });
   return { adminDb: { collection: ref, runTransaction: async (callback: any) => callback({
@@ -104,5 +105,12 @@ it("retains ownership and credential checks", async () => {
   expect((await POST(request({ allowIncompleteHours: true }))).status).toBe(409);
   mock.authenticated = false;
   expect((await POST(request())).status).toBe(401);
+  expect(mock.set).not.toHaveBeenCalled();
+});
+it("blocks the month while the trainee disputes a session", async () => {
+  mock.rows = [row("indirect", 19), row("supervision_indirect", 1, { sessionId: "x", traineeAcknowledgment: { status: "disputed", at: "x", note: "لم تحدث" } })];
+  const response = await POST(request({ allowIncompleteHours: true }));
+  expect(response.status).toBe(409);
+  expect((await response.json()).error).toBe("SESSION_DISPUTED");
   expect(mock.set).not.toHaveBeenCalled();
 });

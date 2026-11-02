@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildCompliance } from "@/lib/qaba/compliance";
+import { buildCompliance, contractDateFor } from "@/lib/qaba/compliance";
 import { uploadTraineeFile } from "@/lib/drive/uploadClient";
 import AllTraineeHours from "./AllTraineeHours";
 import { approvalMonths, workspaceSections } from "@/lib/supervision/workspaceNavigation";
+import { ackState } from "@/lib/supervision/sessionAcknowledgment";
 
 const competencyGroups = [
   {
@@ -66,26 +67,24 @@ const statusLabel: Record<string, string> = {
   retrain: "يحتاج إعادة تدريب",
 };
 
+export type WorkspaceTab = "overview" | "hours" | "agreement" | "documents" | "meetings" | "assessment" | "plan" | "improvement" | "reports";
+
 export default function TraineeSupervisionWorkspace({
   trainees,
   supervisor,
+  focusTraineeId,
+  onlyTabs,
 }: {
   trainees: any[];
   supervisor?: any;
+  /** Fixed trainee (inside the trainee file): hides the selector and the title. */
+  focusTraineeId?: string;
+  /** Inside the trainee file the outer tabs pick the section; show only these. */
+  onlyTabs?: readonly WorkspaceTab[];
 }) {
-  const [traineeId, setTraineeId] = useState(trainees[0]?.id || "");
+  const [traineeId, setTraineeId] = useState(focusTraineeId || trainees[0]?.id || "");
   const trainee = trainees.find((t) => t.id === traineeId);
-  const [tab, setTab] = useState<
-    | "overview"
-    | "hours"
-    | "agreement"
-    | "documents"
-    | "meetings"
-    | "assessment"
-    | "plan"
-    | "improvement"
-    | "reports"
-  >("overview");
+  const [tab, setTab] = useState<WorkspaceTab>(onlyTabs?.[0] || "overview");
   const [data, setData] = useState<any>({
     documents: [],
     meetings: [],
@@ -136,9 +135,9 @@ export default function TraineeSupervisionWorkspace({
       buildCompliance(
         data?.activities || [],
         trainee?.license || "QASP-S",
-        trainee?.fieldworkStartDate,
+        contractDateFor(trainee, data?.agreement),
       ),
-    [data?.activities, trainee],
+    [data?.activities, data?.agreement, trainee],
   );
   const latestAssessment = data?.assessments?.[0];
   const assessmentPct = latestAssessment?.maxScore
@@ -164,11 +163,12 @@ export default function TraineeSupervisionWorkspace({
       <div className="ws-empty">لا يوجد متدربون مُسندون إلى حسابك حاليًا.</div>
     );
   return (
-    <div className="ws" dir="rtl">
+    <div className="ws" dir="rtl" data-focus={focusTraineeId ? "" : undefined}>
       <style>{css}</style>
+      <style>{`.ws-toolbar[hidden]{display:none!important}.ws[data-focus] .ws-tabs{background:none;padding:0;margin:0 0 16px;gap:8px}.ws[data-focus] .ws-tabs button{border:1px solid #e6ebf2;background:#fff;border-radius:99px;padding:7px 14px;font-size:13px}.ws[data-focus] .ws-tabs button.active{border-color:#0d40fc;box-shadow:none}.ws[data-focus] .hero{background:#fff;color:#001442;border:1px solid #e6ebf2;box-shadow:0 1px 2px rgba(0,20,66,.04)}.ws[data-focus] .hero h3{display:none}.ws[data-focus] .hero span,.ws[data-focus] .hero p{color:#6b7a92}.ws[data-focus] .ring{background:conic-gradient(#0d40fc var(--p),#eef3ff 0)}.ws[data-focus] .ring:after{background:#fff}.ack-dispute{background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px;margin:8px 0;color:#7F1D1D;font-size:13px}.ack-dispute p{margin:6px 0;font-size:12px}.ack-dispute small{display:block;color:#991B1B;font-size:11px;line-height:1.7}`}</style>
       <style>{`.agreement-note{font-size:12px;line-height:1.8;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:9px;margin:0 0 14px}.assignment-card{border:1px solid #e2e8f0;border-radius:12px;padding:13px;margin-bottom:9px;background:#fbfdff}.assignment-card div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12px}.assignment-card div+div{border-top:1px solid #edf2f7}.assignment-card span{color:#64748b;text-align:left}.assignment-card p{font-size:11px;color:#64748b;background:#f1f5f9;padding:8px;border-radius:8px;margin:8px 0 0}`}</style>
       <style>{`.improvement-card{border:1px solid #e2e8f0;border-radius:13px;padding:14px;margin-bottom:10px}.improvement-card header{display:flex;justify-content:space-between;gap:10px;margin-bottom:9px}.improvement-card header span,.improvement-card small{font-size:11px;color:#64748b}.improvement-card p{font-size:12px;line-height:1.7;margin:5px 0}.feedback{display:grid;gap:4px;background:#f8fafc;border-right:3px solid #0d40fc;padding:9px;margin-top:8px;font-size:11px}.attempt-form{display:grid;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}.attempt-form textarea{min-height:55px}`}</style>
-      <div className="ws-toolbar">
+      <div className="ws-toolbar" hidden={Boolean(focusTraineeId)}>
         <div>
           <h2>ملف الإشراف المتكامل</h2>
           <p>
@@ -199,13 +199,15 @@ export default function TraineeSupervisionWorkspace({
           </a>
         </div>
       </div>
-      <div className="ws-tabs">
+      {!onlyTabs && <div className="ws-tabs">
         {workspaceSections.map(section => <button key={section.label}
           className={section.tabs.some(([key]) => key === tab) ? "active" : ""}
           onClick={() => setTab(section.tabs[0][0])}>{section.label}</button>)}
-      </div>
-      <div className="ws-tabs" aria-label="تفاصيل القسم">
-        {(workspaceSections.find(section => section.tabs.some(([key]) => key === tab))?.tabs || []).map(([k, l]) => (
+      </div>}
+      {(!onlyTabs || onlyTabs.length > 1) && <div className="ws-tabs" aria-label="تفاصيل القسم">
+        {(onlyTabs
+          ? workspaceSections.flatMap(section => [...section.tabs] as (readonly [string, string])[]).filter(([key]) => onlyTabs.includes(key as WorkspaceTab))
+          : workspaceSections.find(section => section.tabs.some(([key]) => key === tab))?.tabs || []).map(([k, l]) => (
           <button
             key={k}
             className={tab === k ? "active" : ""}
@@ -214,7 +216,7 @@ export default function TraineeSupervisionWorkspace({
             {l}
           </button>
         ))}
-      </div>
+      </div>}
       {message && <div className="toast">{message}</div>}
       {loading || loadedTrainee !== traineeId ? (
         <div className="loading">جارٍ تحميل ملف المتدرب...</div>
@@ -440,6 +442,9 @@ function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
   const [month, setMonth] = useState(todayMonth);
   const current = months.find((row: any) => row.month === month);
   const pendingCount = activities.filter((row: any) => row.month === month && ["draft", "submitted", "revision_requested"].includes(row.status)).length;
+  const monthSessions = activities.filter((row: any) => row.month === month);
+  const disputedSessions = monthSessions.filter((row: any) => ackState(row) === "disputed");
+  const unconfirmedSessions = monthSessions.filter((row: any) => ackState(row) === "pending").length;
   const [approval, setApproval] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -490,6 +495,8 @@ function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
           ? "تعذر الاعتماد: تحقّق من وجود ساعات معتمدة وعدم تجاوز الحد الأعلى للساعات أو حد الإشراف الجماعي."
           : x.error === "PENDING_RECONCILIATION"
             ? "توجد ساعات إشراف معلّقة للمطابقة؛ يلزم اعتماد المشرف والإدارة قبل اعتماد الشهر."
+          : x.error === "SESSION_DISPUTED"
+            ? "اعترض المتدرب على جلسة إشراف في هذا الشهر؛ تُحل قبل الاعتماد."
           : x.error === "PENDING_ACTIVITIES"
             ? "توجد ساعات ما زالت قيد المراجعة."
             : x.error === "SUPERVISOR_CREDENTIAL_EXPIRED"
@@ -512,6 +519,12 @@ function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
       </select></label>
       <p>الساعات المعتمدة لشهر {month}: {current?.fieldwork || 0} ساعة · الإشراف: {current?.supervision || 0} ساعة</p>
       {!current && <p>لا توجد ساعات معتمدة لهذا الشهر. اختر شهرًا سابقًا من القائمة عند الحاجة.</p>}
+      {disputedSessions.length > 0 && <div role="alert" className="ack-dispute">
+        <b>اعترض المتدرب على {disputedSessions.length === 1 ? "جلسة إشراف" : `${disputedSessions.length} جلسات إشراف`}</b>
+        {disputedSessions.map((row: any) => <p key={row.id}>{row.date} · {row.duration} ساعة · {row.format === "group" ? "جماعية" : "فردية"} — «{row.traineeAcknowledgment?.note}»</p>)}
+        <small>إن كان في الجلسة خطأ احذفها من «الجلسات» وأعد تسجيلها، وإن كانت صحيحة تواصل مع المتدرب ليُقرّ بها. لا يمكن اعتماد الشهر قبل ذلك.</small>
+      </div>}
+      {unconfirmedSessions > 0 && !disputedSessions.length && <p role="status" className="muted" style={{ textAlign: "right", padding: 0 }}>{unconfirmedSessions} جلسة إشراف لم يُقرّ بها المتدرب بعد؛ تُعدّ مُقرّة عند إقراره بالشهر.</p>}
       {pendingCount > 0 && <p role="status">يوجد {pendingCount} سجل بانتظار المراجعة؛ تُراجع السجلات قبل اعتماد الشهر.</p>}
       {!!shortfall && !approval?.supervisorApprovedAt && !approval?.locked && <div role="note" style={{ background: "#FFF7ED", padding: 12, borderRadius: 10 }}>
         <p>يوجد نقص في ساعات الشهر أو الإشراف. اعتماد الساعات الفعلية لا يعني استيفاء المتطلبات الناقصة.</p>

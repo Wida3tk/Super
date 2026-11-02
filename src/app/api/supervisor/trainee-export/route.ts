@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { buildCompliance } from "@/lib/qaba/compliance";
+import { contractDateForTrainee } from "@/lib/qaba/contractDates";
 
 const activityLabels: Record<string, string> = {
   direct: "مباشرة",
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
   const compliance = buildCompliance(
     activities,
     trainee.license || "QASP-S",
-    trainee.fieldworkStartDate,
+    await contractDateForTrainee(traineeId, trainee),
   );
 
   const wb = new ExcelJS.Workbook();

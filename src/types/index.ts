@@ -219,8 +219,21 @@ export interface FieldworkActivity {
   status: FieldworkActivityStatus;
   reviewerNote?: string;
   reviewedAt?: string;
+  /** Set on rows created from a supervisor-logged session. */
+  sessionId?: string;
+  /** The trainee's confirmation that a supervisor-logged session took place. */
+  traineeAcknowledgment?: SessionAcknowledgment | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SessionAcknowledgment {
+  status: "confirmed" | "disputed";
+  at: string;
+  /** Required when disputed. */
+  note?: string | null;
+  /** "session" when confirmed one by one, "monthly" when confirmed with the month. */
+  via?: "session" | "monthly";
 }
 
 export type SupervisionDocumentType =

@@ -10,7 +10,7 @@ import type {
 } from "@/types";
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import AdminAgreementModal from "@/components/admin/AdminAgreementModal";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { traineeRules } from "@/lib/qaba/compliance";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -782,11 +782,11 @@ async function exportToExcel(
         الإيميل: t.email,
         الجوال: t.phone,
         الرخصة: t.license,
-        "الساعات المطلوبة": credentialRules(t.license).total,
+        "الساعات المطلوبة": traineeRules(t).total,
         فردية: t.totalIndividualHours || 0,
         جماعية: t.totalGroupHours || 0,
         الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,
-        المتبقي: credentialRules(t.license).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
+        المتبقي: traineeRules(t).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
         "المشرف الحالي": sup?.name || "—",
         الحالة: STATUS_LABELS[t.status],
       };
@@ -802,10 +802,13 @@ export default function AdminSupervisionPanel({
   supervisors,
   initialTrainees = [],
   initialSnapshots = [],
+  visibleTabs = ["supervisors", "trainees", "onboarding", "months"],
 }: {
   supervisors: any[];
   initialTrainees?: any[];
   initialSnapshots?: any[];
+  /** Which tabs this page shows; the first one opens by default. */
+  visibleTabs?: Array<"supervisors" | "trainees" | "onboarding" | "months">;
 }) {
   const { locale } = useParams<{ locale: string }>();
   const [trainees] = useState<Trainee[]>(initialTrainees as Trainee[]);
@@ -814,7 +817,7 @@ export default function AdminSupervisionPanel({
   );
   const [activeTab, setActiveTab] = useState<
     "supervisors" | "trainees" | "onboarding" | "months"
-  >("supervisors");
+  >(visibleTabs[0] || "supervisors");
   const [selectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showAddModal, setShowAddModal] = useState(false);
   const [assigningTrainee, setAssigningTrainee] = useState<Trainee | null>(
@@ -915,10 +918,10 @@ export default function AdminSupervisionPanel({
 
   const tabs = [
     { key: "supervisors", label: "إنتاجية المشرفين" },
-    { key: "trainees", label: "المتدربون" },
-    { key: "onboarding", label: "طلبات الانضمام" },
+    { key: "trainees", label: "المتدربون والإسناد" },
+    { key: "onboarding", label: "مراحل الانضمام" },
     { key: "months", label: "إدارة الأشهر" },
-  ];
+  ].filter((tab) => visibleTabs.includes(tab.key as any));
 
   return (
     <div
@@ -985,7 +988,7 @@ export default function AdminSupervisionPanel({
               cursor: "pointer",
             }}
           >
-            📊 تصدير المشرفين
+            تصدير المشرفين
           </button>
           <button
             onClick={() => handleExport("trainees")}
@@ -1000,7 +1003,7 @@ export default function AdminSupervisionPanel({
               cursor: "pointer",
             }}
           >
-            📋 تصدير المتدربين
+            تصدير المتدربين
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -1032,7 +1035,7 @@ export default function AdminSupervisionPanel({
       )}
 
       {/* Tabs */}
-      <div
+      {tabs.length > 1 && <div
         style={{
           display: "flex",
           gap: 4,
@@ -1062,7 +1065,7 @@ export default function AdminSupervisionPanel({
             {t.label}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* ===== تبويب المشرفين ===== */}
       {activeTab === "supervisors" && (
@@ -1283,7 +1286,7 @@ export default function AdminSupervisionPanel({
                     const sup = supervisors.find(
                       (s) => s.id === t.currentSupervisorId,
                     );
-                    const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license).supervisionTarget);
+                    const targetHours = traineeRules(t).supervisionTarget;
                     const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
                     const pct = Math.min(
                       Math.round((approvedHours / targetHours) * 100),

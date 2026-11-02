@@ -6,7 +6,7 @@ import SupervisionReconciliationReview from '@/components/SupervisionReconciliat
 const typeLabel: Record<string,string> = { direct:'مباشرة', indirect:'غير مباشرة', supervision_direct:'إشراف مباشر', supervision_indirect:'إشراف غير مباشر' };
 type ReviewAction = 'approve'|'revision'|'reject';
 
-export default function FieldworkReview({ initialActivities, trainees }: { initialActivities: FieldworkActivity[]; trainees: any[] }) {
+export default function FieldworkReview({ initialActivities, trainees, onReviewed }: { initialActivities: FieldworkActivity[]; trainees: any[]; onReviewed?: (id: string) => void }) {
   const [items,setItems]=useState(initialActivities);
   const [busy,setBusy]=useState('');
   const [pending,setPending]=useState<{id:string;action:ReviewAction}|null>(null);
@@ -17,7 +17,7 @@ export default function FieldworkReview({ initialActivities, trainees }: { initi
     setBusy(id); setError('');
     const res=await fetch('/api/supervisor/fieldwork',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action,note:reviewerNote})});
     const data=await res.json().catch(()=>({}));
-    if(res.ok){setItems(v=>v.filter(x=>x.id!==id));setPending(null);setNote('');}
+    if(res.ok){setItems(v=>v.filter(x=>x.id!==id));setPending(null);setNote('');onReviewed?.(id);}
     else setError(data.error||'تعذر حفظ المراجعة');
     setBusy('');
   };

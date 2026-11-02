@@ -1,13 +1,28 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import AdminSidebar from "@/components/admin/layout/AdminSidebar";
-import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
-import { credentialRules, exceedsGroupSupervisionLimit } from "@/lib/qaba/compliance";
+import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
+import UiIcon from "@/components/ui/UiIcon";
+import { withContractDates } from "@/lib/qaba/contractDates";
+import { exceedsGroupSupervisionLimit, traineeRules } from "@/lib/qaba/compliance";
+import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
+import { ALERTS, CYCLE_STAGES, buildMonthCycle, supervisorBacklog, type AlertKey, type CycleStage } from "@/lib/admin/controlRoom";
+import type { FieldworkActivity } from "@/types";
+import "@/styles/admin-today.css";
 
 interface Props {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ month?: string; stage?: string; alert?: string }>;
 }
+
+const MONTH_NAMES = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+const previousMonthOf = (month: string) => {
+  const d = new Date(`${month}-01T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 7);
+};
+const fmt = (n: number) => String(Math.round(n * 10) / 10);
 
 async function verifyAdmin() {
   const cookieStore = await cookies();
@@ -24,13 +39,19 @@ async function verifyAdmin() {
   }
 }
 
-export default async function AdminDashboardPage({ params }: Props) {
+export default async function AdminTodayPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const query = await searchParams;
   const auth = await verifyAdmin();
   if (!auth) redirect(`/${locale}/login?portal=admin`);
   const { adminDb } = auth;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
+  const previousMonth = previousMonthOf(currentMonth);
+  // Only the open month and the one being closed; older months live in «الأشهر».
+  const cycleMonth = query.month === previousMonth ? previousMonth : currentMonth;
+  const stageFilter = CYCLE_STAGES.some((s) => s.key === query.stage) ? (query.stage as CycleStage) : null;
+  const alertFilter = ALERTS.some((a) => a.key === query.alert) ? (query.alert as AlertKey) : null;
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
@@ -42,26 +63,34 @@ export default async function AdminDashboardPage({ params }: Props) {
     snapshotsSnap,
     activitySnap,
     notifsSnap,
+    pendingRequestsSnap,
+    openIncidentsSnap,
+    cycleActivitiesSnap,
+    cycleSessionsSnap,
+    cycleApprovalsSnap,
+    pendingReviewSnap,
+    disputedSessionsSnap,
   ] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").get(),
     adminDb.collection("sessions").where("month", "==", currentMonth).get(),
-    adminDb
-      .collection("monthlySnapshots")
-      .where("month", "==", currentMonth)
-      .get(),
-    adminDb
-      .collection("activityLog")
-      .orderBy("createdAt", "desc")
-      .limit(8)
-      .get(),
+    adminDb.collection("monthlySnapshots").where("month", "==", currentMonth).get(),
+    adminDb.collection("activityLog").orderBy("createdAt", "desc").limit(8).get(),
     adminDb.collection("notifications").where("read", "==", false).get(),
+    adminDb.collection("traineeRequests").where("status", "==", "pending").count().get(),
+    adminDb.collection("operationalIncidents").where("status", "==", "open").count().get(),
+    adminDb.collection("fieldworkActivities").where("month", "==", cycleMonth).get(),
+    cycleMonth === currentMonth ? null : adminDb.collection("sessions").where("month", "==", cycleMonth).get(),
+    adminDb.collection("monthlyApprovals").where("month", "==", cycleMonth).get(),
+    adminDb.collection("fieldworkActivities").where("status", "==", "submitted").get(),
+    adminDb.collection("fieldworkActivities").where("traineeAcknowledgment.status", "==", "disputed").get(),
   ]);
 
-  const trainees = traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
+  const allTrainees = traineesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+  const trainees = (await withContractDates(traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
-  })) as any[];
+  })))) as any[];
   const supervisors = supervisorsSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
@@ -69,22 +98,23 @@ export default async function AdminDashboardPage({ params }: Props) {
   const sessions = sessionsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((session: any) => !session.deleted) as any[];
-  const snapshots = snapshotsSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
-  const activities = activitySnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  })) as any[];
-  const notifCount = notifsSnap.size;
+  const snapshots = snapshotsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+  const activities = activitySnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+  const adminAlerts = (notifsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[])
+    .filter((n) => n.targetType === "admin")
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, 6);
 
+  // Same rules as before the redesign; only the layout changed.
   const activeTrainees = trainees.filter((t) => t.status === "active");
   const onboardingTrainees = trainees.filter((t) => t.status === "onboarding");
   const readyToAssign = trainees.filter(
     (t) => t.status === "onboarding" && t.onboardingStage === "contracting",
   );
-  const totalHours = trainees.reduce((sum, trainee) => sum + Number(trainee.totalIndividualHours || 0) + Number(trainee.totalGroupHours || 0), 0);
+  // Same filter as the «طلبات التسجيل» page, so the two counts always agree.
+  const newRegistrations = allTrainees.filter(
+    (t) => t.lifecycleStage === "registered" || (!t.lifecycleStage && t.registrationSource === "self_registration" && t.onboardingStage === "initial_interview"),
+  );
   const weekSessions = sessions.filter((s) => s.date >= weekAgo);
   const over25 = snapshots.filter((s) => exceedsGroupSupervisionLimit(s));
   const atRisk = trainees.filter((t) => {
@@ -96,19 +126,60 @@ export default async function AdminDashboardPage({ params }: Props) {
   const traineeProgress = activeTrainees
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
-      const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license || "QASP-S").supervisionTarget);
+      const targetHours = traineeRules(t).supervisionTarget;
       const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
       const pct = Math.round((approvedHours / targetHours) * 100);
-      return {
-        ...t,
-        pct,
-        targetHours,
-        totalHours: approvedHours,
-        snap,
-      };
+      return { ...t, pct, targetHours, totalHours: approvedHours, snap };
     })
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 6);
+
+  const supervisorLoad = supervisors
+    .map((sup) => ({
+      ...sup,
+      traineeCount: activeTrainees.filter((t) => t.currentSupervisorId === sup.id).length,
+      hours: snapshots
+        .filter((s) => s.supervisorId === sup.id)
+        .reduce((a, s) => a + (s.totalHours || 0), 0),
+    }))
+    .sort((a, b) => b.traineeCount - a.traineeCount);
+  const maxLoad = Math.max(1, ...supervisorLoad.map((s) => s.traineeCount));
+
+  const stageCounts = LIFECYCLE_STAGES.map((stage) => ({
+    ...stage,
+    count: trainees.filter((t) => resolveLifecycleStage(t) === stage.key).length,
+  })).filter((stage) => stage.count > 0);
+
+  // ── Monthly cycle (control room) ─────────────────────────────────────────
+  const cycleActivities = cycleActivitiesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as FieldworkActivity[];
+  const cycleApprovals = cycleApprovalsSnap.docs.map((d) => d.data()) as any[];
+  const inCycle = new Set([...cycleActivities.map((a) => a.traineeId), ...cycleApprovals.map((a) => a.traineeId)]);
+  const cycleTrainees = trainees.filter((t) => t.status === "active" || inCycle.has(t.id));
+  const cycle = buildMonthCycle({
+    trainees: cycleTrainees,
+    activities: cycleActivities,
+    sessions: (cycleSessionsSnap || sessionsSnap).docs.map((d) => ({ id: d.id, data: d.data() })),
+    approvals: cycleApprovals,
+    monthClosed: cycleMonth < currentMonth,
+  });
+  const supervisorName = new Map(supervisors.map((s) => [s.id, s.name as string]));
+  const visibleRows = cycle.rows
+    .filter((r) => (!stageFilter || r.stage === stageFilter) && (!alertFilter || r.alerts.includes(alertFilter)))
+    .sort((a, b) => b.alerts.length - a.alerts.length || CYCLE_STAGES.findIndex((s) => s.key === a.stage) - CYCLE_STAGES.findIndex((s) => s.key === b.stage) || a.name.localeCompare(b.name, "ar"));
+  const backlog = supervisorBacklog(pendingReviewSnap.docs.map((d) => d.data() as any), new Date());
+  const pendingReviews = backlog.reduce((n, b) => n + b.count, 0);
+  const staleReviews = backlog.filter((b) => b.oldestDays >= 7).length;
+  const cycleHref = (next: { month?: string; stage?: string | null; alert?: string | null }) => {
+    const p = new URLSearchParams();
+    const m = next.month ?? cycleMonth;
+    if (m !== currentMonth) p.set("month", m);
+    const st = next.stage === undefined ? stageFilter : next.stage;
+    const al = next.alert === undefined ? alertFilter : next.alert;
+    if (st) p.set("stage", st);
+    if (al) p.set("alert", al);
+    const qs = p.toString();
+    return `/${locale}/admin${qs ? `?${qs}` : ""}#cycle`;
+  };
 
   const timeAgo = (iso: string) => {
     if (!iso) return "";
@@ -121,647 +192,327 @@ export default async function AdminDashboardPage({ params }: Props) {
     return `منذ ${Math.floor(hrs / 24)} يوم`;
   };
 
-  const activityIcon = (type: string) => {
-    if (type === "session")
-      return { icon: "⏱️", bg: "#EEF2FF", color: "#4F46E5" };
-    if (type === "trainee_added")
-      return { icon: "👤", bg: "#F0FDF4", color: "#16A34A" };
-    if (type === "assigned")
-      return { icon: "🔗", bg: "#FFF7ED", color: "#EA580C" };
-    return { icon: "📋", bg: "#F8FAFC", color: "#64748B" };
-  };
+  const base = `/${locale}/admin`;
+  // A dispute is only live while the session still counts (not deleted).
+  const disputedSessions = disputedSessionsSnap.docs.filter((d) => d.data().status === "approved");
+  const disputedTrainees = new Set(disputedSessions.map((d) => d.data().traineeId)).size;
+  const queue = [
+    { label: "اعتراضات على جلسات إشراف", hint: disputedSessions.length ? `${disputedTrainees} متدرب اعترض على جلسات سجّلها المشرف` : "المتدربون يُقرّون بالجلسات التي يسجلها المشرف", count: disputedSessions.length, href: cycleHref({ alert: "session_disputed", stage: null }), tone: "danger", icon: "alert" },
+    { label: "طلبات تسجيل جديدة", hint: "سجّلوا من الموقع وتنتظر بدء المقابلة", count: newRegistrations.length, href: `${base}/onboarding`, tone: "info", icon: "inbox" },
+    { label: "جاهزون للإسناد", hint: "أكملوا مرحلة التعاقد", count: readyToAssign.length, href: `${base}/assignment`, tone: "info", icon: "target" },
+    { label: "طلبات متدربين بانتظار القرار", hint: "تأجيل، نقل، مستندات وغيرها", count: pendingRequestsSnap.data().count, href: `${base}/trainee-requests`, tone: "warning", icon: "file" },
+    { label: "متدربون في خطر", hint: "3 غيابات أو أكثر هذا الشهر", count: atRisk.length, href: `${base}/trainees`, tone: "danger", icon: "alert" },
+    { label: "سجلات بانتظار مراجعة المشرفين", hint: staleReviews ? `${staleReviews} مشرف لديه سجلات أقدم من 7 أيام` : "ساعات أرسلها المتدربون ولم تُراجع", count: pendingReviews, href: "#backlog", tone: staleReviews ? "danger" : "warning", icon: "clock" },
+    { label: "تجاوز نسبة الإشراف الجماعي", hint: "سجلات هذا الشهر فوق الحد المسموح", count: over25.length, href: `${base}/months`, tone: "warning", icon: "users" },
+    { label: "أعطال تشغيلية مفتوحة", hint: "البريد أو التقويم أو المزامنة", count: openIncidentsSnap.data().count, href: `${base}/operations`, tone: "danger", icon: "activity" },
+  ];
+  const openItems = queue.filter((item) => item.count > 0);
+  const todayLabel = new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
-        @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: 'IBM Plex Sans Arabic', sans-serif; }
-        body { background: #F4F8FC; direction: rtl; color: #0F172A; }
-        .layout { display: flex; min-height: 100vh; }
-        .main { flex: 1; overflow: auto; }
+    <AdminPageLayout locale={locale} title="اليوم">
+      <div className="sk-today">
+        <p className="sk-today-date">
+          {todayLabel} · {openItems.length ? `${openItems.reduce((n, item) => n + item.count, 0)} عنصر يحتاج إجراء` : "لا توجد عناصر عاجلة"}
+        </p>
 
-        .topbar {
-          background: #fff;
-          border-bottom: 1px solid #E2E8F0;
-          padding: 0 28px;
-          height: 60px;
-          display: flex; align-items: center; justify-content: space-between;
-          position: sticky; top: 0; z-index: 10;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        .topbar-left { display: flex; flex-direction: column; }
-        .topbar-title { font-size: 16px; font-weight: 700; color: #0F172A; }
-        .topbar-date { font-size: 11px; color: #94A3B8; margin-top: 1px; }
-
-        .content { padding: 24px 28px 48px; max-width: 1460px; }
-
-        .welcome {
-          position: relative; overflow: hidden;
-          display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;
-          padding: 28px 30px; margin-bottom: 20px; border-radius: 22px;
-          background: linear-gradient(125deg, #001442 0%, #082B84 62%, #0D40FC 100%);
-          box-shadow: 0 18px 44px rgba(0,20,66,.18); color: #fff;
-        }
-        .welcome::before { content:''; position:absolute; width:280px; height:280px; border-radius:50%; left:-70px; top:-155px; background:rgba(85,215,255,.13); }
-        .welcome::after { content:''; position:absolute; width:170px; height:170px; border-radius:50%; left:155px; bottom:-145px; border:28px solid rgba(255,255,255,.05); }
-        .welcome-copy,.welcome-actions{position:relative;z-index:1}.welcome-kicker{font-size:11px;color:#55D7FF;font-weight:700;margin-bottom:7px}.welcome h1{font-size:25px;line-height:1.35;margin-bottom:7px}.welcome p{font-size:13px;line-height:1.7;color:rgba(255,255,255,.66);max-width:650px}.welcome-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}.quick-action{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border-radius:11px;text-decoration:none;font-size:12px;font-weight:700;color:#001442;background:#fff;border:1px solid rgba(255,255,255,.5);box-shadow:0 5px 15px rgba(0,0,0,.12)}.quick-action.secondary{color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);box-shadow:none}.priority-line{display:flex;align-items:center;gap:7px;margin-top:14px;font-size:11px;color:rgba(255,255,255,.72)}.priority-dot{width:7px;height:7px;border-radius:50%;background:#55D7FF;box-shadow:0 0 0 5px rgba(85,215,255,.12)}
-
-        /* Alert Cards */
-        .alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-        .alert-card {
-          background: #fff; border-radius: 16px; padding: 18px 20px;
-          border: 1px solid #E2E8F0;
-          display: flex; align-items: center; gap: 14px;
-          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
-          transition: transform 0.15s, box-shadow 0.15s;
-          text-decoration: none; color: inherit;
-        }
-        .alert-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .alert-icon-wrap {
-          width: 48px; height: 48px; border-radius: 14px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px; flex-shrink: 0;
-        }
-        .alert-count { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 3px; }
-        .alert-label { font-size: 13px; font-weight: 500; color: #334155; }
-        .alert-sub { font-size: 11px; color: #94A3B8; margin-top: 2px; }
-
-        /* Stats */
-        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
-        .stat-card {
-          background: #fff; border-radius: 16px; padding: 18px 20px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
-          position: relative; overflow: hidden;
-        }
-        .stat-card::before {
-          content: ''; position: absolute;
-          top: 0; right: 0; width: 80px; height: 80px;
-          border-radius: 0 16px 0 80px;
-          opacity: 0.06;
-        }
-        .stat-icon { width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:21px;margin-bottom:14px;background:#F4F7FB; }
-        .stat-val { font-size: 30px; font-weight: 800; color: #0F172A; line-height: 1; }
-        .stat-label { font-size: 12px; color: #64748B; margin-top: 4px; font-weight: 500; }
-        .stat-note { font-size: 11px; color: #94A3B8; margin-top: 3px; }
-
-        /* Bottom grid */
-        .bottom { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
-
-        .card {
-          background: #fff; border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 10px 30px rgba(15,23,42,0.05);
-          overflow: hidden;
-        }
-        .card-head {
-          padding: 14px 18px; border-bottom: 1px solid #F1F5F9;
-          display: flex; align-items: center; justify-content: space-between;
-          background: #FAFAFA;
-        }
-        .card-title { font-size: 13px; font-weight: 600; color: #0F172A; display: flex; align-items: center; gap: 7px; }
-        .card-title-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .card-body { padding: 8px 0; }
-
-        /* Feed */
-        .feed-item { display: flex; gap: 12px; padding: 11px 18px; border-bottom: 1px solid #F8FAFC; align-items: flex-start; }
-        .feed-item:last-child { border-bottom: none; }
-        .feed-avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-        .feed-text { font-size: 12.5px; color: #334155; line-height: 1.5; }
-        .feed-time { font-size: 11px; color: #94A3B8; margin-top: 3px; }
-
-        /* Progress */
-        .prog-item { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid #F8FAFC; }
-        .prog-item:last-child { border-bottom: none; }
-        .prog-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; background: #EEF2FF; color: #4F46E5; }
-        .prog-name { font-size: 12px; font-weight: 500; color: #1E293B; width: 80px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .prog-bar-wrap { flex: 1; height: 6px; background: #F1F5F9; border-radius: 99px; overflow: hidden; }
-        .prog-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
-        .prog-pct { font-size: 11px; font-weight: 600; min-width: 34px; text-align: left; }
-        .badge { font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
-
-        /* Right col */
-        .right-col { display: flex; flex-direction: column; gap: 16px; }
-
-        /* Supervisor rows */
-        .sup-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid #F8FAFC; }
-        .sup-row:last-child { border-bottom: none; }
-        .sup-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0D40FC, #55D7FF); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-        .sup-hours { font-size: 20px; font-weight: 800; color: #0D40FC; min-width: 36px; text-align: center; }
-
-        @media(max-width:1100px){.welcome{grid-template-columns:1fr}.welcome-actions{justify-content:flex-start}.alerts{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:1fr 1fr;}.bottom{grid-template-columns:1fr;}}
-        @media(max-width:700px){.alerts{grid-template-columns:1fr;}.stats{grid-template-columns:1fr 1fr;}}
-      `}</style>
-
-      <div className="layout" dir="rtl">
-        <AdminSidebar locale={locale} notifCount={notifCount} />
-
-        <div className="main">
-          {/* Topbar */}
-          <div className="topbar">
-            <div className="topbar-left">
-              <div className="topbar-title">لوحة التحكم</div>
-              <div className="topbar-date">
-                {new Date().toLocaleDateString("ar-SA", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
+        <section className="sk-card sk-queue" aria-labelledby="queue-title">
+          <header className="sk-card-head">
+            <div>
+              <h2 id="queue-title">يحتاج إجراء</h2>
+              <p>كل صف يفتح القائمة المطلوبة مباشرة.</p>
             </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <Link
-                href={`/${locale}/admin/notifications`}
-                style={{
-                  position: "relative",
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: "#F8FAFC",
-                  border: "1px solid #E2E8F0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textDecoration: "none",
-                }}
-              >
-                <i
-                  className="ti ti-bell"
-                  style={{ fontSize: 18, color: "#64748B" }}
-                  aria-hidden="true"
-                />
-                {notifCount > 0 && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 6,
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: "#EF4444",
-                      border: "1.5px solid #fff",
-                    }}
-                  />
-                )}
+          </header>
+          <ul>
+            {queue.map((item) => (
+              <li key={item.label} className={item.count ? "" : "is-clear"}>
+                <Link href={item.href}>
+                  <span className={`sk-queue-icon ${item.count ? item.tone : ""}`}><UiIcon name={item.icon} size={18} /></span>
+                  <span className="sk-queue-text">
+                    <b>{item.label}</b>
+                    <small>{item.hint}</small>
+                  </span>
+                  <span className={`sk-queue-count ${item.count ? item.tone : ""}`}>{item.count || "لا شيء"}</span>
+                  <UiIcon name="arrowLeft" size={16} className="sk-queue-go" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="sk-kpis" aria-label="مؤشرات عامة">
+          <div className="sk-kpi">
+            <span>ساعات {monthLabel(cycleMonth)}</span>
+            <b>{fmt(cycle.totals.logged)}</b>
+            <small>مسجلة · منها {fmt(cycle.totals.approved)} معتمدة</small>
+          </div>
+          <div className="sk-kpi">
+            <span>متدربون نشطون</span>
+            <b>{activeTrainees.length}</b>
+            <small>من أصل {trainees.length} متدرب</small>
+          </div>
+          <div className="sk-kpi">
+            <span>الإشراف في {monthLabel(cycleMonth)}</span>
+            <b>{fmt(cycle.totals.supervision)}<em className="sk-kpi-of"> من {fmt(cycle.totals.required)}</em></b>
+            <small>ساعة إشراف من المطلوب (5%) · {weekSessions.length} جلسة آخر 7 أيام</small>
+          </div>
+          <div className="sk-kpi">
+            <span>قيد الانضمام</span>
+            <b>{onboardingTrainees.length}</b>
+            <small>منهم {readyToAssign.length} جاهز للإسناد</small>
+          </div>
+        </section>
+
+        <section className="sk-card sk-cycle" id="cycle" aria-labelledby="cycle-title">
+          <header className="sk-card-head">
+            <div>
+              <h2 id="cycle-title">دورة {monthLabel(cycleMonth)}</h2>
+              <p>
+                {cycleMonth === currentMonth
+                  ? "الشهر مفتوح: التنبيهات مبنية على كل ما سُجّل حتى الآن، قبل اعتماده."
+                  : "الشهر السابق: يحتاج اعتماد المشرف وإقرار المتدرب حتى يُقفل."}
+              </p>
+            </div>
+            <nav className="sk-seg" aria-label="الشهر">
+              <Link href={cycleHref({ month: currentMonth })} aria-current={cycleMonth === currentMonth ? "page" : undefined}>{monthLabel(currentMonth)}</Link>
+              <Link href={cycleHref({ month: previousMonth })} aria-current={cycleMonth === previousMonth ? "page" : undefined}>{monthLabel(previousMonth)}</Link>
+            </nav>
+          </header>
+
+          <ol className="sk-pipeline" aria-label="مراحل الدورة الشهرية">
+            {CYCLE_STAGES.map((stage) => (
+              <li key={stage.key}>
+                <Link
+                  href={cycleHref({ stage: stageFilter === stage.key ? null : stage.key })}
+                  className={`tone-${stage.tone}${stageFilter === stage.key ? " is-active" : ""}`}
+                  aria-current={stageFilter === stage.key ? "true" : undefined}
+                  title={stage.hint}
+                >
+                  <b>{cycle.stageCounts[stage.key]}</b>
+                  <span>{stage.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+
+          <div className="sk-alerts" role="group" aria-label="تنبيهات مبكرة">
+            <span className="sk-alerts-label">تنبيهات:</span>
+            {ALERTS.filter((a) => cycle.alertCounts[a.key] > 0 || alertFilter === a.key).map((a) => (
+              <Link key={a.key} href={cycleHref({ alert: alertFilter === a.key ? null : a.key })} className={`sk-chip ${a.tone}${alertFilter === a.key ? " is-active" : ""}`}>
+                {a.label} · {cycle.alertCounts[a.key]}
               </Link>
-              <LogoutButton locale={locale} />
-            </div>
+            ))}
+            {ALERTS.every((a) => !cycle.alertCounts[a.key]) && <span className="sk-chip success">لا توجد تنبيهات</span>}
+            {(stageFilter || alertFilter) && <Link className="sk-link" href={cycleHref({ stage: null, alert: null })}>إلغاء التصفية</Link>}
           </div>
 
-          <div className="content">
-            <section className="welcome">
-              <div className="welcome-copy">
-                <div className="welcome-kicker">مركز قيادة سلوكيرا</div>
-                <h1>أهلًا بك، كل ما يحتاج انتباهك في مكان واحد</h1>
-                <p>
-                  تابعي رحلة المتدربين، راقبي جودة الإشراف، وأنجزي خطوات اليوم
-                  من لوحة واضحة ومترابطة.
-                </p>
-                <div className="priority-line">
-                  <span className="priority-dot" />
-                  {readyToAssign.length > 0
-                    ? `${readyToAssign.length} بانتظار الإسناد الآن`
-                    : "لا توجد حالات عاجلة للإسناد الآن"}
+          {visibleRows.length === 0 ? (
+            <p className="sk-empty">{cycle.rows.length ? "لا يوجد متدربون بهذه التصفية" : "لا يوجد متدربون نشطون"}</p>
+          ) : (
+            <div className="sk-table-wrap">
+              <table className="sk-table">
+                <thead>
+                  <tr>
+                    <th scope="col">المتدرب</th>
+                    <th scope="col">المشرف</th>
+                    <th scope="col">ساعات الشهر</th>
+                    <th scope="col">الإشراف من المطلوب</th>
+                    <th scope="col">الحالة</th>
+                    <th scope="col">تنبيهات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map((r) => {
+                    const stage = CYCLE_STAGES.find((s) => s.key === r.stage)!;
+                    return (
+                      <tr key={r.traineeId}>
+                        <th scope="row"><Link href={`${base}/trainees/${r.traineeId}`}>{r.name}</Link></th>
+                        <td data-label="المشرف">{supervisorName.get(r.supervisorId) || <span className="sk-faint">غير مسند</span>}</td>
+                        <td data-label="ساعات الشهر" className="num">
+                          {fmt(r.logged.total)}
+                          {r.logged.total !== r.approved.total && <small> ({fmt(r.approved.total)} معتمدة)</small>}
+                        </td>
+                        <td data-label="الإشراف من المطلوب" className="num">
+                          {fmt(r.logged.supervision)} <small>من {fmt(r.logged.required)}</small>
+                          {r.logged.shortfall > 0 && <small className="short"> ينقص {fmt(r.logged.shortfall)}</small>}
+                        </td>
+                        <td data-label="الحالة">
+                          <span className={`sk-chip ${stage.tone === "muted" ? "" : stage.tone}`}>{stage.label}</span>
+                          {r.pendingReview > 0 && r.stage !== "awaiting_supervisor" && <small className="sk-faint"> · {r.pendingReview} بانتظار</small>}
+                          {r.sessions.unconfirmed > 0 && <small className="sk-faint sk-block">{r.sessions.unconfirmed} جلسة بلا إقرار المتدرب</small>}
+                        </td>
+                        <td className="sk-cell-alerts">
+                          {r.alerts.length === 0 ? <span className="sk-faint">—</span> : r.alerts.map((key) => {
+                            const a = ALERTS.find((x) => x.key === key)!;
+                            return <em key={key} className={`sk-chip ${a.tone}`}>{a.label}</em>;
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <div className="sk-today-grid">
+          <div className="sk-today-col">
+            <section className="sk-card">
+              <header className="sk-card-head">
+                <div>
+                  <h2>تقدم نحو هدف الإشراف</h2>
+                  <p>أعلى 6 متدربين نشطين</p>
                 </div>
-              </div>
-              <div className="welcome-actions">
-                <Link
-                  className="quick-action"
-                  href={`/${locale}/admin/onboarding`}
-                >
-                  <i className="ti ti-user-check" aria-hidden="true" />
-                  متابعة طلبات الانضمام
-                </Link>
-                <Link
-                  className="quick-action secondary"
-                  href={`/${locale}/admin/trainees`}
-                >
-                  <i className="ti ti-users" aria-hidden="true" />
-                  ملفات المتدربين
-                </Link>
-              </div>
+                <Link className="sk-link" href={`${base}/trainees`}>كل المتدربين</Link>
+              </header>
+              {traineeProgress.length === 0 ? (
+                <p className="sk-empty">لا يوجد متدربون نشطون</p>
+              ) : (
+                <ul className="sk-progress">
+                  {traineeProgress.map((t) => (
+                    <li key={t.id}>
+                      <Link href={`${base}/trainees/${t.id}`} className="sk-progress-name">{t.name}</Link>
+                      <span className="sk-bar" aria-hidden="true">
+                        <i className={t.pct >= 100 ? "done" : t.pct >= 75 ? "near" : ""} style={{ width: `${Math.min(t.pct, 100)}%` }} />
+                      </span>
+                      <span className="sk-progress-val">{t.totalHours}/{t.targetHours} · {t.pct}%</span>
+                      <span className="sk-progress-tags">
+                        {t.pct >= 100 && <em className="sk-chip success">مكتمل</em>}
+                        {t.pct >= 85 && t.pct < 100 && <em className="sk-chip warning">قريب</em>}
+                        {(t.snap?.absenceCount || 0) >= 3 && <em className="sk-chip danger">خطر</em>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
-            {/* تنبيهات */}
-            <div className="alerts">
-              <Link
-                href={`/${locale}/admin/onboarding`}
-                className="alert-card"
-                style={{
-                  borderColor: readyToAssign.length > 0 ? "#FCA5A5" : "#E2E8F0",
-                }}
-              >
-                <div
-                  className="alert-icon-wrap"
-                  style={{
-                    background:
-                      readyToAssign.length > 0 ? "#FEF2F2" : "#F8FAFC",
-                  }}
-                >
-                  <span>🎯</span>
-                </div>
+            <section className="sk-card">
+              <header className="sk-card-head">
                 <div>
-                  <div
-                    className="alert-count"
-                    style={{
-                      color: readyToAssign.length > 0 ? "#DC2626" : "#64748B",
-                    }}
-                  >
-                    {readyToAssign.length}
+                  <h2>توزيع المتدربين على مراحل الرحلة</h2>
+                  <p>{trainees.length} متدرب</p>
+                </div>
+              </header>
+              {stageCounts.length === 0 ? (
+                <p className="sk-empty">لا يوجد متدربون بعد</p>
+              ) : (
+                <>
+                  <div className="sk-stagebar" aria-hidden="true">
+                    {stageCounts.map((stage) => (
+                      <i key={stage.key} style={{ flex: stage.count, background: stage.color }} title={`${stage.short}: ${stage.count}`} />
+                    ))}
                   </div>
-                  <div className="alert-label">جاهزون للإسناد</div>
-                  <div className="alert-sub">أكملوا مرحلة التعاقد</div>
-                </div>
-              </Link>
+                  <ul className="sk-stages">
+                    {stageCounts.map((stage) => (
+                      <li key={stage.key}>
+                        <i style={{ background: stage.color }} aria-hidden="true" />
+                        <span>{stage.short}</span>
+                        <b>{stage.count}</b>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          </div>
 
-              <Link
-                href={`/${locale}/admin/trainees`}
-                className="alert-card"
-                style={{
-                  borderColor: over25.length > 0 ? "#FCD34D" : "#E2E8F0",
-                }}
-              >
-                <div
-                  className="alert-icon-wrap"
-                  style={{
-                    background: over25.length > 0 ? "#FFFBEB" : "#F8FAFC",
-                  }}
-                >
-                  <span>⚠️</span>
-                </div>
+          <div className="sk-today-col">
+            <section className="sk-card" id="backlog">
+              <header className="sk-card-head">
                 <div>
-                  <div
-                    className="alert-count"
-                    style={{ color: over25.length > 0 ? "#D97706" : "#64748B" }}
-                  >
-                    {over25.length}
-                  </div>
-                  <div className="alert-label">تجاوزوا نسبة الإشراف الجماعي المسموحة</div>
-                  <div className="alert-sub">يحتاجون مراجعة</div>
+                  <h2>مراجعات معلّقة لدى المشرفين</h2>
+                  <p>{pendingReviews ? `${pendingReviews} سجل مرسل بانتظار الاعتماد` : "لا توجد سجلات معلّقة"}</p>
                 </div>
-              </Link>
+              </header>
+              {backlog.length === 0 ? (
+                <p className="sk-empty">كل الساعات المرسلة تمت مراجعتها</p>
+              ) : (
+                <ul className="sk-load">
+                  {backlog.map((b) => (
+                    <li key={b.supervisorId || "none"}>
+                      {b.supervisorId ? <Link href={`${base}/supervisors/${b.supervisorId}`}>{supervisorName.get(b.supervisorId) || b.supervisorId}</Link> : <span className="sk-faint">بدون مشرف</span>}
+                      <span className="sk-load-val"><b>{b.count}</b> سجل</span>
+                      <span className="sk-load-val"><b>{b.trainees}</b> متدرب</span>
+                      <em className={`sk-chip ${b.oldestDays >= 7 ? "danger" : b.oldestDays >= 3 ? "warning" : ""}`}>
+                        {b.oldestDays === 0 ? "اليوم" : `أقدمها ${b.oldestDays} يوم`}
+                      </em>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-              <Link
-                href={`/${locale}/admin/trainees`}
-                className="alert-card"
-                style={{
-                  borderColor: atRisk.length > 0 ? "#FCA5A5" : "#E2E8F0",
-                }}
-              >
-                <div
-                  className="alert-icon-wrap"
-                  style={{
-                    background: atRisk.length > 0 ? "#FEF2F2" : "#F8FAFC",
-                  }}
-                >
-                  <span>🚨</span>
-                </div>
+            <section className="sk-card">
+              <header className="sk-card-head">
                 <div>
-                  <div
-                    className="alert-count"
-                    style={{ color: atRisk.length > 0 ? "#DC2626" : "#64748B" }}
-                  >
-                    {atRisk.length}
-                  </div>
-                  <div className="alert-label">متدربون في خطر</div>
-                  <div className="alert-sub">3+ غيابات هذا الشهر</div>
+                  <h2>حمل المشرفين</h2>
+                  <p>المتدربون النشطون وساعات الإشراف هذا الشهر</p>
                 </div>
-              </Link>
-            </div>
+                <Link className="sk-link" href={`${base}/productivity`}>الإنتاجية</Link>
+              </header>
+              {supervisorLoad.length === 0 ? (
+                <p className="sk-empty">لا يوجد مشرفون</p>
+              ) : (
+                <ul className="sk-load">
+                  {supervisorLoad.map((sup) => (
+                    <li key={sup.id}>
+                      <Link href={`${base}/supervisors/${sup.id}`}>{sup.name}</Link>
+                      <span className="sk-bar" aria-hidden="true"><i style={{ width: `${(sup.traineeCount / maxLoad) * 100}%` }} /></span>
+                      <span className="sk-load-val"><b>{sup.traineeCount}</b> متدرب</span>
+                      <span className="sk-load-val"><b>{sup.hours}</b> ساعة</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-            {/* إحصائيات */}
-            <div className="stats">
-              <div
-                className="stat-card"
-                style={{ borderTop: "3px solid #0D40FC" }}
-              >
-                <div className="stat-icon">⏱️</div>
-                <div className="stat-val" style={{ color: "#0D40FC" }}>
-                  {totalHours}
+            <section className="sk-card">
+              <header className="sk-card-head">
+                <div>
+                  <h2>تنبيهات للإدارة</h2>
+                  <p>تنبيهات النظام غير المقروءة الموجّهة للإدارة</p>
                 </div>
-                <div className="stat-label">ساعات الإشراف المعتمدة</div>
-                <div className="stat-note">من أهداف 50 و100 ساعة</div>
-              </div>
-              <div
-                className="stat-card"
-                style={{ borderTop: "3px solid #10B981" }}
-              >
-                <div className="stat-icon">👥</div>
-                <div className="stat-val" style={{ color: "#10B981" }}>
-                  {activeTrainees.length}
-                </div>
-                <div className="stat-label">متدربون نشطون</div>
-                <div className="stat-note">من أصل {trainees.length}</div>
-              </div>
-              <div
-                className="stat-card"
-                style={{ borderTop: "3px solid #8B5CF6" }}
-              >
-                <div className="stat-icon">📋</div>
-                <div className="stat-val" style={{ color: "#8B5CF6" }}>
-                  {weekSessions.length}
-                </div>
-                <div className="stat-label">جلسات هذا الأسبوع</div>
-                <div className="stat-note">فردية وجماعية</div>
-              </div>
-              <div
-                className="stat-card"
-                style={{ borderTop: "3px solid #F59E0B" }}
-              >
-                <div className="stat-icon">🎓</div>
-                <div className="stat-val" style={{ color: "#F59E0B" }}>
-                  {onboardingTrainees.length}
-                </div>
-                <div className="stat-label">قيد الانضمام</div>
-                <div className="stat-note">
-                  منهم {readyToAssign.length} جاهز للإسناد
-                </div>
-              </div>
-            </div>
+              </header>
+              {adminAlerts.length === 0 ? (
+                <p className="sk-empty">لا توجد تنبيهات جديدة</p>
+              ) : (
+                <ul className="sk-feed">
+                  {adminAlerts.map((n) => (
+                    <li key={n.id}>
+                      <span>{n.message || n.title || "تنبيه"}</span>
+                      <time>{timeAgo(n.createdAt)}</time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-            {/* Bottom */}
-            <div className="bottom">
-              {/* Feed */}
-              <div className="card">
-                <div className="card-head">
-                  <div className="card-title">
-                    <div
-                      className="card-title-icon"
-                      style={{ background: "#EEF2FF" }}
-                    >
-                      <i
-                        className="ti ti-activity"
-                        style={{ fontSize: 15, color: "#4F46E5" }}
-                        aria-hidden="true"
-                      />
-                    </div>
-                    آخر النشاطات
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#94A3B8",
-                      background: "#F1F5F9",
-                      padding: "3px 8px",
-                      borderRadius: 99,
-                    }}
-                  >
-                    {activities.length} حدث
-                  </span>
+            <section className="sk-card">
+              <header className="sk-card-head">
+                <div>
+                  <h2>آخر النشاطات</h2>
+                  <p>{activities.length} حدث</p>
                 </div>
-                <div className="card-body">
-                  {activities.length === 0 ? (
-                    <div style={{ padding: "2.5rem", textAlign: "center" }}>
-                      <div
-                        style={{ fontSize: 36, marginBottom: 8, opacity: 0.3 }}
-                      >
-                        📭
-                      </div>
-                      <div style={{ color: "#94A3B8", fontSize: 13 }}>
-                        لا توجد نشاطات بعد
-                      </div>
-                      <div
-                        style={{ color: "#CBD5E1", fontSize: 12, marginTop: 4 }}
-                      >
-                        ستظهر هنا عند تسجيل الجلسات وإضافة المتدربين
-                      </div>
-                    </div>
-                  ) : (
-                    activities.map((a) => {
-                      const cfg = activityIcon(a.type);
-                      return (
-                        <div key={a.id} className="feed-item">
-                          <div
-                            className="feed-avatar"
-                            style={{ background: cfg.bg }}
-                          >
-                            {cfg.icon}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div className="feed-text">{a.message}</div>
-                            <div className="feed-time">
-                              {timeAgo(a.createdAt)}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* اليمين */}
-              <div className="right-col">
-                {/* تقدم المتدربين */}
-                <div className="card">
-                  <div className="card-head">
-                    <div className="card-title">
-                      <div
-                        className="card-title-icon"
-                        style={{ background: "#F0FDF4" }}
-                      >
-                        <i
-                          className="ti ti-target"
-                          style={{ fontSize: 15, color: "#16A34A" }}
-                          aria-hidden="true"
-                        />
-                      </div>
-                      تقدم نحو الرخصة
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "#0D40FC",
-                        background: "#EEF2FF",
-                        padding: "3px 8px",
-                        borderRadius: 99,
-                        fontWeight: 600,
-                      }}
-                    >
-                      الشهر الحالي
-                    </span>
-                  </div>
-                  <div className="card-body">
-                    {traineeProgress.length === 0 ? (
-                      <div
-                        style={{
-                          padding: "1.5rem",
-                          textAlign: "center",
-                          color: "#94A3B8",
-                          fontSize: 12,
-                        }}
-                      >
-                        لا يوجد متدربون نشطون
-                      </div>
-                    ) : (
-                      traineeProgress.map((t) => (
-                        <div key={t.id} className="prog-item">
-                          <div className="prog-avatar">
-                            {t.name?.slice(0, 2)}
-                          </div>
-                          <div className="prog-name">{t.name}</div>
-                          <div className="prog-bar-wrap">
-                            <div
-                              className="prog-fill"
-                              style={{
-                                width: `${t.pct}%`,
-                                background:
-                                  t.pct >= 100
-                                    ? "#10B981"
-                                    : t.pct >= 75
-                                      ? "#0D40FC"
-                                      : t.pct >= 50
-                                        ? "#8B5CF6"
-                                        : "#F59E0B",
-                              }}
-                            />
-                          </div>
-                          <div
-                            className="prog-pct"
-                            style={{
-                              color: t.pct >= 100 ? "#10B981" : "#64748B",
-                            }}
-                          >
-                            {t.pct}%
-                          </div>
-                          {t.pct >= 100 && (
-                            <span
-                              className="badge"
-                              style={{
-                                background: "#F0FDF4",
-                                color: "#16A34A",
-                              }}
-                            >
-                              ✓
-                            </span>
-                          )}
-                          {t.pct >= 85 && t.pct < 100 && (
-                            <span
-                              className="badge"
-                              style={{
-                                background: "#FFF7ED",
-                                color: "#EA580C",
-                              }}
-                            >
-                              قريب
-                            </span>
-                          )}
-                          {(t.snap?.absenceCount || 0) >= 3 && (
-                            <span
-                              className="badge"
-                              style={{
-                                background: "#FEF2F2",
-                                color: "#DC2626",
-                              }}
-                            >
-                              خطر
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* المشرفون */}
-                <div className="card">
-                  <div className="card-head">
-                    <div className="card-title">
-                      <div
-                        className="card-title-icon"
-                        style={{ background: "#EFF6FF" }}
-                      >
-                        <i
-                          className="ti ti-chart-bar"
-                          style={{ fontSize: 15, color: "#2563EB" }}
-                          aria-hidden="true"
-                        />
-                      </div>
-                      إنتاجية المشرفين
-                    </div>
-                    <Link
-                      href={`/${locale}/admin/supervisors`}
-                      style={{
-                        fontSize: 11,
-                        color: "#0D40FC",
-                        textDecoration: "none",
-                        fontWeight: 500,
-                      }}
-                    >
-                      عرض الكل ←
-                    </Link>
-                  </div>
-                  <div className="card-body">
-                    {supervisors.map((sup) => {
-                      const supSnaps = snapshots.filter(
-                        (s) => s.supervisorId === sup.id,
-                      );
-                      const total = supSnaps.reduce(
-                        (a, s) => a + (s.totalHours || 0),
-                        0,
-                      );
-                      const count = activeTrainees.filter(
-                        (t) => t.currentSupervisorId === sup.id,
-                      ).length;
-                      return (
-                        <div key={sup.id} className="sup-row">
-                          <div className="sup-avatar">
-                            {sup.name?.slice(0, 2)}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 12.5,
-                                fontWeight: 600,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                color: "#1E293B",
-                              }}
-                            >
-                              {sup.name}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 11,
-                                color: "#94A3B8",
-                                marginTop: 1,
-                              }}
-                            >
-                              {count} متدرب نشط
-                            </div>
-                          </div>
-                          <div style={{ textAlign: "center" }}>
-                            <div className="sup-hours">{total}</div>
-                            <div style={{ fontSize: 10, color: "#94A3B8" }}>
-                              ساعة
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {supervisors.length === 0 && (
-                      <div
-                        style={{
-                          padding: "1.5rem",
-                          textAlign: "center",
-                          color: "#94A3B8",
-                          fontSize: 12,
-                        }}
-                      >
-                        لا يوجد مشرفون
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+                <Link className="sk-link" href={`${base}/operations`}>سجل التدقيق</Link>
+              </header>
+              {activities.length === 0 ? (
+                <p className="sk-empty">لا توجد نشاطات بعد</p>
+              ) : (
+                <ul className="sk-feed">
+                  {activities.map((a) => (
+                    <li key={a.id}>
+                      <span>{a.message || a.type}</span>
+                      <time>{timeAgo(a.createdAt)}</time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         </div>
       </div>
-    </>
+    </AdminPageLayout>
   );
 }

@@ -1,0 +1,116 @@
+/* Supervisor portal shell. Shares tokens and primitives with admin.css / admin-today.css. */
+
+/* Legacy inner components were written against a global zero-margin reset;
+   keep it, but at zero specificity so any class wins over it. */
+:where(.sp-portal) :where(*) { margin: 0; padding: 0; box-sizing: border-box; }
+
+.sp-portal {
+  min-height: 100vh;
+  background: var(--sk-canvas);
+  color: var(--sk-ink);
+  font-family: var(--sk-font);
+  direction: rtl;
+}
+.sp-portal button, .sp-portal input, .sp-portal select, .sp-portal textarea { font-family: inherit; }
+body:has(.sp-portal) { background: var(--sk-canvas); margin: 0; }
+
+/* ── Top bar ── */
+.sp-top { position: sticky; top: 0; z-index: 50; background: var(--sk-surface); border-bottom: 1px solid var(--sk-line); }
+.sp-top-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 24px; }
+.sp-brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.sp-brand img { height: 30px; width: auto; display: block; }
+.sp-brand small { font-size: 11px; font-weight: 600; color: var(--sk-muted); border: 1px solid var(--sk-line); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.sp-nav { display: flex; gap: 2px; flex: 1; min-width: 0; height: 100%; overflow-x: auto; scrollbar-width: none; }
+.sp-nav::-webkit-scrollbar { display: none; }
+.sp-nav button {
+  display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 14px;
+  border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--sk-muted); white-space: nowrap;
+}
+.sp-nav button:hover { color: var(--sk-ink); }
+.sp-nav button.is-active { color: var(--sk-primary); border-bottom-color: var(--sk-primary); }
+.sp-nav button:focus-visible, .sp-tabs button:focus-visible, .sp-btn:focus-visible, .sp-back:focus-visible { outline: 2px solid var(--sk-neon); outline-offset: 2px; }
+.sp-badge { font-style: normal; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--sk-danger); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; line-height: 1; }
+.sp-user { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.sp-user-name { font-size: 13px; font-weight: 600; color: var(--sk-ink-2); }
+
+/* ── Page ── */
+.sp-main { max-width: 1280px; margin: 0 auto; padding: 24px 24px 64px; }
+.sp-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.sp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sp-head h1 { font-size: 22px; font-weight: 700; color: var(--sk-deep); line-height: 1.3; }
+.sp-head p { margin-top: 4px; font-size: 13px; color: var(--sk-muted); line-height: 1.7; }
+.sp-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sp-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px;
+  border-radius: var(--sk-radius-sm); border: 1px solid var(--sk-line); background: var(--sk-surface);
+  color: var(--sk-ink-2); font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.sp-btn:hover { border-color: var(--sk-primary-100); color: var(--sk-primary); }
+.sp-btn-primary { background: var(--sk-primary); border-color: var(--sk-primary); color: #fff; }
+.sp-btn-primary:hover { background: var(--sk-primary-600); color: #fff; }
+.sp-linkbtn { background: none; border: 0; cursor: pointer; }
+.sp-namebtn { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--sk-ink); text-align: start; }
+.sp-namebtn:hover { color: var(--sk-primary); }
+.sp-chipbtn { border: 0; cursor: pointer; }
+.sp-sub { display: block; font-size: 11px; font-weight: 500; color: var(--sk-faint); margin-top: 1px; }
+.sp-embed { padding: 12px 16px 16px; }
+.sp-embed > :first-child { margin-top: 0; }
+.sp-notifs { max-height: 380px; overflow-y: auto; }
+.sp-ops-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(250px, 1fr); gap: 16px; align-items: stretch; }
+
+/* Buttons inside admin primitives (admin styles target links). */
+.sk-pipeline button {
+  display: grid; gap: 2px; width: 100%; height: 100%; padding: 12px 14px; text-align: start; cursor: pointer;
+  border-radius: var(--sk-radius-sm); border: 1px solid var(--sk-line); border-top: 3px solid var(--sk-line);
+  background: var(--sk-surface); color: inherit;
+}
+.sk-pipeline button:hover { background: var(--sk-canvas); }
+.sk-pipeline button.is-active { outline: 2px solid var(--sk-primary); outline-offset: -1px; }
+.sk-pipeline button.tone-warning { border-top-color: var(--sk-warning); }
+.sk-pipeline button.tone-info { border-top-color: var(--sk-primary); }
+.sk-pipeline button.tone-success { border-top-color: var(--sk-success); }
+.sk-alerts button.sk-chip { border: 0; cursor: pointer; font-size: 12px; padding: 4px 10px; }
+.sp-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--sk-line-2); flex: 0 0 auto; }
+.sp-seg button { padding: 6px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--sk-muted); white-space: nowrap; }
+.sp-seg button[aria-pressed="true"] { background: var(--sk-surface); color: var(--sk-ink); box-shadow: 0 1px 2px rgb(0 20 66 / 0.08); }
+.sp-tools { gap: 8px; }
+.sp-search { min-width: 220px; height: 34px; padding: 0 12px; border: 1px solid var(--sk-line); border-radius: 9px; background: var(--sk-canvas); font-size: 13px; margin-inline-end: 6px; }
+.sp-rows tbody tr { cursor: pointer; }
+.sp-rows tbody tr:hover { background: var(--sk-canvas); }
+
+/* ── Trainee file ── */
+.sp-back { display: inline-flex; align-items: center; gap: 6px; justify-self: start; background: none; border: 0; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--sk-muted); }
+.sp-back:hover { color: var(--sk-primary); }
+.sp-file-head { align-items: center; flex-wrap: wrap; }
+.sp-avatar { width: 52px; height: 52px; border-radius: 14px; background: var(--sk-primary-50); color: var(--sk-primary); display: grid; place-items: center; font-weight: 700; font-size: 17px; flex: 0 0 auto; }
+.sp-file-title { flex: 1; min-width: 200px; }
+.sp-kpi-chip { font-size: 14px !important; line-height: 1.9 !important; }
+.sp-kpi-chip .sk-chip { font-size: 13px; padding: 4px 12px; }
+.sp-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--sk-line); overflow-x: auto; scrollbar-width: none; }
+.sp-tabs::-webkit-scrollbar { display: none; }
+.sp-tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 12px 16px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--sk-muted); white-space: nowrap; }
+.sp-tabs button:hover { color: var(--sk-ink); }
+.sp-tabs button.is-active { color: var(--sk-primary); border-bottom-color: var(--sk-primary); }
+.sp-panel { min-width: 0; }
+
+@media (max-width: 1050px) {
+  .sp-ops-grid { grid-template-columns: 1fr; }
+  .sp-user-name { display: none; }
+}
+@media (max-width: 760px) {
+  .sp-top-inner { height: auto; flex-wrap: wrap; gap: 0 12px; padding: 10px 16px 0; }
+  .sp-brand { flex: 1; }
+  .sp-nav { order: 3; flex: 1 0 100%; height: 46px; margin: 6px -16px 0; padding: 0 8px; }
+  .sp-nav button { padding: 0 10px; font-size: 13px; }
+  .sp-main { padding: 18px 16px 48px; }
+  .sp-head h1 { font-size: 19px; }
+  .sp-head-actions, .sp-head-actions .sp-btn { width: 100%; justify-content: center; }
+  .sp-search { min-width: 0; flex: 1 0 100%; margin: 0 0 4px; }
+}
+
+.sp-side-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.sp-portal .sk-today-col { grid-template-columns: minmax(0, 1fr); }
+.sp-embed { min-width: 0; overflow-x: auto; }
+@media (max-width: 1180px) { .sp-side-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .sp-side-grid { grid-template-columns: minmax(0, 1fr); } }

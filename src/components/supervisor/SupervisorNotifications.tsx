@@ -4,7 +4,7 @@ import { useState } from "react";
 
 interface Notification {
   id: string;
-  type: "shoutout" | "reminder" | "warning";
+  type: "shoutout" | "reminder" | "warning" | "session_disputed" | "supervision_reconciliation";
   message: string;
   read: boolean;
   createdAt: string;
@@ -15,6 +15,12 @@ const TYPE_CONFIG = {
   shoutout: { emoji: "🎉", bg: "#EEF2FF", color: "#4F46E5", label: "إشادة" },
   reminder: { emoji: "🔔", bg: "#F0FDF4", color: "#16A34A", label: "تذكير" },
   warning: { emoji: "⚠️", bg: "#FFF7ED", color: "#EA580C", label: "تنبيه" },
+  session_disputed: { emoji: "⚠️", bg: "#FEF2F2", color: "#B91C1C", label: "اعتراض متدرب" },
+  supervision_reconciliation: { emoji: "🔁", bg: "#EEF4FF", color: "#0D40FC", label: "مطابقة ساعات" },
+};
+const SOURCE: Partial<Record<Notification["type"], string>> = {
+  session_disputed: "من المتدرب",
+  supervision_reconciliation: "من النظام",
 };
 
 const timeAgo = (iso: string) => {
@@ -170,7 +176,7 @@ export default function SupervisorNotifications({
                   {n.message}
                 </p>
                 <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
-                  من الإدارة · {timeAgo(n.createdAt)}
+                  {SOURCE[n.type] || "من الإدارة"} · {timeAgo(n.createdAt)}
                 </div>
               </div>
             </div>
