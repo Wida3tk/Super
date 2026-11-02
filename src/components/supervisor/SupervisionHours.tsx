@@ -11,6 +11,7 @@ import type {
 } from "@/types";
 import TraineeMonthlyView from "./TraineeMonthlyView";
 import { traineeRules } from "@/lib/qaba/compliance";
+import { ackState } from "@/lib/supervision/sessionAcknowledgment";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -58,17 +59,19 @@ const getLast6Months = () => {
 // ===========================
 // Modal تسجيل جلسة
 // ===========================
-function SessionModal({
+export function SessionModal({
   trainees,
   onClose,
   onSubmit,
+  defaultTraineeId = "",
 }: {
   trainees: Trainee[];
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
+  defaultTraineeId?: string;
 }) {
   const [type, setType] = useState<SessionType>("individual");
-  const [selectedTrainee, setSelectedTrainee] = useState("");
+  const [selectedTrainee, setSelectedTrainee] = useState(defaultTraineeId);
   const [selectedTrainees, setSelectedTrainees] = useState<string[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [duration, setDuration] = useState(1);
@@ -886,12 +889,15 @@ export default function SupervisionHours({
   initialSessions = [],
   initialSnapshots = [],
   approvedActivities = [],
+  focusTraineeId,
 }: {
   supervisorId: string;
   initialTrainees?: any[];
   initialSessions?: any[];
   initialSnapshots?: any[];
   approvedActivities?: any[];
+  /** Opens straight on one trainee (inside the trainee file); hides the roster. */
+  focusTraineeId?: string;
 }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -903,7 +909,9 @@ export default function SupervisionHours({
   const [showModal, setShowModal] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
-  const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
+  const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(
+    () => (focusTraineeId ? (initialTrainees as Trainee[]).find((t) => t.id === focusTraineeId) || null : null),
+  );
   const [traineeSearch, setTraineeSearch] = useState("");
   const [traineeSort, setTraineeSort] = useState<
     "name" | "remaining" | "cumulative"
@@ -957,6 +965,9 @@ export default function SupervisionHours({
     traineePage * traineePageSize,
     traineePage * traineePageSize + traineePageSize,
   );
+
+  // Session rows carry the trainee's acknowledgment (see sessionAcknowledgment.ts).
+  const ackRows = useMemo(() => new Map(approvedActivities.map((a: any) => [a.id, a])), [approvedActivities]);
 
   const getTraineeSnapshot = useCallback(
     (traineeId: string) => {
@@ -1028,7 +1039,7 @@ export default function SupervisionHours({
       <div style={{ direction: "rtl" }}>
         <div
           style={{
-            display: "flex",
+            display: focusTraineeId ? "none" : "flex",
             justifyContent: "space-between",
             alignItems: "center",
             marginBottom: "1rem",
@@ -1036,8 +1047,9 @@ export default function SupervisionHours({
         >
           <button
             onClick={() => setSelectedTrainee(null)}
+            hidden={Boolean(focusTraineeId)}
             style={{
-              display: "flex",
+              display: focusTraineeId ? "none" : "flex",
               alignItems: "center",
               gap: 6,
               background: "none",
@@ -1236,7 +1248,7 @@ export default function SupervisionHours({
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: COLORS.gray100 }}>
-                  {["التاريخ", "النوع", "المدة", "ملاحظات", "إجراء"].map((h) => (
+                  {["التاريخ", "النوع", "المدة", "ملاحظات", "إقرار المتدرب", "إجراء"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -1320,6 +1332,9 @@ export default function SupervisionHours({
                       {s.notes || "—"}
                     </td>
                     <td style={{ padding: "11px 14px" }}>
+                      <SessionAckCell row={ackRows.get(`session_${s.id}_${selectedTrainee.id}`)} />
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
                       <button
                         type="button"
                         onClick={() => removeSession(s)}
@@ -1353,6 +1368,7 @@ export default function SupervisionHours({
             trainees={trainees}
             onClose={() => setShowModal(false)}
             onSubmit={submitSession}
+            defaultTraineeId={selectedTrainee.id}
           />
         )}
       </div>
@@ -1676,5 +1692,21 @@ export default function SupervisionHours({
         />
       )}
     </div>
+  );
+}
+
+function SessionAckCell({ row }: { row?: any }) {
+  const state = row ? ackState(row) : null;
+  if (!state) return <span style={{ fontSize: 11, color: COLORS.gray500 }}>—</span>;
+  const style = {
+    confirmed: { bg: "#ECFDF5", color: "#047857", label: "أقرّ بها" },
+    pending: { bg: "#EEF4FF", color: "#0D40FC", label: "بانتظار الإقرار" },
+    disputed: { bg: "#FEF2F2", color: "#B91C1C", label: "اعترض عليها" },
+  }[state];
+  return (
+    <span title={state === "disputed" ? row.traineeAcknowledgment?.note || "" : undefined}
+      style={{ fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: style.bg, color: style.color, whiteSpace: "nowrap" }}>
+      {style.label}
+    </span>
   );
 }
