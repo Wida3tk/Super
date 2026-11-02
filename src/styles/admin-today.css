@@ -111,3 +111,65 @@
   .sk-load li { grid-template-columns: minmax(0, 1fr) auto auto; }
   .sk-load li .sk-bar { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* ── Monthly cycle (control room) ── */
+.sk-kpi b .sk-kpi-of { font-style: normal; font-size: 16px; font-weight: 600; color: var(--sk-faint); }
+.sk-cycle { scroll-margin-top: 16px; }
+.sk-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--sk-line-2); flex: 0 0 auto; }
+.sk-seg a { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--sk-muted); text-decoration: none; white-space: nowrap; }
+.sk-seg a[aria-current="page"] { background: var(--sk-surface); color: var(--sk-ink); box-shadow: 0 1px 2px rgb(0 20 66 / 0.08); }
+
+.sk-pipeline { list-style: none; margin: 0; padding: 16px 20px 8px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; counter-reset: step; }
+.sk-pipeline a {
+  display: grid; gap: 2px; height: 100%; padding: 12px 14px; border-radius: var(--sk-radius-sm);
+  border: 1px solid var(--sk-line); color: inherit; text-decoration: none; background: var(--sk-surface);
+  border-top: 3px solid var(--sk-line);
+}
+.sk-pipeline a:hover { background: var(--sk-canvas); }
+.sk-pipeline a.is-active { outline: 2px solid var(--sk-primary); outline-offset: -1px; }
+.sk-pipeline b { font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--sk-deep); font-variant-numeric: tabular-nums; }
+.sk-pipeline span { font-size: 12px; color: var(--sk-muted); line-height: 1.4; }
+.sk-pipeline .tone-warning { border-top-color: var(--sk-warning); }
+.sk-pipeline .tone-info { border-top-color: var(--sk-primary); }
+.sk-pipeline .tone-success { border-top-color: var(--sk-success); }
+
+.sk-alerts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 20px 14px; }
+.sk-alerts-label { font-size: 12px; color: var(--sk-muted); margin-inline-end: 2px; }
+.sk-alerts .sk-chip { text-decoration: none; font-size: 12px; padding: 4px 10px; }
+.sk-alerts .sk-chip.is-active { box-shadow: inset 0 0 0 1.5px currentColor; }
+
+.sk-table-wrap { overflow-x: auto; border-top: 1px solid var(--sk-line-2); }
+.sk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sk-table th, .sk-table td { padding: 10px 14px; text-align: start; border-bottom: 1px solid var(--sk-line-2); vertical-align: middle; }
+.sk-table thead th { font-size: 12px; font-weight: 600; color: var(--sk-muted); background: var(--sk-canvas); white-space: nowrap; position: sticky; top: 0; }
+.sk-table tbody th { font-weight: 600; white-space: nowrap; }
+.sk-table tbody th a { color: var(--sk-ink); text-decoration: none; }
+.sk-table tbody th a:hover { color: var(--sk-primary); }
+.sk-table tbody tr:last-child > * { border-bottom: 0; }
+.sk-table td { color: var(--sk-ink-2); }
+.sk-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sk-table small { font-size: 11px; color: var(--sk-faint); }
+.sk-table small.short { color: var(--sk-warning); font-weight: 600; }
+.sk-cell-alerts { display: flex; flex-wrap: wrap; gap: 4px; min-width: 160px; }
+.sk-cell-alerts em { font-style: normal; }
+.sk-faint { color: var(--sk-faint); }
+.sk-load li .sk-chip { justify-self: end; }
+
+@media (max-width: 1180px) {
+  .sk-pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .sk-cycle .sk-card-head { flex-wrap: wrap; }
+  .sk-pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 14px 6px; }
+  .sk-alerts { padding: 6px 14px 12px; }
+  /* The table becomes one card per trainee on phones. */
+  .sk-table thead { display: none; }
+  .sk-table, .sk-table tbody, .sk-table tr, .sk-table th, .sk-table td { display: block; }
+  .sk-table tr { padding: 12px 14px; border-bottom: 1px solid var(--sk-line-2); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+  .sk-table tbody tr:last-child { border-bottom: 0; }
+  .sk-table th, .sk-table td { padding: 0; border: 0; }
+  .sk-table tbody th { grid-column: 1 / -1; font-size: 14px; }
+  .sk-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: var(--sk-faint); }
+  .sk-cell-alerts { grid-column: 1 / -1; min-width: 0; }
+  .sk-cell-alerts:has(> .sk-faint:only-child) { display: none; }
+}
