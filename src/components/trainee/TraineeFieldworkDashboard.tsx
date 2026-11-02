@@ -8,7 +8,7 @@ import MonthlyHoursInsights from "@/components/trainee/MonthlyHoursInsights";
 import SupervisionPolicies from "@/components/policies/SupervisionPolicies";
 import TraineeHoursGuide from "@/components/trainee/TraineeHoursGuide";
 import TraineeFilesWorkspace from "@/components/trainee/TraineeFilesWorkspace";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { evaluatePeriod, traineeRules } from "@/lib/qaba/compliance";
 import SupervisionProgress from "./SupervisionProgress";
 import TraineeWelcome from "./TraineeWelcome";
 import {
@@ -123,11 +123,10 @@ export default function TraineeFieldworkDashboard({
   const supervisionGroup = approved.filter(a => a.activityType.startsWith("supervision_") && a.format === "group").reduce((n, a) => n + a.duration, 0);
   const supervision = supervisionIndividual + supervisionGroup;
   const total = direct + indirect + supervision;
-  const pathway = credentialRules(trainee.license || "QASP-S");
-  const requiredHours = Number(trainee.fieldworkTargetHours || trainee.requiredHours || pathway.total);
-  const supervisionTargetHours = Number(
-    trainee.supervisionTargetHours || pathway.supervisionTarget,
-  );
+  const pathway = traineeRules(trainee, supervisionFile?.agreement);
+  // Requirements come from the license and contract date (QABA rules), not stored copies.
+  const requiredHours = pathway.total;
+  const supervisionTargetHours = pathway.supervisionTarget;
   const progress = Math.min(100, (total / requiredHours) * 100);
   // Approved ledger includes current sessions and certified historical hours once.
   const supervisionPct = total ? (supervision / total) * 100 : 0;
@@ -189,10 +188,10 @@ export default function TraineeFieldworkDashboard({
     .reduce((total: number, session: any) => total + Number(session.duration || 0), 0);
   const monthSupervision = Math.max(monthActivitySupervision, monthSessionSupervision);
   const monthGroup = Math.max(monthActivityGroup, monthSessionGroup);
+  // Supervision hours count inside the month total (QABA decision, 2026-11-02).
   const monthHours = monthFieldwork + monthSupervision;
-  const monthSupervisionPct = monthFieldwork
-    ? (monthSupervision / monthFieldwork) * 100
-    : 0;
+  const monthPeriod = evaluatePeriod({ total: monthHours, supervision: monthSupervision, group: monthGroup }, pathway);
+  const monthSupervisionPct = monthPeriod.supervisionRate * 100;
   const monthGroupPct = monthSupervision
     ? (monthGroup / monthSupervision) * 100
     : 0;
@@ -202,11 +201,14 @@ export default function TraineeFieldworkDashboard({
   const monthIndirect = monthApproved
     .filter((a) => a.activityType === "indirect")
     .reduce((n, a) => n + a.duration, 0);
-  const monthDirectPct = monthFieldwork
-    ? (monthDirect / monthFieldwork) * 100
+  const monthSupervisionDirect = monthApproved
+    .filter((a) => a.activityType === "supervision_direct")
+    .reduce((n, a) => n + a.duration, 0);
+  const monthDirectPct = monthHours
+    ? ((monthDirect + monthSupervisionDirect) / monthHours) * 100
     : 0;
-  const monthIndirectPct = monthFieldwork
-    ? (monthIndirect / monthFieldwork) * 100
+  const monthIndirectPct = monthHours
+    ? ((monthIndirect + monthSupervision - monthSupervisionDirect) / monthHours) * 100
     : 0;
   const editActivity = (activity: FieldworkActivity) => {
     setEditingId(activity.id);
@@ -430,7 +432,8 @@ export default function TraineeFieldworkDashboard({
               الإشرافية لتطوير كفاءتك المهنية.
               <br />
               مسارك: {pathway.label} · {requiredHours} ساعة خبرة ميدانية ·{" "}
-              {supervisionTargetHours} ساعة إشراف مباشر
+              {supervisionTargetHours} ساعة إشراف
+              {pathway.credential === "QBA" && pathway.contractDateMissing && " · تاريخ العقد غير مسجّل بعد، فيُعتمد متطلب 2000 ساعة"}
             </div>
             <button className="primary" disabled={!trainee.currentSupervisorId} style={{opacity:trainee.currentSupervisorId ? 1 : .5,cursor:trainee.currentSupervisorId ? "pointer" : "not-allowed"}} onClick={() => trainee.currentSupervisorId && setOpen(true)}>
               ＋ إضافة ساعات جديدة
@@ -622,14 +625,14 @@ export default function TraineeFieldworkDashboard({
               <h3>مؤشرات الالتزام للشهر الحالي</h3>
               <div className="detail-grid" style={{ marginTop: 14 }}>
                 <ComplianceItem
-                  ok={monthFieldwork >= 20 && monthFieldwork <= 140}
-                  title="ساعات التطبيق الميداني"
-                  value={`${monthFieldwork.toFixed(1)} ساعة مسجلة من النطاق الشهري 20–140 ساعة`}
+                  ok={monthPeriod.validHoursBand}
+                  title="ساعات الشهر"
+                  value={`${monthHours.toFixed(1)} ساعة (منها ${monthSupervision.toFixed(1)} إشراف) من النطاق الشهري ${pathway.monthlyMin}–${pathway.monthlyMax} ساعة`}
                 />
                 <ComplianceItem
-                  ok={monthSupervisionPct >= 5}
+                  ok={monthPeriod.meetsSupervision}
                   title="نسبة الإشراف"
-                  value={`${monthSupervisionPct.toFixed(1)}% (الحد الأدنى 5%)`}
+                  value={`${monthSupervisionPct.toFixed(1)}% (الحد الأدنى 5%)${monthPeriod.supervisionShortfall ? ` · ينقص ${monthPeriod.supervisionShortfall} ساعة` : ""}`}
                 />
                 <ComplianceItem
                   ok={monthGroupPct <= 50}
@@ -637,12 +640,12 @@ export default function TraineeFieldworkDashboard({
                   value={`${monthGroupPct.toFixed(1)}% (الحد الأعلى 50%)`}
                 />
                 <ComplianceItem
-                  ok={monthFieldwork > 0 && monthDirectPct <= 40}
+                  ok={monthHours > 0 && monthDirectPct <= 40}
                   title="الساعات المباشرة"
                   value={`${monthDirectPct.toFixed(1)}% (الحد الأعلى 40%)`}
                 />
                 <ComplianceItem
-                  ok={monthFieldwork > 0 && monthIndirectPct >= 60}
+                  ok={monthHours > 0 && monthIndirectPct >= 60}
                   title="الساعات غير المباشرة"
                   value={`${monthIndirectPct.toFixed(1)}% (الحد الأدنى 60%)`}
                 />

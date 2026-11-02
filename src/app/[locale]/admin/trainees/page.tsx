@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import TraineeManagementWorkspace from '@/components/admin/TraineeManagementWorkspace';
 import { readDirectoryTransitions } from '@/lib/lifecycle/readTransitions';
+import { withContractDates } from "@/lib/qaba/contractDates";
 
 interface Props { params: Promise<{ locale: string }>; searchParams: Promise<{ view?: string }>; }
 
@@ -21,7 +22,7 @@ export default async function TraineesPage({ params, searchParams }: Props) {
       adminDb.collection('trainees').get(),
     ]);
     const supervisors = supervisorsSnap.docs.filter(d => !d.data().isDemo).map(d => ({ id: d.id, ...d.data() }));
-    const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(t => !t.isDemo);
+    const trainees = await withContractDates(traineesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)).filter(t => !t.isDemo));
     const transitions = await readDirectoryTransitions(trainees, new Date().toISOString().slice(0, 7));
     return (
       <AdminPageLayout locale={locale} title="المتدربون">

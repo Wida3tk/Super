@@ -5,7 +5,7 @@ import ManageTraineePassword from "./ManageTraineePassword";
 export default function EditTraineeProfile({
   trainee,
 }: {
-  trainee: { id: string; name: string; email: string; phone?: string };
+  trainee: { id: string; name: string; email: string; phone?: string; contractSignedAt?: string };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -13,6 +13,7 @@ export default function EditTraineeProfile({
     name: trainee.name,
     email: trainee.email,
     phone: trainee.phone || "",
+    contractSignedAt: trainee.contractSignedAt || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -130,6 +131,19 @@ export default function EditTraineeProfile({
                   />
                 </label>
               ))}
+              <label style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                تاريخ توقيع عقد الإشراف (اختياري)
+                <input
+                  type="date"
+                  dir="ltr"
+                  value={form.contractSignedAt}
+                  onChange={(event) => setForm({ ...form, contractSignedAt: event.target.value })}
+                  style={{ font: "inherit", padding: 11, border: "1px solid #CBD5E1", borderRadius: 9, color: "#001442" }}
+                />
+                <small style={{ color: "#64748b", fontSize: 12 }}>
+                  يحدد متطلب QBA: قبل 1 يناير 2026 = 1500 ساعة، ومن بعده = 2000 ساعة.
+                </small>
+              </label>
               {error && (
                 <p role="alert" style={{ color: "#b91c1c", fontSize: 12 }}>
                   {error}

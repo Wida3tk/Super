@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import UiIcon from "@/components/ui/UiIcon";
-import { credentialRules, exceedsGroupSupervisionLimit } from "@/lib/qaba/compliance";
+import { withContractDates } from "@/lib/qaba/contractDates";
+import { exceedsGroupSupervisionLimit, traineeRules } from "@/lib/qaba/compliance";
 import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import "@/styles/admin-today.css";
 
@@ -58,10 +59,10 @@ export default async function AdminTodayPage({ params }: Props) {
   ]);
 
   const allTrainees = traineesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
-  const trainees = traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
+  const trainees = (await withContractDates(traineesSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
-  })) as any[];
+  })))) as any[];
   const supervisors = supervisorsSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
     id: d.id,
     ...d.data(),
@@ -98,7 +99,7 @@ export default async function AdminTodayPage({ params }: Props) {
   const traineeProgress = activeTrainees
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
-      const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license || "QASP-S").supervisionTarget);
+      const targetHours = traineeRules(t).supervisionTarget;
       const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
       const pct = Math.round((approvedHours / targetHours) * 100);
       return { ...t, pct, targetHours, totalHours: approvedHours, snap };

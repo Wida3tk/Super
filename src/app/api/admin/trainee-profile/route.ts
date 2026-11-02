@@ -12,6 +12,10 @@ export async function PATCH(request: NextRequest) {
   const name = String(body.name || "").trim();
   const email = normalizeIdentityEmail(body.email);
   const phone = normalizeIdentityPhone(body.phone);
+  // Optional: decides the QBA requirement (1500 before 2026-01-01, 2000 after).
+  const contractSignedAt = body.contractSignedAt === undefined ? undefined : String(body.contractSignedAt || "").trim();
+  if (contractSignedAt && (!/^\d{4}-\d{2}-\d{2}$/.test(contractSignedAt) || Number.isNaN(Date.parse(`${contractSignedAt}T00:00:00Z`))))
+    return NextResponse.json({ error: "INVALID_FIELDS" }, { status: 400 });
   if (email === normalizeIdentityEmail(process.env.ADMIN_EMAIL))
     return NextResponse.json({ error: "EMAIL_EXISTS" }, { status: 409 });
   if (!name || name.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || (body.phone && !phone) || typeof body.traineeId !== "string")
@@ -53,7 +57,7 @@ export async function PATCH(request: NextRequest) {
       if (bookings && bookings.size > 400) throw new Error("TOO_MANY_BOOKINGS");
       if (user) { await adminAuth.updateUser(user.uid, { email, displayName: name }); authChanged = true; }
       const now = new Date().toISOString();
-      tx.update(ref, { name, email, phone, updatedAt: now });
+      tx.update(ref, { name, email, phone, ...(contractSignedAt !== undefined ? { contractSignedAt: contractSignedAt || null } : {}), updatedAt: now });
       bookings?.docs.forEach((booking) => tx.update(booking.ref, { studentEmail: email }));
       tx.set(emailRef, { kind: "email", value: email, traineeId: ref.id });
       if (phoneRef) tx.set(phoneRef, { kind: "phone", value: phone, traineeId: ref.id });

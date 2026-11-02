@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/serverAuth";
 import { adminDb } from "@/lib/firebase/admin";
 import { buildCompliance } from "@/lib/qaba/compliance";
+import { contractDateForTrainee } from "@/lib/qaba/contractDates";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import { logActivity } from "@/lib/activityLog";
 import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
   if (reconciliation.docs.some(d => String(d.data().candidate?.date || "").slice(0, 7) === body.month))
     return NextResponse.json({ error: "PENDING_RECONCILIATION" }, { status: 409 });
   const activities = await getTraineeActivityLedger(traineeId);
-  const compliance = buildCompliance(activities, trainee.license || "QASP-S", trainee.fieldworkStartDate);
+  const compliance = buildCompliance(activities, trainee.license || "QASP-S", await contractDateForTrainee(traineeId, trainee));
   const summary = compliance.months.find((item) => item.month === body.month);
   if (!summary) return NextResponse.json({ error: "NO_APPROVED_HOURS" }, { status: 409 });
   const now = new Date().toISOString();

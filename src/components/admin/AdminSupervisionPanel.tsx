@@ -10,7 +10,7 @@ import type {
 } from "@/types";
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import AdminAgreementModal from "@/components/admin/AdminAgreementModal";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { traineeRules } from "@/lib/qaba/compliance";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -782,11 +782,11 @@ async function exportToExcel(
         الإيميل: t.email,
         الجوال: t.phone,
         الرخصة: t.license,
-        "الساعات المطلوبة": credentialRules(t.license).total,
+        "الساعات المطلوبة": traineeRules(t).total,
         فردية: t.totalIndividualHours || 0,
         جماعية: t.totalGroupHours || 0,
         الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,
-        المتبقي: credentialRules(t.license).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
+        المتبقي: traineeRules(t).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
         "المشرف الحالي": sup?.name || "—",
         الحالة: STATUS_LABELS[t.status],
       };
@@ -1286,7 +1286,7 @@ export default function AdminSupervisionPanel({
                     const sup = supervisors.find(
                       (s) => s.id === t.currentSupervisorId,
                     );
-                    const targetHours = Number(t.supervisionTargetHours || credentialRules(t.license).supervisionTarget);
+                    const targetHours = traineeRules(t).supervisionTarget;
                     const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
                     const pct = Math.min(
                       Math.round((approvedHours / targetHours) * 100),

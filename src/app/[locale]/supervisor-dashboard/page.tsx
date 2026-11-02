@@ -8,6 +8,7 @@ import LogoutButton from "@/components/LogoutButton";
 import SeatsManager from "@/components/supervisor/SeatsManager";
 import SupervisorTabs from "@/components/supervisor/SupervisorTabs";
 import SupervisorNotifications from "@/components/supervisor/SupervisorNotifications";
+import { withContractDates } from "@/lib/qaba/contractDates";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -74,10 +75,10 @@ export default async function SupervisorDashboardPage({ params }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const initialTrainees = traineesSnap.docs.map((d) => ({
+  const initialTrainees = (await withContractDates(traineesSnap.docs.map((d) => ({
     id: d.id,
     ...d.data(),
-  })) as any[];
+  })))) as any[];
   const initialSessions = sessionsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((session: any) => !session.deleted) as any[];

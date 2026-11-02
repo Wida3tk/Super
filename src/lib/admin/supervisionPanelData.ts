@@ -1,4 +1,5 @@
 import "server-only";
+import { withContractDates } from "@/lib/qaba/contractDates";
 
 type AdminDb = FirebaseFirestore.Firestore;
 
@@ -15,7 +16,7 @@ export async function loadSupervisionPanelData(adminDb: AdminDb) {
     adminDb.collection('fieldworkActivities').where('month', '==', currentMonth).get(),
   ]);
   const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const trainees = await withContractDates(traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   const approvals = new Map(approvalsSnap.docs.map(document => [document.data().traineeId, { id: document.id, ...document.data() }]));
   const approvedByTrainee = new Map<string, any[]>();
   activitiesSnap.docs.forEach(document => {
@@ -41,8 +42,9 @@ export async function loadSupervisionPanelData(adminDb: AdminDb) {
       individualHours: supervision - group,
       groupHours: group,
       totalHours: supervision,
-      workHours: fieldwork,
-      requiredHours: fieldwork * 0.05,
+      // Supervision counts inside the month total (QABA decision, 2026-11-02).
+      workHours: fieldwork + supervision,
+      requiredHours: Math.round((fieldwork + supervision) * 0.05 * 100) / 100,
       groupPercentage: supervision ? Math.round((group / supervision) * 1000) / 10 : 0,
       lockedAt: approval.lockedAt || (approval.locked ? approval.traineeAcknowledgedAt || approval.adminApprovedAt : null),
     };

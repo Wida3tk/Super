@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { traineeRules } from "@/lib/qaba/compliance";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -71,7 +71,7 @@ export default function ExportClient({
       if (type === "trainees") {
         data = trainees.map((t) => {
           const sup = supervisors.find((s) => s.id === t.currentSupervisorId);
-          const targetHours = credentialRules(t.license || "QASP-S").total;
+          const targetHours = traineeRules(t).total;
           return {
             الاسم: t.name,
             الإيميل: t.email,
@@ -79,8 +79,7 @@ export default function ExportClient({
             الرخصة: t.license,
             "ساعات الخبرة المطلوبة": targetHours,
             "ساعات الإشراف المستهدفة":
-              t.supervisionTargetHours ||
-              credentialRules(t.license || "QASP-S").supervisionTarget,
+              traineeRules(t).supervisionTarget,
             "فردية (إجمالي)": t.totalIndividualHours || 0,
             "جماعية (إجمالي)": t.totalGroupHours || 0,
             الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,

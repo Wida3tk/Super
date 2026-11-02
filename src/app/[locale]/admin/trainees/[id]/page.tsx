@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { traineeRules } from "@/lib/qaba/compliance";
 import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 import TraineeHoursUpdate from "@/components/admin/TraineeHoursUpdate";
 import EditTraineeProfile from "@/components/admin/EditTraineeProfile";
@@ -114,10 +114,8 @@ export default async function TraineeFilePage({
     .sort((a, b) =>
       String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
     );
-  const target = Number(
-    trainee.supervisionTargetHours ||
-      credentialRules(trainee.license || "QASP-S").supervisionTarget,
-  );
+  const rules = traineeRules(trainee, agreementSnap.data());
+  const target = rules.supervisionTarget;
   const ledger = await getTraineeActivityLedger(id, { activities: activitiesSnap });
   const approvedSupervision = ledger.filter(a => a.status === "approved" && a.activityType.startsWith("supervision_"));
   const individualHours = approvedSupervision.filter(a => a.format !== "group").reduce((n, a) => n + a.duration, 0);
@@ -127,10 +125,7 @@ export default async function TraineeFilePage({
     Number(trainee.approvedDirectHours || 0) +
     Number(trainee.approvedIndirectHours || 0) +
     supervision;
-  const fieldworkTarget = Number(
-    trainee.fieldworkTargetHours ||
-      credentialRules(trainee.license || "QASP-S").total,
-  );
+  const fieldworkTarget = rules.total;
   const cards = [
     ["ساعات الإشراف", supervision, target, "#0D40FC"],
     [
@@ -152,6 +147,8 @@ export default async function TraineeFilePage({
     ["البريد الإلكتروني", trainee.email, "✉"],
     ["رقم الجوال", trainee.phone, "☎"],
     ["الرخصة المهنية", trainee.license, "◈"],
+    ["تاريخ توقيع العقد", rules.contractSignedAt ? dateOnly(rules.contractSignedAt) : "غير مسجّل", "✎"],
+    ["المتطلب حسب QABA", `${rules.total} ساعة (غير مباشر ${rules.minIndirect}+، مباشر ${rules.maxDirect} كحد أعلى)${rules.credential === "QBA" && rules.contractDateMissing ? " · مؤقت حتى تسجيل تاريخ العقد" : ""}`, "◇"],
   ];
   const enrollmentDetails = [
     ["المشرف الحالي", supervisorSnap?.data()?.name, "◎"],
@@ -211,6 +208,7 @@ export default async function TraineeFilePage({
                 name: trainee.name,
                 email: trainee.email,
                 phone: trainee.phone || "",
+                contractSignedAt: String(trainee.contractSignedAt || "").slice(0, 10),
               }}
             />
           </div>

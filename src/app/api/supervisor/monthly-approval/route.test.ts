@@ -7,6 +7,7 @@ vi.mock("@/lib/firebase/admin", () => {
   const ref = (name: string): any => ({ name, doc: () => ref(name), where: () => ref(name), set: mock.set,
     get: async () => name === "trainees" ? { exists: true, data: () => ({ currentSupervisorId: mock.owner, license: "QASP-S" }) }
       : name === "monthlyApprovals" ? { data: () => mock.saved }
+      : name === "supervisionAgreements" ? { exists: false, data: () => undefined }
       : { docs: mock.reconciliation ? [{ data: () => ({ candidate: { date: "2026-10-01" } }) }] : [] },
   });
   return { adminDb: { collection: ref, runTransaction: async (callback: any) => callback({

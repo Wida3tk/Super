@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AdminPageLayout from '@/components/admin/layout/AdminPageLayout';
 import ExportClient from '@/components/admin/ExportClient';
+import { withContractDates } from "@/lib/qaba/contractDates";
 
 interface Props { params: Promise<{ locale: string }>; }
 
@@ -25,7 +26,7 @@ export default async function ExportPage({ params }: Props) {
     ]);
 
     const supervisors = supervisorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const trainees = traineesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const trainees = await withContractDates(traineesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     const snapshots = snapshotsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const bookings = bookingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildCompliance } from "@/lib/qaba/compliance";
+import { buildCompliance, contractDateFor } from "@/lib/qaba/compliance";
 import { uploadTraineeFile } from "@/lib/drive/uploadClient";
 import AllTraineeHours from "./AllTraineeHours";
 import { approvalMonths, workspaceSections } from "@/lib/supervision/workspaceNavigation";
@@ -136,9 +136,9 @@ export default function TraineeSupervisionWorkspace({
       buildCompliance(
         data?.activities || [],
         trainee?.license || "QASP-S",
-        trainee?.fieldworkStartDate,
+        contractDateFor(trainee, data?.agreement),
       ),
-    [data?.activities, trainee],
+    [data?.activities, data?.agreement, trainee],
   );
   const latestAssessment = data?.assessments?.[0];
   const assessmentPct = latestAssessment?.maxScore

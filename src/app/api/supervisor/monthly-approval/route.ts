@@ -4,6 +4,7 @@ import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { buildCompliance } from "@/lib/qaba/compliance";
+import { contractDateForTrainee } from "@/lib/qaba/contractDates";
 
 export async function GET(req: NextRequest) {
   const supervisor = await getAuthenticatedSupervisor();
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
   const result = buildCompliance(
     ledger,
     trainee.license || "QASP-S",
-    trainee.fieldworkStartDate,
+    await contractDateForTrainee(traineeId, trainee),
   );
   const check = result.months.find((m) => m.month === month);
   const hasRequiredIndividualContact = activities.some((activity) =>

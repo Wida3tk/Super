@@ -10,7 +10,7 @@ import type {
   WarningReason,
 } from "@/types";
 import TraineeMonthlyView from "./TraineeMonthlyView";
-import { credentialRules } from "@/lib/qaba/compliance";
+import { traineeRules } from "@/lib/qaba/compliance";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -924,8 +924,7 @@ export default function SupervisionHours({
     trainees.forEach((t: any) => {
       const cumulative = cumulativeByTrainee[t.id] || 0;
       const target =
-        Number(t.supervisionTargetHours) ||
-        credentialRules(t.license).supervisionTarget;
+        traineeRules(t).supervisionTarget;
       map[t.id] = { cumulative, target };
     });
     return map;
@@ -1106,11 +1105,9 @@ export default function SupervisionHours({
               </p>
               <p style={{ fontSize: 12, color: COLORS.gray500 }}>
                 {selectedTrainee.license} ·{" "}
-                {credentialRules(selectedTrainee.license).label} ·{" "}
-                {credentialRules(selectedTrainee.license).total} ساعة خبرة ·{" "}
-                {selectedTrainee.supervisionTargetHours ||
-                  credentialRules(selectedTrainee.license)
-                    .supervisionTarget}{" "}
+                {traineeRules(selectedTrainee).label} ·{" "}
+                {traineeRules(selectedTrainee).total} ساعة خبرة ·{" "}
+                {traineeRules(selectedTrainee).supervisionTarget}{" "}
                 ساعة إشراف مطلوبة
               </p>
             </div>
