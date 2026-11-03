@@ -8,9 +8,9 @@ import styles from "./TraineeLifecyclePanel.module.css";
 const colors: Record<string, string> = { registered: "#7C3AED", initial_interview: "#2563EB", contracting: "#B45309", active_service: "#047857", completed: "#0F766E" };
 const number = (n: number) => new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(n);
 type Scope = "ongoing" | "completed" | "all";
-export default function TraineeLifecyclePanel({ trainees, supervisors, transitions }: { trainees: any[]; supervisors: any[]; transitions: any[] }) {
+export default function TraineeLifecyclePanel({ trainees, supervisors, transitions, initialSupervisor }: { trainees: any[]; supervisors: any[]; transitions: any[]; initialSupervisor?: string }) {
   const { locale } = useParams<{ locale: string }>(), router = useRouter();
-  const [scope, setScope] = useState<Scope>("ongoing"), [search, setSearch] = useState(""), [stage, setStage] = useState("all"), [exception, setException] = useState("all"), [supervisor, setSupervisor] = useState("all"), [license, setLicense] = useState("all"), [sort, setSort] = useState("name"), [page, setPage] = useState(1);
+  const [scope, setScope] = useState<Scope>("ongoing"), [search, setSearch] = useState(""), [stage, setStage] = useState("all"), [exception, setException] = useState("all"), [supervisor, setSupervisor] = useState(initialSupervisor || "all"), [license, setLicense] = useState("all"), [sort, setSort] = useState("name"), [page, setPage] = useState(1);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [history, setHistory] = useState<{ month: string; rows: any[] } | null>(null), [historyError, setHistoryError] = useState(""), [historyBusy, setHistoryBusy] = useState(false);
   const historyRequest = useRef<AbortController | null>(null);
