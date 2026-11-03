@@ -232,8 +232,15 @@ export interface SessionAcknowledgment {
   at: string;
   /** Required when disputed. */
   note?: string | null;
-  /** "session" when confirmed one by one, "monthly" when confirmed with the month. */
-  via?: "session" | "monthly";
+  /**
+   * "session" when the trainee confirmed it alone, "monthly" with the month,
+   * "admin" when the administration confirmed it so the supervisor is not held up.
+   */
+  via?: "session" | "monthly" | "admin";
+  /** Admin email, when via is "admin". */
+  by?: string;
+  /** The trainee's dispute the administration resolved, kept for the record. */
+  resolvedDispute?: { note?: string | null; at: string } | null;
 }
 
 export type SupervisionDocumentType =

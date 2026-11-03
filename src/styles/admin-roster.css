@@ -1,0 +1,85 @@
+/* Admin › المتدربون: supervisors board and supervisor detail. */
+.rs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.rs .sk-seg button { padding: 6px 12px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--sk-muted); white-space: nowrap; }
+.rs .sk-seg button[aria-pressed="true"] { background: var(--sk-surface); color: var(--sk-ink); box-shadow: 0 1px 2px rgb(0 20 66 / 0.08); }
+.rs .sk-card-head h2 { display: flex; align-items: center; gap: 8px; }
+.rs-kpis { border-top: 0; }
+.rs-kpis .sk-kpi small { line-height: 1.6; }
+.rs-danger { color: var(--sk-danger) !important; }
+.rs-success { color: var(--sk-success) !important; }
+
+.rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.rs-card {
+  display: grid; gap: 14px; align-content: start; padding: 18px; text-align: start; cursor: pointer;
+  font: inherit; color: inherit; background: var(--sk-surface); border: 1px solid var(--sk-line);
+  border-radius: var(--sk-radius); box-shadow: var(--sk-shadow); transition: border-color .15s, box-shadow .15s;
+}
+.rs-card:hover { border-color: var(--sk-primary-100); box-shadow: 0 4px 18px rgb(13 64 252 / 0.08); }
+.rs-card:focus-visible, .rs-back:focus-visible, .rs-more summary:focus-visible { outline: 2px solid var(--sk-neon); outline-offset: 2px; }
+.rs-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rs-card-head b { font-size: 15px; color: var(--sk-deep); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-avatar { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; display: grid; place-items: center; background: var(--sk-primary-50); color: var(--sk-primary); font-weight: 700; }
+.rs-stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--sk-line-2); border-radius: var(--sk-radius-sm); }
+.rs-stats > span { display: grid; gap: 2px; padding: 8px 6px; text-align: center; font-size: 11px; color: var(--sk-muted); }
+.rs-stats > span + span { border-inline-start: 1px solid var(--sk-line-2); }
+.rs-stats b { font-size: 20px; color: var(--sk-deep); font-variant-numeric: tabular-nums; }
+.rs-stats b.rs-zero { color: var(--sk-faint); }
+.rs-hours { display: grid; gap: 4px; font-size: 12px; color: var(--sk-muted); }
+.rs-hours-total { color: var(--sk-ink-2); font-size: 13px; }
+.rs-hours-total b { font-size: 16px; color: var(--sk-deep); }
+.rs-hours-split { display: inline-flex; flex-wrap: wrap; gap: 4px 10px; }
+.rs-hours-split .is-pending { color: var(--sk-warning); }
+.rs-hours-split .is-disputed { color: var(--sk-danger); }
+.rs-hours-none { color: var(--sk-faint); }
+.rs-flags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 22px; }
+.rs-flags .sk-chip { font-size: 12px; padding: 3px 10px; }
+.rs-ok { font-size: 12px; color: var(--sk-success); font-weight: 600; }
+
+.rs-back { justify-self: start; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--sk-muted); }
+.rs-back:hover { color: var(--sk-primary); }
+.rs-title { display: flex; align-items: center; gap: 12px; }
+.rs-title h2 { font-size: 18px !important; }
+
+.rs-table th[scope="row"] { white-space: normal; }
+.rs-name { color: var(--sk-ink); font-weight: 600; text-decoration: none; }
+.rs-name:hover { color: var(--sk-primary); }
+.rs-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 500; color: var(--sk-faint); }
+.rs-progress { display: grid; gap: 5px; min-width: 130px; font-variant-numeric: tabular-nums; }
+.rs-bar { height: 6px; border-radius: 99px; background: var(--sk-line-2); overflow: hidden; }
+.rs-bar i { display: block; height: 100%; border-radius: inherit; background: var(--sk-primary); }
+.rs-late { color: var(--sk-danger); font-weight: 600; }
+.rs-watch { color: var(--sk-warning); font-weight: 600; }
+
+.rs-more summary { display: flex; align-items: center; gap: 8px; padding: 14px 20px; cursor: pointer; font-size: 14px; font-weight: 700; list-style: none; }
+.rs-more summary::-webkit-details-marker { display: none; }
+.rs-more summary::before { content: "‹"; display: inline-block; color: var(--sk-faint); transition: transform .15s; }
+.rs-more[open] summary::before { transform: rotate(-90deg); }
+.rs-grads { list-style: none; margin: 0; padding: 0 20px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.rs-grads li { display: grid; padding: 10px 12px; border: 1px solid var(--sk-line-2); border-radius: var(--sk-radius-sm); }
+.rs-grads a { color: var(--sk-ink); font-weight: 600; text-decoration: none; font-size: 13px; }
+.rs-grads small { font-size: 11px; color: var(--sk-faint); }
+
+.rs-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 -4px; }
+.rs-section-title h3 { margin: 0; font-size: 15px; color: var(--sk-deep); }
+.rs-section-title button { background: none; border: 1px solid var(--sk-line); border-radius: var(--sk-radius-sm); padding: 7px 12px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; color: var(--sk-ink-2); }
+
+@media (max-width: 760px) {
+  .rs .sk-card-head { flex-wrap: wrap; }
+  .rs-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Admin confirms supervisor-logged sessions on the trainee's behalf. */
+.rs-ack-head { align-items: flex-start; flex-wrap: wrap; }
+.rs-ack-head p { max-width: 640px; line-height: 1.7; }
+.rs-btn { min-height: 34px; padding: 0 14px; border-radius: var(--sk-radius-sm); border: 1px solid var(--sk-primary); background: var(--sk-primary); color: #fff; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rs-btn:hover { background: var(--sk-primary-600); }
+.rs-btn.is-danger { background: var(--sk-surface); color: var(--sk-danger); border-color: #f3c4c4; }
+.rs-btn.is-danger:hover { background: var(--sk-danger-50); }
+.rs-btn:disabled { opacity: .55; cursor: not-allowed; }
+.rs-btn:focus-visible { outline: 2px solid var(--sk-neon); outline-offset: 2px; }
+.rs-ack-action { text-align: end !important; }
+.rs-dispute { display: block; margin-top: 4px; font-size: 12px; color: var(--sk-danger); max-width: 320px; line-height: 1.6; }
+.rs-ack-msg { margin: 0; padding: 10px 20px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--sk-line-2); }
+.rs-ack-msg.is-ok { color: var(--sk-success); background: var(--sk-success-50); }
+.rs-ack-msg.is-error { color: var(--sk-danger); background: var(--sk-danger-50); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
