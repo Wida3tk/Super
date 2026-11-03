@@ -1,5 +1,6 @@
 import { traineeRules } from "@/lib/qaba/compliance";
 import { resolveLifecycleStage } from "@/lib/lifecycle/stages";
+import { ackState } from "@/lib/supervision/sessionAcknowledgment";
 
 /**
  * The admin's operational view of supervisors: who works how many paid hours,
@@ -37,7 +38,7 @@ type Trainee = {
   id: string; name?: string; license?: string; contractSignedAt?: unknown; status?: string; lifecycleStage?: string;
   currentSupervisorId?: string | null; approvedFieldworkHours?: number; lifecycleStageChangedAt?: string; createdAt?: string;
 };
-type Row = { traineeId: string; date?: string; createdAt?: string; duration?: number | string; status?: string; sessionId?: string; priorCreditId?: string; activityType?: string; traineeAcknowledgment?: { status?: string } | null };
+type Row = { id?: string; supervisorId?: string; format?: string; month?: string; traineeId: string; date?: string; createdAt?: string; duration?: number | string; status?: string; sessionId?: string; priorCreditId?: string; activityType?: string; traineeAcknowledgment?: { status?: string } | null };
 type Session = { id: string; supervisorId?: string; type?: string; duration?: number | null; month?: string; traineeIds?: string[] };
 
 const DAY = 86400000;
@@ -173,6 +174,18 @@ export function supervisorHours(sessions: Session[], rows: Row[], month: string)
 
 const EMPTY_HOURS: SupervisorHours = { payable: 0, pending: 0, disputed: 0, total: 0, sessions: 0, individual: 0, group: 0 };
 
+/** A supervisor-logged session row the trainee has not confirmed. */
+export interface OpenSession {
+  activityId: string;
+  traineeId: string;
+  traineeName: string;
+  date: string;
+  duration: number;
+  format: string;
+  state: "pending" | "disputed";
+  note: string | null;
+}
+
 export interface SupervisorCard {
   supervisorId: string;
   name: string;
@@ -183,6 +196,7 @@ export interface SupervisorCard {
   graduates: number;
   counts: Record<Standing, number>;
   hours: { current: SupervisorHours; previous: SupervisorHours };
+  openSessions: OpenSession[];
 }
 
 export function buildRoster(input: {
@@ -201,6 +215,18 @@ export function buildRoster(input: {
   const current = supervisorHours(input.sessions, input.rows, input.currentMonth);
   const previous = supervisorHours(input.sessions, input.rows, input.previousMonth);
 
+  const names = new Map(input.trainees.map((trainee) => [trainee.id, trainee.name || trainee.id]));
+  const open = new Map<string, OpenSession[]>();
+  for (const row of input.rows) {
+    const state = ackState(row as never);
+    if ((state !== "pending" && state !== "disputed") || !row.id) continue;
+    const key = row.supervisorId || "";
+    open.set(key, [...(open.get(key) || []), {
+      activityId: row.id, traineeId: row.traineeId, traineeName: names.get(row.traineeId) || row.traineeId,
+      date: String(row.date || ""), duration: Number(row.duration) || 0, format: row.format || "individual",
+      state, note: (row.traineeAcknowledgment as { note?: string } | null)?.note || null,
+    }]);
+  }
   const cards: SupervisorCard[] = input.supervisors.map((supervisor) => {
     const mine = standings.filter((item) => item.supervisorId === supervisor.id);
     const counts = { near_finish: 0, inactive: 0, watch: 0, new: 0, on_track: 0 } as Record<Standing, number>;
@@ -215,6 +241,8 @@ export function buildRoster(input: {
       graduates: mine.filter((item) => item.completed).length,
       counts,
       hours: { current: current.get(supervisor.id) || EMPTY_HOURS, previous: previous.get(supervisor.id) || EMPTY_HOURS },
+      // Disputes first, then oldest first.
+      openSessions: (open.get(supervisor.id) || []).sort((a, b) => (a.state === b.state ? a.date.localeCompare(b.date) : a.state === "disputed" ? -1 : 1)),
     };
   })
     // Keep a supervisor visible while they serve anyone or worked this period.

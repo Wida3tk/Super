@@ -103,3 +103,18 @@ it("monthStart walks back across years", () => {
   expect(monthStart("2026-01", 2)).toBe("2025-11-01");
   expect(monthStart("2026-11")).toBe("2026-11-01");
 });
+
+it("lists sessions the trainee has not confirmed for the admin, disputes first", () => {
+  const base = { supervisorId: "S1", sessionId: "s", activityType: "supervision_indirect", status: "approved", duration: 1, format: "individual" };
+  const { cards } = buildRoster({
+    supervisors: [{ id: "S1", name: "منى" }],
+    trainees: [t()],
+    rows: [
+      { ...base, id: "p", traineeId: "T1", date: "2026-10-05" },
+      { ...base, id: "d", traineeId: "T1", date: "2026-11-01", traineeAcknowledgment: { status: "disputed", note: "خطأ" } },
+      { ...base, id: "c", traineeId: "T1", date: "2026-11-01", traineeAcknowledgment: { status: "confirmed" } },
+    ],
+    sessions: [], today, windowStart, currentMonth: "2026-11", previousMonth: "2026-10",
+  });
+  expect(cards[0].openSessions.map((item) => [item.activityId, item.state, item.note])).toEqual([["d", "disputed", "خطأ"], ["p", "pending", null]]);
+});

@@ -27,7 +27,7 @@ export default async function TraineesPage({ params, searchParams }: Props) {
       adminDb.collection('supervisors').get(),
       adminDb.collection('trainees').get(),
       adminDb.collection('fieldworkActivities').where('date', '>=', windowStart)
-        .select('traineeId', 'date', 'duration', 'status', 'sessionId', 'priorCreditId', 'activityType', 'traineeAcknowledgment').get(),
+        .select('traineeId', 'supervisorId', 'date', 'month', 'duration', 'format', 'status', 'sessionId', 'priorCreditId', 'activityType', 'traineeAcknowledgment').get(),
       adminDb.collection('sessions').where('month', 'in', [currentMonth, previousMonth])
         .select('supervisorId', 'type', 'duration', 'month', 'traineeIds').get(),
     ]);
@@ -37,7 +37,7 @@ export default async function TraineesPage({ params, searchParams }: Props) {
     const roster = buildRoster({
       supervisors: supervisors as any[],
       trainees,
-      rows: rowsSnap.docs.map(d => d.data() as any),
+      rows: rowsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)),
       sessions: sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)),
       today, windowStart, currentMonth, previousMonth,
     });

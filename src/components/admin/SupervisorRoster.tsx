@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { STANDINGS, type Standing, type SupervisorCard, type SupervisorHours, type TraineeStanding } from "@/lib/admin/supervisorRoster";
+import { useRouter } from "next/navigation";
+import { STANDINGS, type OpenSession, type Standing, type SupervisorCard, type SupervisorHours, type TraineeStanding } from "@/lib/admin/supervisorRoster";
 import "@/styles/admin-today.css";
 import "@/styles/admin-roster.css";
 
@@ -158,6 +159,12 @@ export function SupervisorBoard({
                     ? <span className="rs-ok">كل المتدربين على المسار</span>
                     : <span className="rs-ok">لا متدربين حاليًا</span>}
                 {card.paused > 0 && <span className="sk-chip">تأجيل {card.paused}</span>}
+                {card.openSessions.some((item) => item.state === "disputed") && (
+                  <span className="sk-chip danger">اعتراض على جلسة {card.openSessions.filter((item) => item.state === "disputed").length}</span>
+                )}
+                {card.openSessions.some((item) => item.state === "pending") && (
+                  <span className="sk-chip warning">جلسات بانتظار الإقرار {card.openSessions.filter((item) => item.state === "pending").length}</span>
+                )}
               </span>
             </button>
           );
@@ -212,6 +219,8 @@ export function SupervisorDetail({
         </div>
       </section>
 
+      {card.openSessions.length > 0 && <OpenSessions sessions={card.openSessions} />}
+
       <section className="sk-card">
         <div className="sk-card-head">
           <div>
@@ -243,5 +252,108 @@ export function SupervisorDetail({
         </details>
       )}
     </div>
+  );
+}
+
+const ERRORS: Record<string, string> = {
+  MONTH_LOCKED: "الشهر مقفل",
+  ALREADY_CONFIRMED: "أُقرّت مسبقًا",
+  NOT_ACKNOWLEDGEABLE: "لم تعد قابلة للإقرار",
+  NOT_FOUND: "حُذفت الجلسة",
+};
+
+/**
+ * Sessions the supervisor logged that the trainee has not confirmed. The
+ * administration can confirm them on the trainee's behalf (or after checking
+ * a dispute) so the supervisor's monthly approval and pay are not held up.
+ */
+function OpenSessions({ sessions }: { sessions: OpenSession[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const pending = sessions.filter((item) => item.state === "pending");
+  const disputed = sessions.length - pending.length;
+
+  async function confirm(ids: string[], key: string, disputedCount: number) {
+    const question = disputedCount
+      ? "هذه الجلسة عليها اعتراض من المتدرب. هل راجعتها وتريد اعتمادها كما سجّلها المشرف؟ سيُبلَّغ المتدرب والمشرف."
+      : `اعتماد ${ids.length === 1 ? "الجلسة" : `${ids.length} جلسات`} نيابة عن المتدرب؟ تُحسب بعدها ساعات مستحقة للمشرف.`;
+    if (!window.confirm(question)) return;
+    setBusy(key);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/session-acknowledgment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activityIds: ids }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error();
+      const skipped: { reason: string }[] = data.skipped || [];
+      setMessage(skipped.length
+        ? { tone: "error", text: `اعتُمد ${data.confirmed.length}، وتعذّر ${skipped.length}: ${[...new Set(skipped.map((item) => ERRORS[item.reason] || item.reason))].join("، ")}` }
+        : { tone: "ok", text: data.confirmed.length === 1 ? "اعتُمدت الجلسة." : `اعتُمدت ${data.confirmed.length} جلسات.` });
+      router.refresh();
+    } catch {
+      setMessage({ tone: "error", text: "تعذّر الحفظ، حاول مرة أخرى." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="sk-card">
+      <div className="sk-card-head rs-ack-head">
+        <div>
+          <h2>
+            جلسات لم يُقرّ بها المتدرب
+            {disputed > 0 && <span className="sk-chip danger">اعتراض {disputed}</span>}
+            {pending.length > 0 && <span className="sk-chip warning">بانتظار {pending.length}</span>}
+          </h2>
+          <p>
+            الجلسة المعترض عليها توقف اعتماد المشرف للشهر، والجلسة غير المُقرّة لا تُحسب مستحقة. يمكنك اعتمادها نيابة عن المتدرب حتى لا يتعطّل المشرف.
+          </p>
+        </div>
+        {pending.length > 1 && (
+          <button type="button" className="rs-btn" disabled={busy !== null} onClick={() => confirm(pending.map((item) => item.activityId), "all", 0)}>
+            {busy === "all" ? "جارٍ الاعتماد…" : `اعتماد كل المعلّقة (${pending.length})`}
+          </button>
+        )}
+      </div>
+      {message && <p role="status" className={`rs-ack-msg ${message.tone === "ok" ? "is-ok" : "is-error"}`}>{message.text}</p>}
+      <div className="sk-table-wrap">
+        <table className="sk-table rs-table">
+          <thead>
+            <tr>
+              <th scope="col">المتدرب</th>
+              <th scope="col">الجلسة</th>
+              <th scope="col">الحالة</th>
+              <th scope="col"><span className="sr-only">إجراء</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.map((item) => (
+              <tr key={item.activityId}>
+                <th scope="row">{item.traineeName}</th>
+                <td>
+                  <span dir="ltr">{item.date}</span>
+                  <small className="rs-sub">{num(item.duration)} ساعة · {item.format === "group" ? "جماعية" : "فردية"}</small>
+                </td>
+                <td>
+                  {item.state === "disputed"
+                    ? <><span className="sk-chip danger">اعتراض</span>{item.note && <small className="rs-dispute">«{item.note}»</small>}</>
+                    : <span className="sk-chip warning">بانتظار المتدرب</span>}
+                </td>
+                <td className="rs-ack-action">
+                  <button type="button" className={`rs-btn ${item.state === "disputed" ? "is-danger" : ""}`} disabled={busy !== null} onClick={() => confirm([item.activityId], item.activityId, item.state === "disputed" ? 1 : 0)}>
+                    {busy === item.activityId ? "جارٍ الاعتماد…" : item.state === "disputed" ? "اعتماد بعد المراجعة" : "اعتماد"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
