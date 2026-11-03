@@ -9,6 +9,7 @@ import "@/styles/admin-roster.css";
 const num = (n: number) => new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(n);
 const monthName = (month: string) =>
   new Intl.DateTimeFormat("ar-u-ca-gregory-nu-latn", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
+const farFuture = () => { const d = new Date(); d.setUTCFullYear(d.getUTCFullYear() + 3); return d.toISOString().slice(0, 7); };
 const ATTENTION: Standing[] = ["inactive", "near_finish", "watch"];
 const ORDER: Record<Standing, number> = { inactive: 0, near_finish: 1, watch: 2, new: 3, on_track: 4 };
 
@@ -71,7 +72,7 @@ function StandingTable({ rows, locale }: { rows: TraineeStanding[]; locale: stri
               </td>
               <td>{item.remaining ? `${num(item.remaining)} ساعة` : "—"}</td>
               <td>
-                {item.projectedFinish ? monthName(item.projectedFinish) : item.remaining ? "—" : "مكتمل الساعات"}
+                {!item.remaining ? "مكتمل الساعات" : !item.projectedFinish ? "لا معدل حديث" : item.projectedFinish > farFuture() ? "أكثر من 3 سنوات بهذا المعدل" : monthName(item.projectedFinish)}
                 {item.pace > 0 && <small className="rs-sub">بمعدل {num(item.pace)} ساعة شهريًا</small>}
               </td>
               <td className={item.standing === "inactive" ? "rs-late" : item.standing === "watch" ? "rs-watch" : ""}>
@@ -122,7 +123,7 @@ export function SupervisorBoard({
           <div className="sk-kpi">
             <span>ساعات إشراف مستحقة</span>
             <b>{num(sum("payable"))}</b>
-            <small>{sum("pending") ? `و${num(sum("pending"))} بانتظار إقرار المتدربين` : `من ${num(sum("total"))} ساعة مسجلة`}</small>
+            <small>{sum("pending") ? `بانتظار إقرار المتدربين: ${num(sum("pending"))}` : `من ${num(sum("total"))} ساعة مسجلة`}</small>
           </div>
           <div className="sk-kpi"><span>متدربون نشطون</span><b>{serving.filter((item) => !item.paused).length}</b><small>{count("on_track") + count("new")} على المسار</small></div>
           <div className="sk-kpi"><span>منقطعون</span><b className={count("inactive") ? "rs-danger" : ""}>{count("inactive")}</b><small>لم يسجّلوا ساعات منذ 14 يومًا</small></div>

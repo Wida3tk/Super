@@ -90,10 +90,8 @@ export function traineeStanding(trainee: Trainee, rows: Row[], today: string, wi
 
   const own = rows.filter(traineeLogged);
   let lastLogged = "";
-  for (const row of own) {
-    const logged = [day(row.date), day(row.createdAt)].sort().pop() || "";
-    if (logged > lastLogged) lastLogged = logged;
-  }
+  // The work date, not createdAt: imports and bulk edits would make everyone look active.
+  for (const row of own) if (day(row.date) > lastLogged && day(row.date) <= today) lastLogged = day(row.date);
   // Pace over the window, or since service started if that is later.
   const since = [windowStart, day(trainee.lifecycleStageChangedAt)].sort().pop() || windowStart;
   const months = Math.max(1, daysBetween(since, today) / 30.4);

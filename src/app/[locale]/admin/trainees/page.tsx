@@ -27,7 +27,7 @@ export default async function TraineesPage({ params, searchParams }: Props) {
       adminDb.collection('supervisors').get(),
       adminDb.collection('trainees').get(),
       adminDb.collection('fieldworkActivities').where('date', '>=', windowStart)
-        .select('traineeId', 'date', 'createdAt', 'duration', 'status', 'sessionId', 'priorCreditId', 'activityType', 'traineeAcknowledgment').get(),
+        .select('traineeId', 'date', 'duration', 'status', 'sessionId', 'priorCreditId', 'activityType', 'traineeAcknowledgment').get(),
       adminDb.collection('sessions').where('month', 'in', [currentMonth, previousMonth])
         .select('supervisorId', 'type', 'duration', 'month', 'traineeIds').get(),
     ]);

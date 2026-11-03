@@ -20,8 +20,8 @@ describe("traineeStanding", () => {
     expect(standing.standing).toBe("inactive");
   });
 
-  it("counts a late entry as logging activity", () => {
-    expect(traineeStanding(t(), [log("2026-10-01", 5, { createdAt: "2026-11-02T08:00:00Z" })], today, windowStart).daysSinceLog).toBe(1);
+  it("judges activity by the work date, so imported rows do not look recent", () => {
+    expect(traineeStanding(t(), [log("2026-10-01", 5, { createdAt: "2026-11-02T08:00:00Z" })], today, windowStart).daysSinceLog).toBe(33);
   });
 
   it("marks near finish by remaining share or by pace", () => {
