@@ -38,7 +38,7 @@ type Trainee = {
   id: string; name?: string; license?: string; contractSignedAt?: unknown; status?: string; lifecycleStage?: string;
   currentSupervisorId?: string | null; approvedFieldworkHours?: number; lifecycleStageChangedAt?: string; createdAt?: string;
 };
-type Row = { id?: string; supervisorId?: string; format?: string; month?: string; traineeId: string; date?: string; createdAt?: string; duration?: number | string; status?: string; sessionId?: string; priorCreditId?: string; activityType?: string; traineeAcknowledgment?: { status?: string } | null };
+type Row = { id?: string; supervisorId?: string; format?: string; month?: string; traineeId: string; date?: string; createdAt?: string; duration?: number | string; status?: string; sessionId?: string; priorCreditId?: string; activityType?: string; traineeAcknowledgment?: { status?: string; note?: string | null } | null };
 type Session = { id: string; supervisorId?: string; type?: string; duration?: number | null; month?: string; traineeIds?: string[] };
 
 const DAY = 86400000;
@@ -224,7 +224,7 @@ export function buildRoster(input: {
     open.set(key, [...(open.get(key) || []), {
       activityId: row.id, traineeId: row.traineeId, traineeName: names.get(row.traineeId) || row.traineeId,
       date: String(row.date || ""), duration: Number(row.duration) || 0, format: row.format || "individual",
-      state, note: (row.traineeAcknowledgment as { note?: string } | null)?.note || null,
+      state, note: row.traineeAcknowledgment?.note || null,
     }]);
   }
   const cards: SupervisorCard[] = input.supervisors.map((supervisor) => {
