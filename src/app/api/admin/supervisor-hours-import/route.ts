@@ -9,6 +9,7 @@ import { priorSafeImportBatch } from "@/lib/imports/priorSafeBatch";
 import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/normalize";
 import { isHistoricalImportDate } from "@/lib/imports/dateValidation";
 import { scalarCellValue } from "@/lib/imports/cellValue";
+import { workbookDate, workbookMonth } from "@/lib/imports/workbookDates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,9 @@ type ParsedTrainee = {
   license: "QASP-S" | "QBA";
   hours: ImportedHour[];
   ignoredFutureRecords: number;
+  dateIssues: DateIssue[];
 };
+type DateIssue = { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string };
 
 const text = (value: ExcelJS.CellValue) => {
   value = scalarCellValue(value) as ExcelJS.CellValue;
@@ -63,17 +66,6 @@ function normalizeLicense(value: ExcelJS.CellValue): "QASP-S" | "QBA" {
   return text(value).toUpperCase().includes("QASP") ? "QASP-S" : "QBA";
 }
 
-function isoDate(value: ExcelJS.CellValue) {
-  const raw = value && typeof value === "object" && "result" in value ? value.result : value;
-  if (raw instanceof Date && !Number.isNaN(raw.valueOf())) return raw.toISOString().slice(0, 10);
-  if (typeof raw === "number" && Number.isFinite(raw)) {
-    return new Date(Date.UTC(1899, 11, 30) + raw * 86400000).toISOString().slice(0, 10);
-  }
-  const valueText = String(raw || "").trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(valueText)) return valueText.slice(0, 10);
-  return "";
-}
-
 function number(value: ExcelJS.CellValue) {
   const raw = value && typeof value === "object" && "result" in value ? value.result : value;
   if (raw instanceof Date) return 0;
@@ -81,8 +73,9 @@ function number(value: ExcelJS.CellValue) {
   return Number.isFinite(parsed) && parsed > 0 && parsed <= 16 ? parsed : 0;
 }
 
-function parseHours(sheet: ExcelJS.Worksheet, today: string) {
+function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean) {
   const rows: ImportedHour[] = [];
+  const dateIssues: DateIssue[] = [];
   let ignoredFutureRecords = 0;
   for (const blockRow of [20, 33, 46, 59, 72]) {
     const starts: Array<{ month: number; column: number }> = [];
@@ -94,6 +87,12 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string) {
     starts.sort((a, b) => a.column - b.column);
     for (let index = 0; index < starts.length; index += 1) {
       const start = starts[index];
+      const monthCell = sheet.getCell(blockRow + 1, start.column);
+      // The template links month titles to the summary row. Excel's saved
+      // formula result can be missing; resolve only a simple same-sheet link.
+      const reference = /^\$?[A-Z]{1,3}\$?[1-9]\d{0,6}$/i.test(monthCell.formula || "")
+        ? monthCell.formula.replace(/\$/g, "") : "";
+      const expectedMonth = workbookMonth(reference ? sheet.getCell(reference).value : monthCell.value, date1904);
       const endColumn = (starts[index + 1]?.column || sheet.columnCount + 1) - 1;
       let individualColumn = 0;
       let groupColumn = 0;
@@ -106,10 +105,15 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string) {
       }
       for (let offset = 0; offset < 7; offset += 1) {
         const row = blockRow + 3 + offset;
-        const date = isoDate(sheet.getCell(row, start.column).value);
-        if (!date) continue;
         const individual = individualColumn ? number(sheet.getCell(row, individualColumn).value) : 0;
         const group = groupColumn ? number(sheet.getCell(row, groupColumn).value) : 0;
+        if (!individual && !group) continue;
+        const dateCell = sheet.getCell(row, start.column);
+        const date = workbookDate(dateCell.value, date1904);
+        if (!date || !expectedMonth || date.slice(0, 7) !== expectedMonth) {
+          dateIssues.push({ sheet: sheet.name, cell: dateCell.master.address, monthCell: monthCell.address, date, expectedMonth });
+          continue;
+        }
         if (!isHistoricalImportDate(date, today)) {
           ignoredFutureRecords += Number(Boolean(individual)) + Number(Boolean(group));
           continue;
@@ -119,7 +123,7 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string) {
       }
     }
   }
-  return { rows, ignoredFutureRecords };
+  return { rows, ignoredFutureRecords, dateIssues };
 }
 
 function sourceId(supervisorId: string, traineeEmail: string, row: ImportedHour) {
@@ -172,7 +176,7 @@ export async function POST(request: NextRequest) {
     const parsed: ParsedTrainee[] = workbook.worksheets
       .filter((sheet) => !ignored.has(sheet.name))
       .map((sheet) => {
-        const parsedHours = parseHours(sheet, today);
+        const parsedHours = parseHours(sheet, today, workbook.properties.date1904 === true);
         return {
           sheet: sheet.name,
           name: text(sheet.getCell(3, 11).value),
@@ -181,6 +185,7 @@ export async function POST(request: NextRequest) {
           license: normalizeLicense(sheet.getCell(5, 11).value),
           hours: parsedHours.rows,
           ignoredFutureRecords: parsedHours.ignoredFutureRecords,
+          dateIssues: parsedHours.dateIssues,
         };
       })
       .filter((item) => item.name && item.email.includes("@"));
@@ -234,12 +239,17 @@ export async function POST(request: NextRequest) {
     const preview = {
       supervisor: { id: supervisorId, name: supervisor.name, email: supervisor.email, publicProfileId: supervisor.publicProfileId || null },
       sourceFile: file.name,
+      dateIssues: parsed.flatMap(item => item.dateIssues),
+      months: [...new Set(parsed.flatMap(item => item.hours.map(row => row.date.slice(0, 7))))].sort().map(month => ({
+        month, hours: parsed.reduce((sum, item) => sum + item.hours.filter(row => row.date.startsWith(month)).reduce((total, row) => total + row.duration, 0), 0),
+      })),
       ignoredFutureRecords: parsed.reduce((sum, item) => sum + item.ignoredFutureRecords, 0),
       matched: matched.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0), ignoredFutureRecords: item.ignoredFutureRecords })),
       pendingCreation: pendingCreation.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0), ignoredFutureRecords: item.ignoredFutureRecords })),
       conflicts,
     };
     if (!commit) return NextResponse.json({ ok: true, preview });
+    if (preview.dateIssues.length) return NextResponse.json({ error: "SUPERVISOR_IMPORT_DATE_CONFLICT", preview }, { status: 409 });
     if (conflicts.length) return NextResponse.json({ error: "TRAINEE_IDENTITY_CONFLICTS", preview }, { status: 409 });
     if (!matched.length && !pendingCreation.length)
       return NextResponse.json({ error: "NO_TRAINEES_FOUND", preview }, { status: 409 });

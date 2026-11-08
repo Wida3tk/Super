@@ -34,6 +34,7 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
     TRAINEE_IDENTITY_CONFLICTS: "يوجد بريد مكرر أو تعارض في بيانات أحد المتدربين. عالجي التعارضات الظاهرة قبل الاعتماد.",
     AUTH_EMAIL_ALREADY_USED: "أحد عناوين البريد مستخدم في حساب دخول آخر وغير مرتبط بمتدرب.",
     NO_TRAINEES_FOUND: "لم يعثر النظام على متدربين صالحين داخل الملف.",
+    SUPERVISOR_IMPORT_DATE_CONFLICT: "أُوقف الاستيراد: صححي تواريخ الجلسات وعناوين الأشهر الموضحة. لم تتغير الساعات الحالية.",
     SUPERVISOR_HOURS_IMPORT_FAILED: "تعذر قراءة الملف أو تحديث الساعات.",
   };
 
@@ -52,9 +53,14 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
       </label>
       <div className="hours-actions">
         <button className="preview" disabled={!file || loading} onClick={() => void run(false)}>{loading ? "جارٍ الفحص..." : "فحص ومعاينة"}</button>
-        <button className="commit" disabled={!file || loading || !result?.preview || result?.committed || Boolean(result?.preview?.conflicts?.length)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>
+        <button className="commit" disabled={!file || loading || !result?.preview || result?.committed || Boolean(result?.preview?.conflicts?.length || result?.preview?.dateIssues?.length)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>
       </div>
       {result?.preview && <div className="hours-report">
+        {!!result.preview.dateIssues?.length && <div className="hours-error" role="alert"><b>الاعتماد متوقف حتى تصحيح التواريخ</b>
+          {result.preview.dateIssues.map((issue: { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string }) => <p key={`${issue.sheet}:${issue.cell}`}>{issue.sheet} · {issue.cell}: {issue.date || "تاريخ مفقود أو غير صالح"} · عنوان الشهر {issue.monthCell}: {issue.expectedMonth || "غير صالح"}</p>)}
+          <p>اكتبي التاريخ بصيغة YYYY-MM-DD أو يوم/شهر/سنة، وتأكدي من مطابقة الشهر والسنة لعنوان المجموعة.</p>
+        </div>}
+        {!!result.preview.months?.length && <div className="matched-list"><b>توزيع الساعات بحسب الشهر قبل الاعتماد</b>{result.preview.months.map((row: { month: string; hours: number }) => <div key={row.month}><span dir="ltr">{row.month}</span><strong>{row.hours.toFixed(2)} ساعة</strong></div>)}</div>}
         <div className="report-head"><b>{result.committed ? "تم تحديث الساعات بنجاح" : "نتيجة المطابقة"}</b><span>{result.preview.sourceFile}</span></div>
         <div className="report-stats"><div><b>{result.preview.matched.length}</b><span>حساب موجود</span></div><div><b>{result.preview.pendingCreation.length}</b><span>حساب جديد</span></div><div className={result.preview.conflicts.length ? "warn" : ""}><b>{result.preview.conflicts.length}</b><span>تعارض يحتاج معالجة</span></div></div>
         {!!result.preview.ignoredFutureRecords && <div className="future-warning">تم استبعاد {result.preview.ignoredFutureRecords} سجل بتاريخ مستقبلي من الملف ولن تُحفظ في النظام.</div>}
