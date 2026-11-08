@@ -20,6 +20,7 @@ type ImportedHour = {
   date: string;
   duration: number;
   format: "individual" | "group";
+  correction?: { originalDate: string; originalMonth: string; dateCell: string; monthCell: string };
 };
 
 type ParsedTrainee = {
@@ -33,6 +34,31 @@ type ParsedTrainee = {
   dateIssues: DateIssue[];
 };
 type DateIssue = { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string };
+const correctionKey = (sheet: string, cell: string) => JSON.stringify([sheet, cell]);
+type Corrections = { months: Map<string, string>; dates: Map<string, string> };
+
+function readCorrections(value: FormDataEntryValue | null, today: string): Corrections | null {
+  if (value === null) return { months: new Map(), dates: new Map() };
+  if (typeof value !== "string" || value.length > 200000) return null;
+  try {
+    const input = JSON.parse(value);
+    const read = (entries: unknown, month: boolean) => {
+      if (!Array.isArray(entries) || entries.length > 3000) throw new Error("INVALID_CORRECTIONS");
+      const result = new Map<string, string>();
+      for (const entry of entries) {
+        if (!entry || typeof entry.sheet !== "string" || !entry.sheet || entry.sheet.length > 31 ||
+          typeof entry.cell !== "string" || !/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(entry.cell) || typeof entry.value !== "string") throw new Error("INVALID_CORRECTIONS");
+        const valid = month ? /^\d{4}-(0[1-9]|1[0-2])$/.test(entry.value) && entry.value <= today.slice(0, 7)
+          : /^\d{4}-\d{2}-\d{2}$/.test(entry.value) && workbookDate(entry.value) === entry.value && entry.value <= today;
+        const key = correctionKey(entry.sheet, entry.cell);
+        if (!valid || result.has(key)) throw new Error("INVALID_CORRECTIONS");
+        result.set(key, entry.value);
+      }
+      return result;
+    };
+    return { months: read(input.months, true), dates: read(input.dates, false) };
+  } catch { return null; }
+}
 
 const text = (value: ExcelJS.CellValue) => {
   value = scalarCellValue(value) as ExcelJS.CellValue;
@@ -73,7 +99,7 @@ function number(value: ExcelJS.CellValue) {
   return Number.isFinite(parsed) && parsed > 0 && parsed <= 16 ? parsed : 0;
 }
 
-function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean) {
+function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean, corrections: Corrections, used: Set<string>) {
   const rows: ImportedHour[] = [];
   const dateIssues: DateIssue[] = [];
   let ignoredFutureRecords = 0;
@@ -92,7 +118,9 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean) 
       // formula result can be missing; resolve only a simple same-sheet link.
       const reference = /^\$?[A-Z]{1,3}\$?[1-9]\d{0,6}$/i.test(monthCell.formula || "")
         ? monthCell.formula.replace(/\$/g, "") : "";
-      const expectedMonth = workbookMonth(reference ? sheet.getCell(reference).value : monthCell.value, date1904);
+      const originalMonth = workbookMonth(reference ? sheet.getCell(reference).value : monthCell.value, date1904);
+      const monthKey = correctionKey(sheet.name, monthCell.address);
+      const expectedMonth = corrections.months.get(monthKey) ?? originalMonth;
       const endColumn = (starts[index + 1]?.column || sheet.columnCount + 1) - 1;
       let individualColumn = 0;
       let groupColumn = 0;
@@ -109,7 +137,11 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean) 
         const group = groupColumn ? number(sheet.getCell(row, groupColumn).value) : 0;
         if (!individual && !group) continue;
         const dateCell = sheet.getCell(row, start.column);
-        const date = workbookDate(dateCell.value, date1904);
+        const originalDate = workbookDate(dateCell.value, date1904);
+        const dateKey = correctionKey(sheet.name, dateCell.master.address);
+        const date = corrections.dates.get(dateKey) ?? originalDate;
+        if (corrections.months.has(monthKey)) used.add(`m${monthKey}`);
+        if (corrections.dates.has(dateKey)) used.add(`d${dateKey}`);
         if (!date || !expectedMonth || date.slice(0, 7) !== expectedMonth) {
           dateIssues.push({ sheet: sheet.name, cell: dateCell.master.address, monthCell: monthCell.address, date, expectedMonth });
           continue;
@@ -118,8 +150,10 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean) 
           ignoredFutureRecords += Number(Boolean(individual)) + Number(Boolean(group));
           continue;
         }
-        if (individual) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: individual, format: "individual" });
-        if (group) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: group, format: "group" });
+        const correction = originalDate !== date || originalMonth !== expectedMonth
+          ? { originalDate, originalMonth, dateCell: dateCell.master.address, monthCell: monthCell.address } : undefined;
+        if (individual) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: individual, format: "individual", correction });
+        if (group) rows.push({ sourceMonth: start.month, sourceRow: row, date, duration: group, format: "group", correction });
       }
     }
   }
@@ -158,7 +192,8 @@ export async function POST(request: NextRequest) {
     const supervisor = supervisorSnap.data() || {};
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(Buffer.from(await file.arrayBuffer()) as never);
+    const bytes = Buffer.from(await file.arrayBuffer());
+    await workbook.xlsx.load(bytes as never);
     const master = workbook.getWorksheet("لوحة المعلومات الرئيسية");
     if (!master) return NextResponse.json({ error: "UNSUPPORTED_SUPERVISOR_FILE" }, { status: 400 });
     const fileName = text(master.getCell("E2").value) || text(master.getCell("F2").value);
@@ -173,10 +208,13 @@ export async function POST(request: NextRequest) {
 
     const ignored = new Set(["تعليمات الاستخدام", "لوحة المعلومات الرئيسية", "اسم المتدرب | للنسخ"]);
     const today = new Date().toISOString().slice(0, 10);
+    const corrections = readCorrections(form.get("corrections"), today);
+    if (!corrections) return NextResponse.json({ error: "INVALID_CORRECTIONS" }, { status: 400 });
+    const usedCorrections = new Set<string>();
     const parsed: ParsedTrainee[] = workbook.worksheets
       .filter((sheet) => !ignored.has(sheet.name))
       .map((sheet) => {
-        const parsedHours = parseHours(sheet, today, workbook.properties.date1904 === true);
+        const parsedHours = parseHours(sheet, today, workbook.properties.date1904 === true, corrections, usedCorrections);
         return {
           sheet: sheet.name,
           name: text(sheet.getCell(3, 11).value),
@@ -189,6 +227,9 @@ export async function POST(request: NextRequest) {
         };
       })
       .filter((item) => item.name && item.email.includes("@"));
+    const hasCorrections = corrections.months.size + corrections.dates.size > 0;
+    if (usedCorrections.size !== corrections.months.size + corrections.dates.size)
+      return NextResponse.json({ error: "INVALID_CORRECTIONS" }, { status: 400 });
 
     const traineeSnapshots = await adminDb.collection("trainees").get();
     const traineesByEmail = new Map<string, FirebaseFirestore.DocumentSnapshot>();
@@ -248,8 +289,13 @@ export async function POST(request: NextRequest) {
       pendingCreation: pendingCreation.map((item) => ({ name: item.name, email: item.email, phone: item.phone, license: item.license, records: item.hours.length, hours: item.hours.reduce((sum, row) => sum + row.duration, 0), ignoredFutureRecords: item.ignoredFutureRecords })),
       conflicts,
     };
-    if (!commit) return NextResponse.json({ ok: true, preview });
+    const previewToken = createHash("sha256").update(bytes).update(JSON.stringify({
+      supervisorId, adminId: admin.uid, corrections: [[...corrections.months].sort(), [...corrections.dates].sort()], preview,
+    })).digest("hex");
+    if (!commit) return NextResponse.json({ ok: true, preview, previewToken });
     if (preview.dateIssues.length) return NextResponse.json({ error: "SUPERVISOR_IMPORT_DATE_CONFLICT", preview }, { status: 409 });
+    if (hasCorrections && form.get("previewToken") !== previewToken)
+      return NextResponse.json({ error: "IMPORT_PREVIEW_CHANGED", preview }, { status: 409 });
     if (conflicts.length) return NextResponse.json({ error: "TRAINEE_IDENTITY_CONFLICTS", preview }, { status: 409 });
     if (!matched.length && !pendingCreation.length)
       return NextResponse.json({ error: "NO_TRAINEES_FOUND", preview }, { status: 409 });
@@ -362,7 +408,7 @@ export async function POST(request: NextRequest) {
       );
       const manualFingerprintCounts = new Map<string, number>();
       existingSnap.docs
-        .filter((doc) => !priorImportedIds.has(doc.id))
+        .filter((doc) => hasCorrections ? !replacementIds.has(doc.id) : !priorImportedIds.has(doc.id))
         .map((doc) => doc.data())
         .filter((row) => String(row.activityType || "").startsWith("supervision_"))
         .forEach((row) => {
@@ -373,7 +419,7 @@ export async function POST(request: NextRequest) {
       let updated = 0;
       let unchanged = 0;
       for (let offset = 0; offset < item.hours.length; offset += 400) {
-        const batch = priorSafeImportBatch(traineeDoc.id);
+        const batch = priorSafeImportBatch(traineeDoc.id, { protectLockedMonths: hasCorrections });
         const chunk = item.hours.slice(offset, offset + 400);
         const refs = chunk.map((row) => adminDb.collection("fieldworkActivities").doc(sourceId(supervisorId, item.email, row)));
         const managed = await adminDb.getAll(...refs);
@@ -403,7 +449,8 @@ export async function POST(request: NextRequest) {
             reviewedAt: now,
             reviewedBy: admin.email || "admin",
             updatedAt: now,
-            supervisorHoursImport: { version: 1, sourceFile: file.name, sourceSheet: item.sheet, sourceMonth: row.sourceMonth, sourceRow: row.sourceRow },
+            supervisorHoursImport: { version: 1, sourceFile: file.name, sourceSheet: item.sheet, sourceMonth: row.sourceMonth, sourceRow: row.sourceRow,
+              ...(row.correction ? { dateCorrection: { ...row.correction, correctedBy: admin.uid, correctedAt: now } } : {}) },
           };
           if (managed[index].exists) {
             batch.set(ref, payload, { merge: true });
@@ -417,7 +464,8 @@ export async function POST(request: NextRequest) {
       }
       // Keep the previous import intact until every replacement row is safely
       // written. If a write fails, a retry remains possible without data loss.
-      const obsoleteImportedDocs = priorImportedDocs.filter(
+      // Corrections adjust this workbook's rows only; do not remove unrelated historical imports.
+      const obsoleteImportedDocs = hasCorrections ? [] : priorImportedDocs.filter(
         (doc) => !replacementIds.has(doc.id),
       );
       for (let offset = 0; offset < obsoleteImportedDocs.length; offset += 400) {
@@ -450,6 +498,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, committed: true, preview, createdAccounts, results });
   } catch (error) {
     console.error("Supervisor hours import failed", error);
-    return NextResponse.json({ error: error instanceof Error && error.message === "PRIOR_SUPERVISION_RECONCILIATION_REQUIRED" ? error.message : "SUPERVISOR_HOURS_IMPORT_FAILED" }, { status: 400 });
+    const code = error instanceof Error ? error.message : "";
+    return NextResponse.json({ error: ["PRIOR_SUPERVISION_RECONCILIATION_REQUIRED", "IMPORT_MONTH_LOCKED"].includes(code) ? code : "SUPERVISOR_HOURS_IMPORT_FAILED" }, { status: 400 });
   }
 }

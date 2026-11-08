@@ -4,26 +4,47 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Supervisor = { id: string; name: string; email: string; publicProfileId?: string };
+type DateIssue = { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string };
+const cellKey = (sheet: string, cell: string) => JSON.stringify([sheet, cell]);
+const entries = (values: Record<string, string>) => Object.entries(values).filter(([, value]) => value).map(([key, value]) => {
+  const [sheet, cell] = JSON.parse(key) as [string, string];
+  return { sheet, cell, value };
+});
 
 export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervisor: Supervisor; onClose: () => void }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [issues, setIssues] = useState<DateIssue[]>([]);
+  const [months, setMonths] = useState<Record<string, string>>({});
+  const [dates, setDates] = useState<Record<string, string>>({});
+  const [reviewed, setReviewed] = useState<string | null>(null);
+  const corrections = JSON.stringify({ months: entries(months), dates: entries(dates) });
+  const monthFields = [...new Map(issues.map(issue => [cellKey(issue.sheet, issue.monthCell), issue])).entries()];
 
   async function run(commit: boolean) {
-    if (!file) return;
+    if (!file || loading || (commit && reviewed !== corrections)) return;
     setLoading(true);
-    setResult(null);
     const form = new FormData();
     form.append("file", file);
     form.append("supervisorId", supervisor.id);
     form.append("commit", String(commit));
-    const response = await fetch("/api/admin/supervisor-hours-import", { method: "POST", body: form });
-    const data = await response.json().catch(() => ({}));
-    setResult({ status: response.status, ...data });
-    setLoading(false);
-    if (commit && response.ok) router.refresh();
+    form.append("corrections", corrections);
+    if (commit && result?.previewToken) form.append("previewToken", result.previewToken);
+    try {
+      const response = await fetch("/api/admin/supervisor-hours-import", { method: "POST", body: form });
+      const data = await response.json().catch(() => ({}));
+      setResult({ status: response.status, ...data });
+      setReviewed(!commit && response.ok && data.preview ? corrections : null);
+      if (data.preview?.dateIssues?.length) setIssues(previous => [...new Map<string, DateIssue>(
+        [...data.preview.dateIssues, ...previous].map((issue: DateIssue) => [cellKey(issue.sheet, issue.cell), issue]),
+      ).values()]);
+      if (commit && response.ok) router.refresh();
+    } catch {
+      setReviewed(null);
+      setResult({ error: "IMPORT_CONNECTION_FAILED" });
+    } finally { setLoading(false); }
   }
 
   const errors: Record<string, string> = {
@@ -34,7 +55,12 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
     TRAINEE_IDENTITY_CONFLICTS: "يوجد بريد مكرر أو تعارض في بيانات أحد المتدربين. عالجي التعارضات الظاهرة قبل الاعتماد.",
     AUTH_EMAIL_ALREADY_USED: "أحد عناوين البريد مستخدم في حساب دخول آخر وغير مرتبط بمتدرب.",
     NO_TRAINEES_FOUND: "لم يعثر النظام على متدربين صالحين داخل الملف.",
-    SUPERVISOR_IMPORT_DATE_CONFLICT: "أُوقف الاستيراد: صححي تواريخ الجلسات وعناوين الأشهر الموضحة. لم تتغير الساعات الحالية.",
+    SUPERVISOR_IMPORT_DATE_CONFLICT: "صححي التواريخ والأشهر أدناه ثم أعيدي المعاينة. لم تتغير الساعات الحالية.",
+    INVALID_CORRECTIONS: "بعض التصحيحات غير صالحة أو مستقبلية. تحققي من الشهر وتاريخ الجلسة.",
+    IMPORT_PREVIEW_CHANGED: "تغيرت المعاينة. أعيدي الفحص قبل الاعتماد.",
+    IMPORT_CONNECTION_FAILED: "تعذر الاتصال. أعيدي المعاينة قبل تكرار الاعتماد.",
+    IMPORT_MONTH_LOCKED: "أُوقف تعديل سجل مرتبط بشهر مقفل. راجعي اعتماد الشهر قبل التصحيح.",
+    PRIOR_SUPERVISION_RECONCILIATION_REQUIRED: "أُوقف تعديل سجل محمي أو قيد المطابقة. راجعي طلب المطابقة قبل التصحيح.",
     SUPERVISOR_HOURS_IMPORT_FAILED: "تعذر قراءة الملف أو تحديث الساعات.",
   };
 
@@ -49,16 +75,29 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
       <label className="hours-drop">
         <b>{file ? file.name : "اختيار ملف المشرف المحدّث (.xlsx)"}</b>
         <span>سيظهر تقرير المطابقة قبل الاعتماد</span>
-        <input type="file" accept=".xlsx" onChange={(event) => { setFile(event.target.files?.[0] || null); setResult(null); }} />
+        <input type="file" accept=".xlsx" disabled={loading} onChange={(event) => { setFile(event.target.files?.[0] || null); setResult(null); setIssues([]); setMonths({}); setDates({}); setReviewed(null); }} />
       </label>
       <div className="hours-actions">
         <button className="preview" disabled={!file || loading} onClick={() => void run(false)}>{loading ? "جارٍ الفحص..." : "فحص ومعاينة"}</button>
-        <button className="commit" disabled={!file || loading || !result?.preview || result?.committed || Boolean(result?.preview?.conflicts?.length || result?.preview?.dateIssues?.length)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>
+        <button className="commit" disabled={!file || loading || !result?.preview || reviewed !== corrections || result?.committed || Boolean(result?.preview?.conflicts?.length || result?.preview?.dateIssues?.length)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>
       </div>
+      {!!issues.length && !result?.committed && <section className="hours-error" aria-label="تصحيح تواريخ الاستيراد">
+        <b>تصحيح الأشهر والتواريخ داخل النظام</b>
+        <p>عدّلي الشهر والسنة مرة لكل مجموعة، ثم اكتبي التاريخ الكامل لكل جلسة تحتاج تصحيحًا. ترك الحقل فارغًا يبقي القيمة الأصلية.</p>
+        {monthFields.map(([key, issue]) => <fieldset key={key} disabled={loading} style={{ marginBlock: 10, border: "1px solid #fecaca", borderRadius: 8, padding: 10 }}>
+          <legend>{issue.sheet} · مجموعة {issue.monthCell}</legend>
+          <label>شهر المجموعة (في الملف: {issue.expectedMonth || "غير صالح"}) <input dir="ltr" type="month" value={months[key] || ""} onChange={event => setMonths(current => ({ ...current, [key]: event.target.value }))} /></label>
+          {issues.filter(row => row.sheet === issue.sheet && row.monthCell === issue.monthCell).map(row => {
+            const key = cellKey(row.sheet, row.cell);
+            return <p key={key}><label>تاريخ الجلسة {row.cell} (في الملف: {row.date || "مفقود أو غير صالح"}) <input dir="ltr" type="date" value={dates[key] || ""} onChange={event => setDates(current => ({ ...current, [key]: event.target.value }))} /></label></p>;
+          })}
+        </fieldset>)}
+        <div className="hours-actions"><button className="preview" disabled={loading || reviewed === corrections} onClick={() => void run(false)}>معاينة التصحيحات</button></div>
+        {reviewed !== corrections && <p role="status">أعيدي المعاينة لتحديث توزيع الساعات قبل الاعتماد.</p>}
+      </section>}
       {result?.preview && <div className="hours-report">
-        {!!result.preview.dateIssues?.length && <div className="hours-error" role="alert"><b>الاعتماد متوقف حتى تصحيح التواريخ</b>
-          {result.preview.dateIssues.map((issue: { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string }) => <p key={`${issue.sheet}:${issue.cell}`}>{issue.sheet} · {issue.cell}: {issue.date || "تاريخ مفقود أو غير صالح"} · عنوان الشهر {issue.monthCell}: {issue.expectedMonth || "غير صالح"}</p>)}
-          <p>اكتبي التاريخ بصيغة YYYY-MM-DD أو يوم/شهر/سنة، وتأكدي من مطابقة الشهر والسنة لعنوان المجموعة.</p>
+        {!!result.preview.dateIssues?.length && <div className="hours-error" role="alert"><b>الاعتماد متوقف: {result.preview.dateIssues.length} تاريخ يحتاج مراجعة</b>
+          {result.preview.dateIssues.map((issue: DateIssue) => <p key={`${issue.sheet}:${issue.monthCell}:${issue.cell}`}>{issue.sheet} · {issue.cell}: {issue.date || "تاريخ مفقود أو غير صالح"} · الشهر {issue.monthCell}: {issue.expectedMonth || "غير صالح"}</p>)}
         </div>}
         {!!result.preview.months?.length && <div className="matched-list"><b>توزيع الساعات بحسب الشهر قبل الاعتماد</b>{result.preview.months.map((row: { month: string; hours: number }) => <div key={row.month}><span dir="ltr">{row.month}</span><strong>{row.hours.toFixed(2)} ساعة</strong></div>)}</div>}
         <div className="report-head"><b>{result.committed ? "تم تحديث الساعات بنجاح" : "نتيجة المطابقة"}</b><span>{result.preview.sourceFile}</span></div>

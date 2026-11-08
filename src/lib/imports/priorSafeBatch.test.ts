@@ -1,8 +1,17 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn(), set: vi.fn(), delete: vi.fn() }));
+const mock = vi.hoisted(() => ({ get: vi.fn(), getAll: vi.fn(), create: vi.fn(), set: vi.fn(), delete: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/firebase/admin", () => ({ adminDb: { collection: () => ({ where: () => ({}) }), runTransaction: (fn: any) => fn(mock) } }));
 import { priorSafeImportBatch } from "./priorSafeBatch";
+it("does not move an existing session out of a locked month during date correction", async () => {
+  mock.get.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({ docs: [] })
+    .mockResolvedValueOnce({ docs: [{ data: () => ({ month: "2020-02", locked: true }) }] }).mockResolvedValueOnce({ docs: [] });
+  mock.getAll.mockResolvedValueOnce([{ data: () => ({ date: "2020-02-10", activityType: "supervision_indirect" }) }]);
+  const batch = priorSafeImportBatch("trainee", { protectLockedMonths: true });
+  batch.set({} as any, { date: "2020-03-10", activityType: "supervision_indirect" }, { merge: true });
+  await expect(batch.commit()).rejects.toThrow("IMPORT_MONTH_LOCKED");
+  expect(mock.set).not.toHaveBeenCalled();
+});
 beforeEach(() => { vi.clearAllMocks(); mock.get.mockResolvedValue({ docs: [{ data: () => ({ status: "approved", month: "2020-02" }) }] }); });
 it("blocks both added supervision and deletion of protected historical rows", async () => {
   const batch = priorSafeImportBatch("trainee");
