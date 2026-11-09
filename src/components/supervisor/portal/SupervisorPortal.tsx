@@ -218,7 +218,7 @@ export default function SupervisorPortal(props: Props) {
               body: JSON.stringify(data),
             });
             const result = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(result.error || "حدث خطأ");
+            if (!res.ok) throw new Error(result.message || result.error || "حدث خطأ");
             window.location.reload();
           }}
         />
@@ -566,7 +566,7 @@ function TraineeFile({
           <h1>{trainee.name}</h1>
           <p>
             {rules.label} ({trainee.license || "QASP-S"}) · {rules.total} ساعة خبرة · {rules.supervisionTarget} ساعة إشراف
-            {rules.credential === "QBA" && rules.contractDateMissing && " · تاريخ العقد غير مسجّل، فيُعتمد متطلب 2000"}
+            {rules.credential === "QBA" && rules.contractDateMissing && " · تاريخ بدء الميدان غير مسجّل، فيُعتمد متطلب 2000"}
           </p>
         </div>
         <div className="sp-head-actions">

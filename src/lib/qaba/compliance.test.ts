@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCompliance, contractDateFor, credentialRules, evaluatePeriod, exceedsGroupSupervisionLimit, traineeRules } from "./compliance";
+import { buildCompliance, contractDateFor, credentialRules, evaluatePeriod, exceedsGroupSupervisionLimit, RULE_SETS, traineeRules } from "./compliance";
 
 describe("QABA compliance", () => {
   it("uses the configured group limit, including exact boundary values", () => {
@@ -51,7 +51,9 @@ describe("QABA compliance", () => {
     const result = buildCompliance(rows, "QASP-S");
     expect(result.fieldwork).toBe(21);
     expect(result.supervision).toBe(1);
-    expect(result.months[0].meetsSupervision).toBe(false);
+    // 20 independent hours: 5% = 1, so 1 hour of supervision meets the rate.
+    expect(result.months[0].independent).toBe(20);
+    expect(result.months[0].meetsSupervision).toBe(true);
   });
 
   it("applies the 40/60 activity distribution cumulatively, not per month", () => {
@@ -86,17 +88,48 @@ describe("QABA compliance", () => {
     expect(traineeRules({ license: "QBA" }, { signedAt: "2025-06-01" }).total).toBe(1500);
   });
 
-  it("counts supervision inside the month total for the 5% rate and the 20–140 band", () => {
-    // 100 own hours + 5 supervision = 105; 5% of 105 = 5.25, so 5 hours is short.
-    const short = evaluatePeriod({ total: 105, supervision: 5, group: 0 }, credentialRules("QBA"));
-    expect(short.requiredSupervision).toBe(5.25);
-    expect(short.meetsSupervision).toBe(false);
-    expect(short.supervisionShortfall).toBe(0.25);
-    const ok = evaluatePeriod({ total: 20, supervision: 1, group: 0 }, credentialRules("QBA"));
+  it("takes the 5% and the 20–140 band from the independent hours, as the official monthly log does", () => {
+    // 100 independent hours + 5 supervision: 5% of 100 = 5, so the month meets the rate.
+    const ok = evaluatePeriod({ total: 105, supervision: 5, group: 0 }, credentialRules("QBA"));
+    expect(ok.independent).toBe(100);
+    expect(ok.requiredSupervision).toBe(5);
     expect(ok.meetsSupervision).toBe(true);
-    expect(ok.validHoursBand).toBe(true);
-    expect(evaluatePeriod({ total: 141, supervision: 8, group: 4 }, credentialRules("QBA")).validHoursBand).toBe(false);
+    expect(ok.supervisionShortfall).toBe(0);
+    // 100 independent + 4 supervision is short by one hour.
+    const short = evaluatePeriod({ total: 104, supervision: 4, group: 0 }, credentialRules("QBA"));
+    expect(short.meetsSupervision).toBe(false);
+    expect(short.supervisionShortfall).toBe(1);
+    // 140 independent + 7 supervision stays inside the band; 141 independent does not.
+    expect(evaluatePeriod({ total: 147, supervision: 7, group: 0 }, credentialRules("QBA")).validHoursBand).toBe(true);
+    const over = evaluatePeriod({ total: 149, supervision: 8, group: 4 }, credentialRules("QBA"));
+    expect(over.validHoursBand).toBe(false);
+    expect(over.overMonthlyMax).toBe(true);
+    // 19 independent + 1 supervision is under the minimum.
+    expect(evaluatePeriod({ total: 20, supervision: 1, group: 0 }, credentialRules("QBA")).underMonthlyMin).toBe(true);
     expect(evaluatePeriod({ total: 100, supervision: 6, group: 3.1 }, credentialRules("QBA")).meetsGroupLimit).toBe(false);
+    expect(evaluatePeriod({ total: 100, supervision: 6, group: 3 }, credentialRules("QBA")).meetsGroupLimit).toBe(true);
+  });
+
+  it("keeps the older denominator available as an explicit option", () => {
+    const rules = { ...credentialRules("QBA"), supervisionDenominator: "independentPlusSupervision" as const };
+    expect(evaluatePeriod({ total: 105, supervision: 5, group: 0 }, rules).meetsSupervision).toBe(false);
+  });
+
+  it("decides QBA 1500 vs 2000 by when fieldwork started and closes the 1500 route in 2029", () => {
+    expect(credentialRules("QBA", "2025-06-01", { today: "2026-11-09" })).toMatchObject({ total: 1500, ruleSetId: "QABA-QBA-1500", legacyExpired: false });
+    expect(credentialRules("QBA", "2025-06-01", { today: "2026-11-09" }).daysToLegacyDeadline).toBe(784);
+    expect(credentialRules("QBA", "2025-06-01", { today: "2029-01-01" })).toMatchObject({ total: 2000, ruleSetId: "QABA-QBA-2000", legacyExpired: true });
+    expect(credentialRules("QBA", "2025-06-01", { today: "2029-03-01", completed: true }).total).toBe(1500);
+    // The first approved activity wins over a later contract date.
+    const rules = traineeRules({ license: "QBA", fieldworkStartedAt: "2025-12-20", contractSignedAt: "2026-01-05" }, null, { today: "2026-11-09" });
+    expect(rules).toMatchObject({ total: 1500, startDate: "2025-12-20", startDateSource: "fieldwork" });
+    const activity = (date: string, status = "approved") => ({ id: date, traineeId: "t", supervisorId: "s", date, month: date.slice(0, 7), startTime: "", endTime: "", duration: 2, activityType: "indirect", description: "x", status, createdAt: "", updatedAt: "" });
+    const compliance = buildCompliance([activity("2026-02-01"), activity("2025-11-15"), activity("2025-10-01", "rejected")] as any, "QBA", "2026-01-10", { today: "2026-11-09" });
+    expect(compliance.rules).toMatchObject({ total: 1500, startDate: "2025-11-15", startDateSource: "fieldwork" });
+  });
+
+  it("keeps every rule set traceable to a board source", () => {
+    for (const set of Object.values(RULE_SETS)) expect(set.sources.length).toBeGreaterThan(0);
   });
 
   it("splits supervision into direct and indirect by its type for the 40/60 rule", () => {
@@ -111,7 +144,8 @@ describe("QABA compliance", () => {
     expect(result.indirectTotal).toBe(60);
     expect(result.meetsDirectLimit).toBe(true);
     expect(result.meetsIndirectMinimum).toBe(true);
-    expect(result.months[0].requiredSupervision).toBe(5);
+    // 95 independent hours (38 + 57): 5% = 4.75, met by 5 hours of supervision.
+    expect(result.months[0].requiredSupervision).toBe(4.75);
     expect(result.months[0].meetsSupervision).toBe(true);
   });
 });

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requiredSupervisionFor, traineeRules } from "@/lib/qaba/compliance";
+import { HOUR_DATE_MESSAGES, hourDateProblem, isDuplicateSession } from "@/lib/validation/hourEligibility";
 import { logActivity } from "@/lib/activityLog";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
@@ -84,6 +86,35 @@ export async function POST(req: NextRequest) {
   }
 
   const month = date.slice(0, 7);
+
+  if (type === "individual" || type === "group") {
+    // QABA: no hours before coursework, outside the contract, older than the
+    // accrual window, or while the supervisor's credential has lapsed.
+    for (const doc of traineeDocs) {
+      const trainee = doc.data() as any;
+      const problem = hourDateProblem({
+        date,
+        courseworkStartDate: trainee?.courseworkStartDate,
+        fieldworkStartDate: trainee?.fieldworkStartDate,
+        supervisorCredentialExpiresAt: (supervisor as any).credentialExpiresAt,
+      });
+      if (problem)
+        return NextResponse.json(
+          { error: problem, message: HOUR_DATE_MESSAGES[problem], traineeId: doc.id },
+          { status: 400 },
+        );
+    }
+    const sameDay = await adminDb
+      .collection("sessions")
+      .where("supervisorId", "==", supervisor.id)
+      .where("date", "==", date)
+      .get();
+    if (isDuplicateSession({ type, duration, traineeIds: uniqueTraineeIds }, sameDay.docs.map((d) => d.data() as any)))
+      return NextResponse.json(
+        { error: "DUPLICATE_SESSION", message: "هذه الجلسة مسجّلة مسبقًا بنفس التاريخ والمدة والمتدربين." },
+        { status: 409 },
+      );
+  }
 
   if (type === "group" && traineeIds.length < 2) {
     return NextResponse.json(
@@ -337,7 +368,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
-  const requiredHours = Math.round(workHours * 0.05 * 10) / 10;
+  // workHours are the independent hours: the board takes the 5% of these.
+  const requiredHours = requiredSupervisionFor(workHours, traineeRules(trainee.data()));
 
   const snapshotRef = adminDb.collection("monthlySnapshots").doc(snapshotId);
   const snapshot = await snapshotRef.get();

@@ -1,5 +1,7 @@
 import "server-only";
 import { withContractDates } from "@/lib/qaba/contractDates";
+import { requiredSupervisionFor } from "@/lib/qaba/compliance";
+import { deliveredHoursBySupervisor } from "@/lib/supervision/supervisorHours";
 
 type AdminDb = FirebaseFirestore.Firestore;
 
@@ -42,12 +44,14 @@ export async function loadSupervisionPanelData(adminDb: AdminDb) {
       individualHours: supervision - group,
       groupHours: group,
       totalHours: supervision,
-      // Supervision counts inside the month total (QABA decision, 2026-11-02).
-      workHours: fieldwork + supervision,
-      requiredHours: Math.round((fieldwork + supervision) * 0.05 * 100) / 100,
+      // Independent hours: the board takes the 5% of these (official monthly log).
+      workHours: fieldwork,
+      requiredHours: requiredSupervisionFor(fieldwork),
       groupPercentage: supervision ? Math.round((group / supervision) * 1000) / 10 : 0,
       lockedAt: approval.lockedAt || (approval.locked ? approval.traineeAcknowledgedAt || approval.adminApprovedAt : null),
     };
   });
-  return { supervisors, trainees, snapshots };
+  // Per supervisor, a group session counts once (summing trainee rows would count it per attendee).
+  const supervisorTotals = deliveredHoursBySupervisor(activitiesSnap.docs.map(document => document.data() as any), currentMonth);
+  return { supervisors, trainees, snapshots, supervisorTotals };
 }

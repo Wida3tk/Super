@@ -5,6 +5,7 @@ import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import UiIcon from "@/components/ui/UiIcon";
 import { withContractDates } from "@/lib/qaba/contractDates";
 import { exceedsGroupSupervisionLimit, traineeRules } from "@/lib/qaba/compliance";
+import { traineeSupervisionHours } from "@/lib/fieldwork/traineeSupervision";
 import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import { ALERTS, CYCLE_STAGES, buildMonthCycle, supervisorBacklog, type AlertKey, type CycleStage } from "@/lib/admin/controlRoom";
 import type { FieldworkActivity } from "@/types";
@@ -127,7 +128,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     .map((t) => {
       const snap = snapshots.find((s) => s.traineeId === t.id);
       const targetHours = traineeRules(t).supervisionTarget;
-      const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
+      const approvedHours = traineeSupervisionHours(t).total;
       const pct = Math.round((approvedHours / targetHours) * 100);
       return { ...t, pct, targetHours, totalHours: approvedHours, snap };
     })

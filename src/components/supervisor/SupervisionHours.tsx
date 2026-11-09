@@ -998,7 +998,7 @@ export default function SupervisionHours({
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || "حدث خطأ");
+    if (!res.ok) throw new Error(result.message || result.error || "حدث خطأ");
     window.location.reload();
   };
 

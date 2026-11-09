@@ -20,6 +20,8 @@ it("reads and updates totals in one transaction without touching historical bala
   expect(totals.approvedSupervisionHours).toBe(1.5);
   expect(totals.approvedIndividualSupervisionHours).toBe(1.5);
   expect(totals.totalHours).toBe(1.5);
+  // The first approved hour is stored so every screen picks the right QBA requirement.
+  expect(totals.fieldworkStartedAt).toBe("2026-10-01");
   expect(mocks.update).toHaveBeenCalledTimes(1);
   expect(totals).not.toHaveProperty("totalIndividualHours");
   expect(totals).not.toHaveProperty("status");

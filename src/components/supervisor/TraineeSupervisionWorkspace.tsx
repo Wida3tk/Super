@@ -136,6 +136,7 @@ export default function TraineeSupervisionWorkspace({
         data?.activities || [],
         trainee?.license || "QASP-S",
         contractDateFor(trainee, data?.agreement),
+        { fieldworkStartDate: trainee?.fieldworkStartDate, completed: trainee?.status === "completed" },
       ),
     [data?.activities, data?.agreement, trainee],
   );
@@ -337,7 +338,7 @@ function Overview({
         {[
           ["مباشرة", compliance.direct, compliance.rules.maxDirect],
           ["غير مباشرة", compliance.indirect, compliance.rules.minIndirect],
-          ["إشراف", compliance.supervision, compliance.fieldwork * 0.05],
+          ["إشراف", compliance.supervision, compliance.requiredSupervision],
           ["تقييم الكفاءة", assessmentPct, 100],
         ].map(([l, v, t]) => (
           <div className="metric" key={String(l)}>
@@ -357,7 +358,7 @@ function Overview({
           </div>
         ))}
       </div>
-      <MonthlyApprovalCard key={trainee.id} traineeId={trainee.id} months={compliance.months} rules={compliance.rules} activities={activities} />
+      <MonthlyApprovalCard key={trainee.id} traineeId={trainee.id} months={compliance.months} activities={activities} />
       <div className="overview-grid">
         <section className="box">
           <h4>حالة الشهر الحالي</h4>
@@ -436,7 +437,7 @@ function Overview({
   );
 }
 
-function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
+function MonthlyApprovalCard({ traineeId, months, activities }: any) {
   const todayMonth = new Date().toISOString().slice(0, 7);
   const choices = approvalMonths([...months, ...activities.map((row: any) => ({ month: String(row.month || row.date?.slice(0, 7) || "") }))], todayMonth);
   const [month, setMonth] = useState(todayMonth);
@@ -451,7 +452,7 @@ function MonthlyApprovalCard({ traineeId, months, rules, activities }: any) {
   const [approvalLoading, setApprovalLoading] = useState(true);
   const [approvalError, setApprovalError] = useState(false);
   const [allowShortfall, setAllowShortfall] = useState(false);
-  const shortfall = current && (current.fieldwork < rules.monthlyMin || !current.meetsSupervision ||
+  const shortfall = current && (current.underMonthlyMin || !current.meetsSupervision ||
     !activities.some((row: any) => row.month === month && row.status === "approved" &&
       String(row.activityType).startsWith("supervision_") && row.format === "individual" && Number(row.duration) >= 1));
   const [incomplete, setIncomplete] = useState<{ actualHours: number; minimumHours: number; warnings: string[] } | null>(null);

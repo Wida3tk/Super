@@ -56,19 +56,20 @@ it("rejects invalid document identifiers and month values before writing", async
 it("requests explicit confirmation for a month below the minimum", async () => {
   const result = await POST(request());
   expect(result.status).toBe(409);
-  expect(await result.json()).toMatchObject({ error: "MONTH_HOURS_INCOMPLETE", actualHours: 10, minimumHours: 20 });
+  // The 20-hour minimum applies to the 9 independent hours (official QABA monthly log).
+  expect(await result.json()).toMatchObject({ error: "MONTH_HOURS_INCOMPLETE", actualHours: 9, minimumHours: 20 });
   expect(mock.set).not.toHaveBeenCalled();
 });
 it("allows actual hours with supervisor confirmation and preserves the compliance exception", async () => {
   expect((await POST(request({ allowIncompleteHours: true }))).status).toBe(200);
-  expect(mock.set.mock.calls[0][0]).toMatchObject({ summary: { fieldwork: 10, supervision: 1 }, monthlyMinimumException: { confirmedBy: "s", actualHours: 10, minimumHours: 20 }, locked: false });
+  expect(mock.set.mock.calls[0][0]).toMatchObject({ summary: { fieldwork: 10, supervision: 1 }, monthlyMinimumException: { confirmedBy: "s", actualHours: 9, minimumHours: 20 }, locked: false });
 });
 it("does not treat a string as explicit confirmation", async () => {
   expect((await POST(request({ allowIncompleteHours: "true" }))).status).toBe(409);
   expect(mock.set).not.toHaveBeenCalled();
 });
 it("keeps standard approval unchanged for a complete month", async () => {
-  mock.rows = [row("indirect", 19), row("supervision_indirect", 1)];
+  mock.rows = [row("indirect", 20), row("supervision_indirect", 1)];
   expect((await POST(request())).status).toBe(200);
   expect(mock.set.mock.calls[0][0].monthlyMinimumException).toBeNull();
 });

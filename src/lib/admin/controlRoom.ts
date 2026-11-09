@@ -98,9 +98,9 @@ export function buildMonthRow(trainee: Trainee, rows: FieldworkActivity[], appro
     if (!period.meetsSupervision) alerts.push("supervision_below_rate");
     if (!hasIndividualContact) alerts.push("no_individual_contact");
     if (!period.meetsGroupLimit) alerts.push("group_over_limit");
-    if (loggedHours.total > rules.monthlyMax) alerts.push("over_monthly_max");
+    if (period.overMonthlyMax) alerts.push("over_monthly_max");
   }
-  if (monthClosed && loggedHours.total < rules.monthlyMin) alerts.push("under_monthly_min");
+  if (monthClosed && period.underMonthlyMin) alerts.push("under_monthly_min");
 
   return {
     traineeId: trainee.id,

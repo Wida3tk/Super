@@ -1,5 +1,6 @@
 "use client";
 import { SUPERVISOR_RECONCILIATION_OPEN } from "@/lib/supervision/editingPolicy";
+import { requiredSupervisionFor } from "@/lib/qaba/compliance";
 
 import { useState, useEffect } from "react";
 
@@ -68,7 +69,7 @@ export default function TraineeMonthlyView({ traineeId }: { traineeId: string; s
       // تحديث محلي
       setSnapshots(prev => prev.map(s =>
         s.month === month
-          ? { ...s, workHours: val, requiredHours: Math.round(val * 0.05 * 10) / 10 }
+          ? { ...s, workHours: val, requiredHours: requiredSupervisionFor(val) }
           : s
       ));
       setEditingMonth(null);

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { HOUR_DATE_MESSAGES, hourDateProblem } from "@/lib/validation/hourEligibility";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedTrainee, hasActiveTraineeService } from "@/lib/auth/serverAuth";
 import type { FieldworkActivityType } from "@/types";
@@ -121,6 +122,10 @@ export async function POST(req: NextRequest) {
       { error: "BEFORE_ELIGIBLE_START" },
       { status: 400 },
     );
+  // Remaining QABA date rules (accrual window) from the shared check.
+  const dateProblem = hourDateProblem({ date, courseworkStartDate: courseworkStart, fieldworkStartDate: fieldworkStart });
+  if (dateProblem)
+    return NextResponse.json({ error: dateProblem, message: HOUR_DATE_MESSAGES[dateProblem] }, { status: 400 });
   const sameDay = await adminDb
     .collection("fieldworkActivities")
     .where("traineeId", "==", trainee.id)

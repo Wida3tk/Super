@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
-import { traineeRules } from "@/lib/qaba/compliance";
+import { contractDateFor, fieldworkStartDate, traineeRules } from "@/lib/qaba/compliance";
 import TraineeMonthlyHours from "@/components/admin/TraineeMonthlyHours";
 import TraineeHoursUpdate from "@/components/admin/TraineeHoursUpdate";
 import EditTraineeProfile from "@/components/admin/EditTraineeProfile";
@@ -114,9 +114,11 @@ export default async function TraineeFilePage({
     .sort((a, b) =>
       String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
     );
-  const rules = traineeRules(trainee, agreementSnap.data());
-  const target = rules.supervisionTarget;
   const ledger = await getTraineeActivityLedger(id, { activities: activitiesSnap });
+  // QABA decides 1500 vs 2000 by the first approved hour, not by the contract date.
+  const rules = traineeRules({ ...trainee, fieldworkStartedAt: trainee.fieldworkStartedAt || fieldworkStartDate(ledger) }, agreementSnap.data());
+  const contractDate = contractDateFor(trainee, agreementSnap.data());
+  const target = rules.supervisionTarget;
   const approvedSupervision = ledger.filter(a => a.status === "approved" && a.activityType.startsWith("supervision_"));
   const individualHours = approvedSupervision.filter(a => a.format !== "group").reduce((n, a) => n + a.duration, 0);
   const groupHours = approvedSupervision.filter(a => a.format === "group").reduce((n, a) => n + a.duration, 0);
@@ -147,8 +149,9 @@ export default async function TraineeFilePage({
     ["البريد الإلكتروني", trainee.email, "✉"],
     ["رقم الجوال", trainee.phone, "☎"],
     ["الرخصة المهنية", trainee.license, "◈"],
-    ["تاريخ توقيع العقد", rules.contractSignedAt ? dateOnly(rules.contractSignedAt) : "غير مسجّل", "✎"],
-    ["المتطلب حسب QABA", `${rules.total} ساعة (غير مباشر ${rules.minIndirect}+، مباشر ${rules.maxDirect} كحد أعلى)${rules.credential === "QBA" && rules.contractDateMissing ? " · مؤقت حتى تسجيل تاريخ العقد" : ""}`, "◇"],
+    ["تاريخ توقيع العقد", contractDate ? dateOnly(contractDate) : "غير مسجّل", "✎"],
+    ["بدء الميدان", rules.startDate ? `${dateOnly(rules.startDate)}${rules.startDateSource === "fieldwork" ? " (من سجل الميدان)" : " (من تاريخ العقد)"}` : "غير مسجّل", "◷"],
+    ["المتطلب حسب QABA", `${rules.total} ساعة (غير مباشر ${rules.minIndirect}+، مباشر ${rules.maxDirect} كحد أعلى)${rules.credential === "QBA" && rules.contractDateMissing ? " · مؤقت حتى تسجيل أول ساعة أو تاريخ العقد" : ""}${rules.legacyDeadline ? ` · يجب الإكمال قبل ${dateOnly(rules.legacyDeadline)} وإلا يصبح المتطلب 2000 ساعة` : ""}${rules.legacyExpired ? " · انتهت مهلة متطلب 1500 ساعة" : ""}`, "◇"],
   ];
   const enrollmentDetails = [
     ["المشرف الحالي", supervisorSnap?.data()?.name, "◎"],

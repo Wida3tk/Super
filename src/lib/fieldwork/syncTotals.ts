@@ -3,6 +3,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
 import { getTraineeActivityLedger } from "@/lib/supervision/activityLedger";
 import { calculateHourTotals } from "./hourTotals";
+import { fieldworkStartDate } from "@/lib/qaba/compliance";
 
 /**
  * Keeps the trainee summary cache aligned with the authoritative activity ledger.
@@ -30,6 +31,8 @@ export async function syncTraineeFieldworkTotals(traineeId: string, options?: { 
     // Total experience includes supervisor hours once, alongside activities.
     totalHours: hours.fieldwork,
     fieldworkTotalsUpdatedAt: new Date().toISOString(),
+    // First approved hour: QABA decides QBA 1500 vs 2000 from this date.
+    fieldworkStartedAt: fieldworkStartDate(ledger),
     // Explicit supervisor import already rebuilt these counters; keep that
     // operation atomic with the ledger read, not a separate stale write.
     ...(options?.reconcileSupervisionCounters ? {

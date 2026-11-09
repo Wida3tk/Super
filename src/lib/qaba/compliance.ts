@@ -1,60 +1,52 @@
 import type { FieldworkActivity } from "@/types";
 import { approvedHourRows, calculateHourTotals } from "@/lib/fieldwork/hourTotals";
+import { RULE_SETS, selectRuleSet, QBA_2000_HOURS_FROM, QBA_1500_DEADLINE, type RuleSet } from "./ruleSets";
 
 export type QabaCredential = "QASP-S" | "QBA";
 
-/**
- * QABA rules used across the platform. One source for every screen.
- *
- * Decisions confirmed by the program (2026-11-02):
- * - Supervision hours count toward the trainee's hours: the 20–140 monthly
- *   band, the 5% rate and the credential total all use direct + indirect +
- *   supervision. Supervision rows split into direct/indirect by their type.
- * - QBA candidates whose supervision contract was signed before 2026-01-01
- *   need 1500 hours (900 indirect min, 600 direct max); from that date, 2000
- *   (1200 / 800). Without a contract date the current 2000-hour rule applies
- *   and the screens flag the missing date.
- * - The 20–140 monthly band comes from the board.
- */
-export const QBA_2000_HOURS_FROM = "2026-01-01";
+export { RULE_SETS, QBA_2000_HOURS_FROM, QBA_1500_DEADLINE };
+export type { RuleSet };
 
+/**
+ * QABA rules used across the platform. One source for every screen; the
+ * numbers live in versioned rule sets (./ruleSets.ts).
+ *
+ * Decisions (2026-11-09, aligned with the official QABA forms):
+ * - The 5% supervision rate and the 20–140 monthly band are taken of the
+ *   independent hours (direct + indirect without the supervisor), as the
+ *   official monthly supervision log computes them.
+ * - The credential total counts direct + indirect + supervision, as line D of
+ *   the Final Verification Form does.
+ * - QBA 1500 vs 2000 hours is decided by the date fieldwork started; the
+ *   1500-hour route closes for unfinished candidates on QBA_1500_DEADLINE.
+ */
 export type CredentialRules = ReturnType<typeof credentialRules>;
 
-export function credentialRules(credential: QabaCredential | string | undefined, contractSignedAt?: string | null) {
-  const shared = {
-    monthlyMin: 20,
-    monthlyMax: 140,
-    supervisionRate: 0.05,
-    maxGroupRate: 0.5,
-    maxDirectRate: 0.4,
-    minIndirectRate: 0.6,
-  };
-  const date = validDate(contractSignedAt);
-  if (credential === "QASP-S")
-    return {
-      ...shared,
-      credential: "QASP-S" as const,
-      label: "مساعد محلل سلوك",
-      total: 1000,
-      supervisionTarget: 50,
-      minIndirect: 600,
-      maxDirect: 400,
-      contractSignedAt: date,
-      contractDateMissing: !date,
-      version: "QASP-S",
-    };
-  const legacy = Boolean(date && date < QBA_2000_HOURS_FROM);
+export function credentialRules(
+  credential: QabaCredential | string | undefined,
+  startDate?: string | null,
+  options: { today?: string; completed?: boolean; startDateSource?: "fieldwork" | "contract" | null } = {},
+) {
+  const date = validDate(startDate);
+  const { ruleSet, legacyExpired } = selectRuleSet(credential, date, options);
+  const today = options.today || new Date().toISOString().slice(0, 10);
+  const daysToLegacyDeadline = ruleSet.legacyDeadline
+    ? Math.ceil((Date.parse(ruleSet.legacyDeadline) - Date.parse(today)) / 864e5)
+    : null;
   return {
-    ...shared,
-    credential: "QBA" as const,
-    label: "محلل سلوك",
-    total: legacy ? 1500 : 2000,
-    supervisionTarget: legacy ? 75 : 100,
-    minIndirect: legacy ? 900 : 1200,
-    maxDirect: legacy ? 600 : 800,
+    ...ruleSet,
+    credential: ruleSet.credential,
+    ruleSetId: ruleSet.id,
+    /** Kept for older screens: the id of the rule set in use. */
+    version: ruleSet.id,
+    startDate: date,
+    startDateSource: date ? (options.startDateSource ?? "contract") : null,
+    /** @deprecated read startDate; kept so existing screens keep working. */
     contractSignedAt: date,
+    /** No start date recorded: the current 2000-hour rule applies until one is. */
     contractDateMissing: !date,
-    version: legacy ? "QBA-1500" : "QBA-2000",
+    legacyExpired,
+    daysToLegacyDeadline,
   };
 }
 
@@ -64,8 +56,25 @@ export function contractDateFor(trainee: { contractSignedAt?: unknown } | null |
 }
 
 /** Rules for one trainee record (license + contract date). */
-export function traineeRules(trainee: { license?: string; contractSignedAt?: unknown } | null | undefined, agreement?: { signedAt?: unknown } | null) {
-  return credentialRules(trainee?.license || "QASP-S", contractDateFor(trainee, agreement));
+export function traineeRules(
+  trainee: { license?: string; contractSignedAt?: unknown; fieldworkStartDate?: unknown; fieldworkStartedAt?: unknown; status?: string } | null | undefined,
+  agreement?: { signedAt?: unknown } | null,
+  options: { today?: string } = {},
+) {
+  // The recorded fieldwork start date first, then the first approved hour.
+  const fieldworkStart = validDate(trainee?.fieldworkStartDate) || validDate(trainee?.fieldworkStartedAt);
+  const start = fieldworkStart || contractDateFor(trainee, agreement);
+  return credentialRules(trainee?.license || "QASP-S", start, {
+    today: options.today,
+    completed: trainee?.status === "completed",
+    startDateSource: fieldworkStart ? "fieldwork" : start ? "contract" : null,
+  });
+}
+
+/** The date of the earliest approved activity: when fieldwork started for QABA. */
+export function fieldworkStartDate(activities: FieldworkActivity[]) {
+  const dates = approvedHourRows(activities).map((row) => validDate(row.date)).filter((d): d is string => Boolean(d));
+  return dates.length ? dates.sort()[0] : null;
 }
 
 function validDate(value: unknown) {
@@ -93,24 +102,41 @@ export function hourBreakdown(activities: FieldworkActivity[]) {
   };
 }
 
-/** One month (supervision period) checked against the rules. */
+/**
+ * One month (supervision period) checked against the rules.
+ * `total` is all approved hours including supervision; `independent` defaults
+ * to total − supervision (the hours worked without the supervisor present).
+ */
 export function evaluatePeriod(
-  hours: { total: number; supervision: number; group: number },
-  rules: Pick<CredentialRules, "monthlyMin" | "monthlyMax" | "supervisionRate" | "maxGroupRate">,
+  hours: { total: number; supervision: number; group: number; independent?: number },
+  rules: Pick<CredentialRules, "monthlyMin" | "monthlyMax" | "supervisionRate" | "maxGroupRate"> &
+    Partial<Pick<CredentialRules, "supervisionDenominator" | "monthlyBandBasis">>,
 ) {
-  const supervisionRate = hours.total ? hours.supervision / hours.total : 0;
+  const independent = round(Math.max(0, hours.independent ?? hours.total - hours.supervision));
+  const denominator = (rules.supervisionDenominator ?? "independent") === "independent" ? independent : hours.total;
+  const bandHours = (rules.monthlyBandBasis ?? "independent") === "independent" ? independent : hours.total;
+  const supervisionRate = denominator ? hours.supervision / denominator : 0;
   const groupRate = hours.supervision ? hours.group / hours.supervision : 0;
-  const requiredSupervision = round(hours.total * rules.supervisionRate);
+  const requiredSupervision = round(denominator * rules.supervisionRate);
   return {
+    independent,
+    bandHours,
     supervisionRate,
     groupRate,
     requiredSupervision,
     /** Supervision still needed this period to reach the rate. */
     supervisionShortfall: round(Math.max(0, requiredSupervision - hours.supervision)),
-    validHoursBand: hours.total >= rules.monthlyMin && hours.total <= rules.monthlyMax,
-    meetsSupervision: hours.total > 0 && supervisionRate >= rules.supervisionRate,
-    meetsGroupLimit: hours.supervision === 0 || groupRate <= rules.maxGroupRate,
+    validHoursBand: bandHours >= rules.monthlyMin && bandHours <= rules.monthlyMax,
+    underMonthlyMin: bandHours < rules.monthlyMin,
+    overMonthlyMax: bandHours > rules.monthlyMax,
+    meetsSupervision: denominator > 0 && hours.supervision + 1e-9 >= requiredSupervision,
+    meetsGroupLimit: hours.supervision === 0 || groupRate <= rules.maxGroupRate + 1e-9,
   };
+}
+
+/** Supervision a month needs for this many independent hours (the board's 5%). */
+export function requiredSupervisionFor(independentHours: number, rules: Pick<CredentialRules, "supervisionRate"> = credentialRules("QBA")) {
+  return round(Math.max(0, Number(independentHours) || 0) * rules.supervisionRate);
 }
 
 export function exceedsGroupSupervisionLimit(snapshot: { groupHours?: number; totalHours?: number; groupPercentage?: number }, credential: QabaCredential = "QASP-S") {
@@ -124,8 +150,15 @@ export function buildCompliance(
   activities: FieldworkActivity[],
   credential: QabaCredential | string,
   contractSignedAt?: string | null,
+  options: { today?: string; completed?: boolean; fieldworkStartDate?: string | null } = {},
 ) {
-  const rules = credentialRules(credential, contractSignedAt);
+  const fieldworkStart = validDate(options.fieldworkStartDate) || fieldworkStartDate(activities);
+  const start = fieldworkStart || validDate(contractSignedAt);
+  const rules = credentialRules(credential, start, {
+    today: options.today,
+    completed: options.completed,
+    startDateSource: fieldworkStart ? "fieldwork" : start ? "contract" : null,
+  });
   const approved = approvedHourRows(activities);
   const totals = hourBreakdown(approved);
   const fieldwork = totals.total;
@@ -159,8 +192,12 @@ export function buildCompliance(
         meetsIndirectMinimum,
       };
     });
+  const independent = round(Math.max(0, fieldwork - totals.supervision));
   return {
     rules,
+    independent,
+    /** Supervision needed across all approved hours so far (5% of the denominator in use). */
+    requiredSupervision: round((rules.supervisionDenominator === "independent" ? independent : fieldwork) * rules.supervisionRate),
     direct: totals.direct,
     indirect: totals.indirect,
     directTotal: totals.directTotal,
