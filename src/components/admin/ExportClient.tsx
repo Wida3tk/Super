@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import { traineeRules } from "@/lib/qaba/compliance";
+import { traineeSupervisionHours } from "@/lib/fieldwork/traineeSupervision";
 
 const COLORS = {
   primary: "#0D40FC",
@@ -80,8 +81,8 @@ export default function ExportClient({
             "ساعات الخبرة المطلوبة": targetHours,
             "ساعات الإشراف المستهدفة":
               traineeRules(t).supervisionTarget,
-            "فردية (إجمالي)": t.totalIndividualHours || 0,
-            "جماعية (إجمالي)": t.totalGroupHours || 0,
+            "فردية (إجمالي)": traineeSupervisionHours(t).individual,
+            "جماعية (إجمالي)": traineeSupervisionHours(t).group,
             الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,
             المتبقي: targetHours - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
             المشرف: sup?.name || "—",

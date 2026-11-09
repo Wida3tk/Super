@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requiredSupervisionFor, traineeRules } from "@/lib/qaba/compliance";
 import { logActivity } from "@/lib/activityLog";
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
@@ -337,7 +338,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const snapshotId = `${supervisor.id}_${traineeId}_${month}`;
-  const requiredHours = Math.round(workHours * 0.05 * 10) / 10;
+  // workHours are the independent hours: the board takes the 5% of these.
+  const requiredHours = requiredSupervisionFor(workHours, traineeRules(trainee.data()));
 
   const snapshotRef = adminDb.collection("monthlySnapshots").doc(snapshotId);
   const snapshot = await snapshotRef.get();

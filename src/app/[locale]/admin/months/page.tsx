@@ -13,10 +13,10 @@ export default async function MonthsPage({ params }: Props) {
     const { adminAuth, adminDb } = await import('@/lib/firebase/admin');
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     if (decoded.email?.toLowerCase() !== process.env.ADMIN_EMAIL?.toLowerCase()) redirect(`/${locale}/login?portal=admin`);
-    const { supervisors, trainees, snapshots } = await loadSupervisionPanelData(adminDb);
+    const { supervisors, trainees, snapshots, supervisorTotals } = await loadSupervisionPanelData(adminDb);
     return (
       <AdminPageLayout locale={locale} title="الاعتماد الشهري">
-        <AdminSupervisionPanel supervisors={supervisors} initialTrainees={trainees} initialSnapshots={snapshots} visibleTabs={["months"]} />
+        <AdminSupervisionPanel supervisors={supervisors} initialTrainees={trainees} initialSnapshots={snapshots} supervisorTotals={supervisorTotals} visibleTabs={["months"]} />
       </AdminPageLayout>
     );
   } catch (error) {

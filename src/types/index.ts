@@ -140,9 +140,15 @@ export interface Trainee {
   email: string;
   phone: string;
   license: License;
+  /** @deprecated Display targets come from the QABA rule set (traineeRules). */
   requiredHours: number;
+  /** @deprecated Display targets come from the QABA rule set (traineeRules). */
   fieldworkTargetHours?: number;
+  /** @deprecated Display targets come from the QABA rule set (traineeRules). */
   supervisionTargetHours?: number;
+  /** Date of the first approved hour; decides QBA 1500 vs 2000 (written by syncTraineeFieldworkTotals). */
+  fieldworkStartedAt?: string | null;
+  contractSignedAt?: string | null;
   status: TraineeStatus;
   onboardingStage?: OnboardingStage; // فقط لو status = onboarding
   currentSupervisorId?: string;
@@ -152,7 +158,9 @@ export interface Trainee {
   createdAt: string;
   updatedAt: string;
   // إحصائيات محسوبة (تتحدث عند كل جلسة)
+  /** @deprecated Legacy counter; read approvedIndividualSupervisionHours (rebuilt from the ledger). */
   totalIndividualHours: number;
+  /** @deprecated Legacy counter; read approvedGroupSupervisionHours (rebuilt from the ledger). */
   totalGroupHours: number;
   totalHours: number;
   approvedDirectHours?: number;
@@ -160,6 +168,9 @@ export interface Trainee {
   approvedFieldworkHours?: number;
   approvedSupervisionHours?: number;
   approvedGroupSupervisionHours?: number;
+  approvedIndividualSupervisionHours?: number;
+  /** Set when the approved* totals were last rebuilt from the ledger. */
+  fieldworkTotalsUpdatedAt?: string;
   authUid?: string;
   accountStatus?: "prepared" | "invited" | "active";
   lifecycleStage?: TraineeLifecycleStage;

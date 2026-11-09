@@ -22,7 +22,7 @@ describe("stageFor", () => {
 });
 
 describe("buildMonthRow", () => {
-  it("counts supervision inside the total and warns before the month closes", () => {
+  it("takes 5% of the independent hours, as the official QABA monthly log does, and warns before the month closes", () => {
     const rows = [
       row({ activityType: "direct", duration: 40, status: "submitted" }),
       row({ activityType: "indirect", duration: 59 }),
@@ -31,8 +31,9 @@ describe("buildMonthRow", () => {
     const r = buildMonthRow(trainee, rows, null, false);
     expect(r.logged.total).toBe(100);
     expect(r.approved.total).toBe(60);
-    expect(r.logged.required).toBe(5);
-    expect(r.logged.shortfall).toBe(4);
+    // 99 independent hours (40 direct + 59 indirect): 5% = 4.95.
+    expect(r.logged.required).toBe(4.95);
+    expect(r.logged.shortfall).toBe(3.95);
     expect(r.pendingReview).toBe(1);
     expect(r.alerts).toEqual(["supervision_below_rate", "no_individual_contact", "group_over_limit"]);
   });

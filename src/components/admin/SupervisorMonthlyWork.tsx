@@ -1,5 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
+import { traineeRules } from "@/lib/qaba/compliance";
+import { supervisorDeliveredHours } from "@/lib/supervision/supervisorHours";
+import { traineeSupervisionHours } from "@/lib/fieldwork/traineeSupervision";
 
 const MONTHS = [
   "يناير",
@@ -98,20 +101,10 @@ export default function SupervisorMonthlyWork({
   const monthSessions = inMonth(sessions),
     monthMinutes = inMonth(minutes),
     monthDocuments = inMonth(documents);
-  const individual = monthActivities
-    .filter(
-      (x) =>
-        String(x.activityType || "").startsWith("supervision_") &&
-        String(x.format || "").toLowerCase() !== "group",
-    )
-    .reduce((n, x) => n + num(x.duration), 0);
-  const group = monthActivities
-    .filter(
-      (x) =>
-        String(x.activityType || "").startsWith("supervision_") &&
-        String(x.format || "").toLowerCase() === "group",
-    )
-    .reduce((n, x) => n + num(x.duration), 0);
+  // The supervisor's own hours: a group session counts once, not once per attending trainee.
+  const delivered = supervisorDeliveredHours(monthActivities, { supervisorId: supervisor.id });
+  const individual = delivered.individual;
+  const group = delivered.group;
 
   // صف محسوب لكل متدرب: ساعات الشهر، فردي/جماعي، التراكمي، الهدف والمتبقي — نفس منطق ملف الإكسل الأصلي
   const rows = trainees.map((t) => {
@@ -133,14 +126,9 @@ export default function SupervisorMonthlyWork({
           String(x.format || "").toLowerCase() === "group",
       )
       .reduce((n, x) => n + num(x.duration), 0);
-    const cumulative = num(t.totalIndividualHours) + num(t.totalGroupHours);
-    const target = Number(
-      t.supervisionTargetHours ||
-        (/QBA/i.test(String(t.license || "")) &&
-        !/QASP/i.test(String(t.license || ""))
-          ? 100
-          : 50),
-    );
+    // Rebuilt from the ledger; the legacy counters only fill in for trainees not yet synced.
+    const cumulative = traineeSupervisionHours(t).total;
+    const target = traineeRules(t).supervisionTarget;
     const remaining = Math.max(0, target - cumulative);
     const sessionsCount = monthSessions.filter(
       (x) => x.traineeId === t.id || (x.traineeIds || []).includes(t.id),

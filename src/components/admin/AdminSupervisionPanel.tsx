@@ -11,6 +11,8 @@ import type {
 import { downloadCsv, type CsvRow } from "@/lib/export/csv";
 import AdminAgreementModal from "@/components/admin/AdminAgreementModal";
 import { traineeRules } from "@/lib/qaba/compliance";
+import type { DeliveredHours } from "@/lib/supervision/supervisorHours";
+import { traineeSupervisionHours } from "@/lib/fieldwork/traineeSupervision";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -751,17 +753,15 @@ async function exportToExcel(
   type: "supervisors" | "trainees",
   trainees: Trainee[],
   supervisors: any[],
-  snapshots: MonthlySnapshot[],
+  supervisorTotals: Record<string, DeliveredHours>,
   selectedMonth: string,
 ) {
   if (type === "supervisors") {
     const summaryData: CsvRow[] = supervisors.map((sup) => {
-      const supSnaps = snapshots.filter((s) => s.supervisorId === sup.id);
-      const totalInd = supSnaps.reduce(
-        (a, s) => a + (s.individualHours || 0),
-        0,
-      );
-      const totalGrp = supSnaps.reduce((a, s) => a + (s.groupHours || 0), 0);
+      // A group session counts once for the supervisor, not once per trainee.
+      const delivered = supervisorTotals[sup.id];
+      const totalInd = delivered?.individual ?? 0;
+      const totalGrp = delivered?.group ?? 0;
       return {
         المشرف: sup.name,
         الإيميل: sup.email,
@@ -783,8 +783,8 @@ async function exportToExcel(
         الجوال: t.phone,
         الرخصة: t.license,
         "الساعات المطلوبة": traineeRules(t).total,
-        فردية: t.totalIndividualHours || 0,
-        جماعية: t.totalGroupHours || 0,
+        فردية: traineeSupervisionHours(t).individual,
+        جماعية: traineeSupervisionHours(t).group,
         الإجمالي: t.approvedFieldworkHours ?? t.totalHours ?? 0,
         المتبقي: traineeRules(t).total - (t.approvedFieldworkHours ?? t.totalHours ?? 0),
         "المشرف الحالي": sup?.name || "—",
@@ -802,11 +802,14 @@ export default function AdminSupervisionPanel({
   supervisors,
   initialTrainees = [],
   initialSnapshots = [],
+  supervisorTotals = {},
   visibleTabs = ["supervisors", "trainees", "onboarding", "months"],
 }: {
   supervisors: any[];
   initialTrainees?: any[];
   initialSnapshots?: any[];
+  /** Hours each supervisor delivered this month, a group session counted once. */
+  supervisorTotals?: Record<string, DeliveredHours>;
   /** Which tabs this page shows; the first one opens by default. */
   visibleTabs?: Array<"supervisors" | "trainees" | "onboarding" | "months">;
 }) {
@@ -908,7 +911,7 @@ export default function AdminSupervisionPanel({
         type,
         trainees,
         supervisors,
-        snapshots,
+        supervisorTotals,
         selectedMonth,
       );
     } finally {
@@ -1124,17 +1127,10 @@ export default function AdminSupervisionPanel({
               </thead>
               <tbody>
                 {supervisors.map((sup) => {
-                  const supSnaps = snapshots.filter(
-                    (s) => s.supervisorId === sup.id,
-                  );
-                  const totalInd = supSnaps.reduce(
-                    (a, s) => a + (s.individualHours || 0),
-                    0,
-                  );
-                  const totalGrp = supSnaps.reduce(
-                    (a, s) => a + (s.groupHours || 0),
-                    0,
-                  );
+                  // A group session counts once for the supervisor, not once per trainee.
+                  const delivered = supervisorTotals[sup.id];
+                  const totalInd = delivered?.individual ?? 0;
+                  const totalGrp = delivered?.group ?? 0;
                   const traineeCount = trainees.filter(
                     (t) =>
                       t.currentSupervisorId === sup.id && t.status === "active",
@@ -1287,7 +1283,7 @@ export default function AdminSupervisionPanel({
                       (s) => s.id === t.currentSupervisorId,
                     );
                     const targetHours = traineeRules(t).supervisionTarget;
-                    const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
+                    const approvedHours = traineeSupervisionHours(t).total;
                     const pct = Math.min(
                       Math.round((approvedHours / targetHours) * 100),
                       100,
@@ -1357,7 +1353,7 @@ export default function AdminSupervisionPanel({
                             fontWeight: 500,
                           }}
                         >
-                          {t.totalIndividualHours || 0}
+                          {traineeSupervisionHours(t).individual}
                         </td>
                         <td
                           style={{
@@ -1366,7 +1362,7 @@ export default function AdminSupervisionPanel({
                             fontWeight: 500,
                           }}
                         >
-                          {t.totalGroupHours || 0}
+                          {traineeSupervisionHours(t).group}
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div

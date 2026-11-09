@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   );
   if (
     !check ||
-    check.fieldwork > result.rules.monthlyMax ||
+    check.overMonthlyMax ||
     !check.meetsGroupLimit
   )
     return NextResponse.json(
@@ -105,14 +105,15 @@ export async function POST(req: NextRequest) {
       { error: "SESSION_DISPUTED", count: disputed.length },
       { status: 409 },
     );
-  const incompleteHours = check.fieldwork < result.rules.monthlyMin;
+  // The 20–140 band applies to the independent hours (official monthly log).
+  const incompleteHours = check.underMonthlyMin;
   const warnings = [
     ...(incompleteHours ? ["الساعات أقل من الحد الأدنى الشهري."] : []),
     ...(!check.meetsSupervision ? ["ساعات الإشراف أقل من النسبة الشهرية المطلوبة."] : []),
     ...(!hasRequiredIndividualContact ? ["لم يكتمل الاتصال الفردي المطلوب لمدة ساعة."] : []),
   ];
   if (warnings.length && allowIncompleteHours !== true)
-    return NextResponse.json({ error: "MONTH_HOURS_INCOMPLETE", actualHours: check.fieldwork,
+    return NextResponse.json({ error: "MONTH_HOURS_INCOMPLETE", actualHours: check.bandHours,
       minimumHours: result.rules.monthlyMin, warnings }, { status: 409 });
   const now = new Date().toISOString();
   const record = {
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
         supervisorApprovedAt: now,
         supervisorName: supervisor.name,
         monthlyMinimumException: incompleteHours ? {
-          confirmedBy: supervisor.id, confirmedAt: now, actualHours: check.fieldwork,
+          confirmedBy: supervisor.id, confirmedAt: now, actualHours: check.bandHours,
           minimumHours: result.rules.monthlyMin,
           note: "اعتماد الساعات الفعلية رغم عدم بلوغ الحد الأدنى الشهري؛ لا يُعد استيفاءً للحد الأدنى.",
         } : null,

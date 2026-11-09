@@ -188,7 +188,7 @@ export default function TraineeFieldworkDashboard({
     .reduce((total: number, session: any) => total + Number(session.duration || 0), 0);
   const monthSupervision = Math.max(monthActivitySupervision, monthSessionSupervision);
   const monthGroup = Math.max(monthActivityGroup, monthSessionGroup);
-  // Supervision hours count inside the month total (QABA decision, 2026-11-02).
+  // Total includes supervision; the 5% and the 20–140 band use the independent hours (official QABA monthly log).
   const monthHours = monthFieldwork + monthSupervision;
   const monthPeriod = evaluatePeriod({ total: monthHours, supervision: monthSupervision, group: monthGroup }, pathway);
   const monthSupervisionPct = monthPeriod.supervisionRate * 100;
@@ -441,7 +441,7 @@ export default function TraineeFieldworkDashboard({
               <br />
               مسارك: {pathway.label} · {requiredHours} ساعة خبرة ميدانية ·{" "}
               {supervisionTargetHours} ساعة إشراف
-              {pathway.credential === "QBA" && pathway.contractDateMissing && " · تاريخ العقد غير مسجّل بعد، فيُعتمد متطلب 2000 ساعة"}
+              {pathway.credential === "QBA" && pathway.contractDateMissing && " · تاريخ بدء الميدان غير مسجّل بعد، فيُعتمد متطلب 2000 ساعة"}
             </div>
             <button className="primary" disabled={!trainee.currentSupervisorId} style={{opacity:trainee.currentSupervisorId ? 1 : .5,cursor:trainee.currentSupervisorId ? "pointer" : "not-allowed"}} onClick={() => trainee.currentSupervisorId && setOpen(true)}>
               ＋ إضافة ساعات جديدة
@@ -640,7 +640,7 @@ export default function TraineeFieldworkDashboard({
                 <ComplianceItem
                   ok={monthPeriod.validHoursBand}
                   title="ساعات الشهر"
-                  value={`${monthHours.toFixed(1)} ساعة (منها ${monthSupervision.toFixed(1)} إشراف) من النطاق الشهري ${pathway.monthlyMin}–${pathway.monthlyMax} ساعة`}
+                  value={`${monthPeriod.independent.toFixed(1)} ساعة عمل مستقل (+ ${monthSupervision.toFixed(1)} إشراف) من النطاق الشهري ${pathway.monthlyMin}–${pathway.monthlyMax} ساعة`}
                 />
                 <ComplianceItem
                   ok={monthPeriod.meetsSupervision}
