@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
     ledger,
     trainee.license || "QASP-S",
     await contractDateForTrainee(traineeId, trainee),
+    { fieldworkStartDate: trainee.fieldworkStartDate, completed: trainee.status === "completed" },
   );
   const check = result.months.find((m) => m.month === month);
   const hasRequiredIndividualContact = activities.some((activity) =>

@@ -57,11 +57,12 @@ export function contractDateFor(trainee: { contractSignedAt?: unknown } | null |
 
 /** Rules for one trainee record (license + contract date). */
 export function traineeRules(
-  trainee: { license?: string; contractSignedAt?: unknown; fieldworkStartedAt?: unknown; status?: string } | null | undefined,
+  trainee: { license?: string; contractSignedAt?: unknown; fieldworkStartDate?: unknown; fieldworkStartedAt?: unknown; status?: string } | null | undefined,
   agreement?: { signedAt?: unknown } | null,
   options: { today?: string } = {},
 ) {
-  const fieldworkStart = validDate(trainee?.fieldworkStartedAt);
+  // The recorded fieldwork start date first, then the first approved hour.
+  const fieldworkStart = validDate(trainee?.fieldworkStartDate) || validDate(trainee?.fieldworkStartedAt);
   const start = fieldworkStart || contractDateFor(trainee, agreement);
   return credentialRules(trainee?.license || "QASP-S", start, {
     today: options.today,
@@ -149,12 +150,13 @@ export function buildCompliance(
   activities: FieldworkActivity[],
   credential: QabaCredential | string,
   contractSignedAt?: string | null,
-  options: { today?: string; completed?: boolean } = {},
+  options: { today?: string; completed?: boolean; fieldworkStartDate?: string | null } = {},
 ) {
-  const fieldworkStart = fieldworkStartDate(activities);
+  const fieldworkStart = validDate(options.fieldworkStartDate) || fieldworkStartDate(activities);
   const start = fieldworkStart || validDate(contractSignedAt);
   const rules = credentialRules(credential, start, {
-    ...options,
+    today: options.today,
+    completed: options.completed,
     startDateSource: fieldworkStart ? "fieldwork" : start ? "contract" : null,
   });
   const approved = approvedHourRows(activities);

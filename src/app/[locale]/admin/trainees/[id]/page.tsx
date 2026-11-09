@@ -150,7 +150,7 @@ export default async function TraineeFilePage({
     ["رقم الجوال", trainee.phone, "☎"],
     ["الرخصة المهنية", trainee.license, "◈"],
     ["تاريخ توقيع العقد", contractDate ? dateOnly(contractDate) : "غير مسجّل", "✎"],
-    ["بدء الميدان", rules.startDate ? `${dateOnly(rules.startDate)}${rules.startDateSource === "fieldwork" ? " (أول ساعة معتمدة)" : " (من تاريخ العقد)"}` : "غير مسجّل", "◷"],
+    ["بدء الميدان", rules.startDate ? `${dateOnly(rules.startDate)}${rules.startDateSource === "fieldwork" ? " (من سجل الميدان)" : " (من تاريخ العقد)"}` : "غير مسجّل", "◷"],
     ["المتطلب حسب QABA", `${rules.total} ساعة (غير مباشر ${rules.minIndirect}+، مباشر ${rules.maxDirect} كحد أعلى)${rules.credential === "QBA" && rules.contractDateMissing ? " · مؤقت حتى تسجيل أول ساعة أو تاريخ العقد" : ""}${rules.legacyDeadline ? ` · يجب الإكمال قبل ${dateOnly(rules.legacyDeadline)} وإلا يصبح المتطلب 2000 ساعة` : ""}${rules.legacyExpired ? " · انتهت مهلة متطلب 1500 ساعة" : ""}`, "◇"],
   ];
   const enrollmentDetails = [

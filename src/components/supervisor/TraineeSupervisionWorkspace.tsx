@@ -136,6 +136,7 @@ export default function TraineeSupervisionWorkspace({
         data?.activities || [],
         trainee?.license || "QASP-S",
         contractDateFor(trainee, data?.agreement),
+        { fieldworkStartDate: trainee?.fieldworkStartDate, completed: trainee?.status === "completed" },
       ),
     [data?.activities, data?.agreement, trainee],
   );

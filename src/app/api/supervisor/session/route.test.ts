@@ -60,6 +60,11 @@ function setupDocuments(
       }
       return refs.get(path)!;
     },
+    // Same-day lookup for duplicate sessions: none exist in these tests.
+    where: () => {
+      const query = { where: () => query, get: async () => ({ docs: [] }) };
+      return query;
+    },
   }));
 
   const updates: Array<{ path: string; data: Record<string, unknown> }> = [];
@@ -151,6 +156,47 @@ describe("DELETE /api/supervisor/session", () => {
     expect(updates.filter((item) => item.path.startsWith("fieldworkActivities/")).map((item) => item.data))
       .toEqual([expect.objectContaining({ traineeId: "trainee-1", duration: 1.5, format: "individual", status: "approved", supervisionSource: "supervisor_session" })]);
     expect(updates.some((item) => item.path.startsWith("sessions/"))).toBe(true);
+  });
+
+  it("rejects a session dated before the trainee's coursework or contract start (QABA)", async () => {
+    const { updates } = setupDocuments({}, {}, { currentSupervisorId: "supervisor-1", courseworkStartDate: "2026-01-01", fieldworkStartDate: "2026-10-01" });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("BEFORE_FIELDWORK_START");
+    expect(updates).toEqual([]);
+  });
+
+  it("rejects a session after the supervisor's credential expired (QABA)", async () => {
+    mocks.getAuthenticatedSupervisor.mockResolvedValue({ id: "supervisor-1", credentialExpiresAt: "2026-09-01" });
+    const { updates } = setupDocuments({}, {}, { currentSupervisorId: "supervisor-1" });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("SUPERVISOR_CREDENTIAL_EXPIRED");
+    expect(updates).toEqual([]);
+  });
+
+  it("rejects the same session logged twice", async () => {
+    const { updates } = setupDocuments({}, {}, { currentSupervisorId: "supervisor-1" });
+    const original = mocks.collection.getMockImplementation()!;
+    mocks.collection.mockImplementation((name: string) => {
+      const collection = original(name);
+      if (name !== "sessions") return collection;
+      const query = { where: () => query, get: async () => ({ docs: [{ data: () => ({ type: "individual", duration: 1, traineeIds: ["trainee-1"] }) }] }) };
+      return { ...collection, where: () => query };
+    });
+    const response = await POST(new Request("http://localhost/api/supervisor/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "individual", date: "2026-09-20", duration: 1, traineeIds: ["trainee-1"] }),
+    }) as never);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toBe("DUPLICATE_SESSION");
+    expect(updates).toEqual([]);
   });
 
   it.each(["individual", "group", "absence", "warning"])(

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   if (reconciliation.docs.some(d => String(d.data().candidate?.date || "").slice(0, 7) === body.month))
     return NextResponse.json({ error: "PENDING_RECONCILIATION" }, { status: 409 });
   const activities = await getTraineeActivityLedger(traineeId);
-  const compliance = buildCompliance(activities, trainee.license || "QASP-S", await contractDateForTrainee(traineeId, trainee));
+  const compliance = buildCompliance(activities, trainee.license || "QASP-S", await contractDateForTrainee(traineeId, trainee), { fieldworkStartDate: trainee.fieldworkStartDate, completed: trainee.status === "completed" });
   const summary = compliance.months.find((item) => item.month === body.month);
   if (!summary) return NextResponse.json({ error: "NO_APPROVED_HOURS" }, { status: 409 });
   const now = new Date().toISOString();

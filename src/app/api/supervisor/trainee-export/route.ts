@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
     activities,
     trainee.license || "QASP-S",
     await contractDateForTrainee(traineeId, trainee),
+    { fieldworkStartDate: trainee.fieldworkStartDate, completed: trainee.status === "completed" },
   );
 
   const wb = new ExcelJS.Workbook();

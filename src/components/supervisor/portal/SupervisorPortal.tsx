@@ -218,7 +218,7 @@ export default function SupervisorPortal(props: Props) {
               body: JSON.stringify(data),
             });
             const result = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(result.error || "حدث خطأ");
+            if (!res.ok) throw new Error(result.message || result.error || "حدث خطأ");
             window.location.reload();
           }}
         />

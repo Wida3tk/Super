@@ -283,7 +283,7 @@ export default function TraineeFieldworkDashboard({
         INVALID_DURATION: "تحقق من وقت البداية والنهاية.",
         SUPERVISION_DETAILS_REQUIRED: "أكمل بيانات جلسة الإشراف.",
       };
-      setError(messages[data.error] || "تعذر حفظ النشاط، تحقق من البيانات.");
+      setError(messages[data.error] || data.message || "تعذر حفظ النشاط، تحقق من البيانات.");
       setSaving(false);
       return;
     }
