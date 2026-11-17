@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ChatThread } from "@/components/messages/Chat";
 import LogoutButton from "@/components/LogoutButton";
 import SupervisionProgress from "./SupervisionProgress";
 import TraineeWelcome from "./TraineeWelcome";
@@ -61,6 +62,9 @@ export default function TraineePreAssignmentPortal({ trainee, booking, locale, t
           <p style={{color:"#64748B",lineHeight:1.8}}>{decision === "continue" ? "ستظهر لوحة الإشراف الكاملة بعد أن تعتمد الإدارة إسنادك للمشرف." : "يمكنك العودة لاختيار مشرف آخر وحجز مقابلة جديدة."}</p>
           {decision === "decline" && <Link href={`/${locale}#supervisors`} style={{color:"#0D40FC",fontWeight:800}}>اختيار مشرف آخر</Link>}
         </>}
+      </section>
+      <section style={{maxWidth:720,margin:"24px auto 0"}} aria-label="محادثة الإدارة">
+        <ChatThread compact as="trainee" id={`at__${trainee.id}`} title="الإدارة" subtitle="لأي استفسار عن التسجيل أو المقابلة" />
       </section>
     </main>
   );
