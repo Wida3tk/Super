@@ -1,6 +1,7 @@
 import { adminDb } from "@/lib/firebase/admin";
 import { getAuthenticatedSupervisor } from "@/lib/auth/serverAuth";
 import { redirect } from "next/navigation";
+import { traineeRules } from "@/lib/qaba/compliance";
 import { withContractDates } from "@/lib/qaba/contractDates";
 import { buildMonthCycle } from "@/lib/admin/controlRoom";
 import SupervisorPortal from "@/components/supervisor/portal/SupervisorPortal";
@@ -131,6 +132,19 @@ export default async function SupervisorDashboardPage({ params, searchParams }: 
   };
   const query = await searchParams;
   // Sessions from the supervisor's workbook that the admin imported without a usable date.
+  // Graduates stay linked to their supervisor; they are listed apart from current trainees.
+  const graduatesSnap = await adminDb.collection("trainees").where("currentSupervisorId", "==", supervisor.id).where("status", "==", "completed").get();
+  const graduates = (await withContractDates(graduatesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as any)))
+    .map((t: any) => ({
+      id: t.id,
+      name: String(t.name || ""),
+      license: String(t.license || "QASP-S"),
+      hours: Math.round(Number(t.approvedFieldworkHours || 0) * 10) / 10,
+      required: traineeRules(t).total,
+      supervision: Math.round((Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0)) * 10) / 10,
+      completedAt: String(t.lifecycleStageChangedAt || "").slice(0, 10) || null,
+    }))
+    .sort((a, b) => String(b.completedAt || "").localeCompare(String(a.completedAt || "")) || a.name.localeCompare(b.name, "ar"));
   const gapsSnap = await adminDb.collection("importGaps").where("supervisorId", "==", supervisor.id).where("status", "==", "open").limit(300).get();
   const importGaps = gapsSnap.docs.map((doc) => {
     const g = doc.data();
@@ -149,6 +163,7 @@ export default async function SupervisorDashboardPage({ params, searchParams }: 
       pendingActivities={fieldworkActivities}
       approvedActivities={approvedActivities}
       importGaps={importGaps}
+      graduates={graduates}
       cycles={JSON.parse(JSON.stringify(cycles))}
       currentMonth={currentMonth}
       previousMonth={previousMonth}

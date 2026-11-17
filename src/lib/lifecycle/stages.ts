@@ -18,7 +18,7 @@ export const LIFECYCLE_STAGES: Array<{
   { key: "completed", label: "مرحلة الإنهاء والإكمال", short: "الإنهاء والإكمال", color: "#0F766E" },
 ];
 
-// نفس منطق استنتاج المرحلة المستخدم في لوحة الإدارة (TraineeLifecyclePanel) — يبقي العدّ متطابقًا بين اللوحتين.
+// نفس منطق استنتاج المرحلة المستخدم في لوحة الإدارة (قائمة المتدربين) — يبقي العدّ متطابقًا بين اللوحتين.
 export function resolveLifecycleStage(trainee: any): TraineeLifecycleStage {
   if (trainee?.lifecycleStage) return trainee.lifecycleStage;
   if (trainee?.status === "active") return "active_service";

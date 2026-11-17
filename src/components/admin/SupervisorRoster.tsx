@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { STANDINGS, type OpenSession, type SupervisorHours, type TraineeStanding } from "@/lib/admin/supervisorRoster";
 import "@/styles/admin-today.css";
@@ -37,7 +37,7 @@ function lastLogText(item: TraineeStanding) {
   return `منذ ${item.daysSinceLog} يوم`;
 }
 
-export function StandingTable({ rows, locale }: { rows: TraineeStanding[]; locale: string }) {
+export function StandingTable({ rows, locale, action }: { rows: TraineeStanding[]; locale: string; action?: (item: TraineeStanding) => ReactNode }) {
   return (
     <div className="sk-table-wrap">
       <table className="sk-table rs-table">
@@ -49,6 +49,7 @@ export function StandingTable({ rows, locale }: { rows: TraineeStanding[]; local
             <th scope="col">المتبقي</th>
             <th scope="col">الإنهاء المتوقع</th>
             <th scope="col">آخر تسجيل ساعات</th>
+            {action && <th scope="col"><span className="rs-sr">إجراء</span></th>}
           </tr>
         </thead>
         <tbody>
@@ -76,6 +77,7 @@ export function StandingTable({ rows, locale }: { rows: TraineeStanding[]; local
                 {lastLogText(item)}
                 {item.lastLogged && <small className="rs-sub" dir="ltr">{item.lastLogged}</small>}
               </td>
+              {action && <td className="rs-action">{action(item)}</td>}
             </tr>
           ))}
         </tbody>

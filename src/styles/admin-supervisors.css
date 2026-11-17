@@ -155,3 +155,13 @@
 .sv .ops-grid > * { min-width: 0; }
 .sv .seat-row input, .sv .ops-field input { min-width: 0; width: 100%; }
 @media (max-width: 800px) { .sv .ops-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Graduates: a count on the card that opens the file's «المتخرجون» tab. */
+.sv-card-stats > .sv-card-grads { display: grid; justify-items: center; align-content: center; gap: 4px; padding: 10px 6px; font-size: 11px; color: #0f8a5f; text-align: center; text-decoration: none; border-inline-start: 1px solid var(--sk-line-2); border-radius: 0; }
+.sv-card-stats > .sv-card-grads:hover { background: #ecfdf5; }
+.sv-card-stats > .sv-card-grads:focus-visible { outline: 2px solid #55d7ff; outline-offset: -2px; }
+button.sv-kpi { font: inherit; text-align: start; color: inherit; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+button.sv-kpi:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -16px var(--k); }
+button.sv-kpi:focus-visible { outline: 2px solid #55d7ff; outline-offset: 2px; }
+.sv-tabs em.is-calm { background: #dcfce7; color: #0f766e; }
+@media (prefers-reduced-motion: reduce) { button.sv-kpi { transition: none; } button.sv-kpi:hover { transform: none; } }

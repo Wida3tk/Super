@@ -6,11 +6,11 @@ import { readDirectoryTransitions } from '@/lib/lifecycle/readTransitions';
 import { withContractDates } from "@/lib/qaba/contractDates";
 import { buildRoster, monthStart } from '@/lib/admin/supervisorRoster';
 
-interface Props { params: Promise<{ locale: string }>; searchParams: Promise<{ view?: string; supervisor?: string }>; }
+interface Props { params: Promise<{ locale: string }>; searchParams: Promise<{ view?: string; supervisor?: string; scope?: string }>; }
 
 export default async function TraineesPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { view, supervisor } = await searchParams;
+  const { view, supervisor, scope } = await searchParams;
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__session')?.value;
   if (!sessionCookie) redirect(`/${locale}/login?portal=admin`);
@@ -37,7 +37,7 @@ export default async function TraineesPage({ params, searchParams }: Props) {
     });
     return (
       <AdminPageLayout locale={locale} title="المتدربون">
-        <TraineeManagementWorkspace locale={locale} initialView={view === 'add' ? 'add' : view === 'import' ? 'import' : 'manage'} supervisors={supervisors} trainees={trainees} transitions={transitions} initialSupervisor={supervisor || null} standings={JSON.parse(JSON.stringify(standings))} />
+        <TraineeManagementWorkspace locale={locale} initialView={view === 'add' ? 'add' : view === 'import' ? 'import' : 'manage'} supervisors={supervisors} trainees={trainees} transitions={transitions} initialSupervisor={supervisor || null} initialScope={scope === 'graduates' || scope === 'onboarding' || scope === 'all' ? scope : 'serving'} standings={JSON.parse(JSON.stringify(standings))} />
       </AdminPageLayout>
     );
   } catch (error) {

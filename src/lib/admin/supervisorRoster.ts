@@ -61,6 +61,8 @@ export interface TraineeStanding {
   license: string;
   supervisorId: string;
   completed: boolean;
+  /** The day the trainee was marked as graduated, when known. */
+  completedAt: string | null;
   /** In active service (or approved pause): the trainees a supervisor is serving. */
   serving: boolean;
   paused: boolean;
@@ -127,6 +129,7 @@ export function traineeStanding(trainee: Trainee, rows: Row[], today: string, wi
     license: trainee.license || "QASP-S",
     supervisorId: trainee.currentSupervisorId || "",
     completed,
+    completedAt: completed ? day(trainee.lifecycleStageChangedAt) || null : null,
     serving,
     paused,
     standing,
