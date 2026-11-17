@@ -276,10 +276,25 @@ export async function PATCH(req: NextRequest) {
         { error: "INVALID_ONBOARDING_STAGE" },
         { status: 400 },
       );
+    const now = new Date().toISOString();
+    const before = await ref.get();
+    const previous = before.data() || {};
     await ref.update({
       onboardingStage: data.stage,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
+    // A declined or reopened application is part of the monthly movement report.
+    if (data.stage === "interview_declined" || (previous.onboardingStage === "interview_declined" && data.stage !== "interview_declined")) {
+      await adminDb.collection("traineeLifecycleTransitions").add({
+        traineeId,
+        fromStage: previous.onboardingStage === "interview_declined" ? "interview_declined" : String(previous.lifecycleStage || previous.onboardingStage || "post_interview"),
+        toStage: data.stage === "interview_declined" ? "interview_declined" : String(previous.lifecycleStage || "post_interview"),
+        reason: String(data.reason || (data.stage === "interview_declined" ? "لم يتم الاتفاق بعد المقابلة" : "إعادة فتح الطلب")).slice(0, 500),
+        changedAt: now,
+        changedMonth: now.slice(0, 7),
+        changedBy: "admin",
+      });
+    }
   } else if (action === "assign") {
     const traineeBefore = await ref.get();
     if (!traineeBefore.exists)

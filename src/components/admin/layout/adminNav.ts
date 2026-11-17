@@ -34,9 +34,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     color: "#0b8f7a",
     tabs: [
       { path: "/trainees", label: "قائمة المتدربين" },
-      { path: "/onboarding", label: "طلبات التسجيل" },
-      { path: "/assignment", label: "الإسناد والتعاقد" },
+      { path: "/onboarding", label: "الانضمام" },
       { path: "/trainee-requests", label: "طلبات المتدربين" },
+      { path: "/assignment", label: "الإسناد والتعاقد" },
       { path: "/accounts", label: "حسابات المسجلين" },
     ],
     match: ["/import"],

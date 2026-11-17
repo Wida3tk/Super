@@ -194,7 +194,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
   const queue = [
     { label: "اعتراضات على جلسات إشراف", hint: disputedSessions.length ? `${disputedTrainees} متدرب اعترض على جلسات سجّلها المشرف` : "المتدربون يُقرّون بالجلسات التي يسجلها المشرف", count: disputedSessions.length, href: cycleHref({ alert: "session_disputed", stage: null }), tone: "danger", icon: "alert" },
     { label: "طلبات تسجيل جديدة", hint: "سجّلوا من الموقع وتنتظر بدء المقابلة", count: newRegistrations.length, href: `${base}/onboarding`, tone: "info", icon: "inbox" },
-    { label: "جاهزون للإسناد", hint: "أكملوا مرحلة التعاقد", count: readyToAssign.length, href: `${base}/assignment`, tone: "info", icon: "target" },
+    { label: "جاهزون للإسناد", hint: "أكملوا مرحلة التعاقد", count: readyToAssign.length, href: `${base}/onboarding`, tone: "info", icon: "target" },
     { label: "طلبات متدربين بانتظار القرار", hint: "تأجيل، نقل، مستندات وغيرها", count: pendingRequestsSnap.data().count, href: `${base}/trainee-requests`, tone: "warning", icon: "file" },
     { label: "متدربون في خطر", hint: "3 غيابات أو أكثر هذا الشهر", count: atRisk.length, href: `${base}/trainees`, tone: "danger", icon: "alert" },
     { label: "سجلات بانتظار مراجعة المشرفين", hint: staleReviews ? `${staleReviews} مشرف لديه سجلات أقدم من 7 أيام` : "ساعات أرسلها المتدربون ولم تُراجع", count: pendingReviews, href: "#backlog", tone: staleReviews ? "danger" : "warning", icon: "clock" },
