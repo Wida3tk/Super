@@ -14,6 +14,8 @@ export interface BoardTrainee {
   /** Initial interviews booked (not cancelled), oldest first, and how many the trainee may have. */
   interviews: { supervisorId: string; date: string; state: string }[];
   allowance: number;
+  /** The latest interview was missed: it is rescheduled and does not count. */
+  reschedule: boolean;
 }
 type Supervisor = { id: string; name: string; active: boolean; consultant: boolean; seats: number };
 
@@ -147,6 +149,7 @@ export default function OnboardingBoard({ locale, trainees, supervisors, months,
                         {card.license && <span className="ob-tag">{card.license}</span>}
                         {days !== null && <span className={`ob-tag${stale ? " is-stale" : ""}`}>{days === 0 ? "اليوم" : `منذ ${days} يوم`}</span>}
                         {card.interviews.length > 0 && <span className={`ob-tag${card.interviews.length >= card.allowance ? " is-full" : " is-count"}`} title={card.interviews.map((i, n) => `المقابلة ${n + 1}: ${supName.get(i.supervisorId) || "مشرف"} ${i.date}`).join(" · ")}>مقابلة {card.interviews.length} من {card.allowance}</span>}
+                        {card.reschedule && <span className="ob-tag is-stale" title="غاب عن المقابلة، ولا تُحسب من المقابلتين">غاب: يحتاج إعادة جدولة</span>}
                         {card.onboardingStage === "admin_review" && <span className="ob-tag is-review">مراجعة الإدارة</span>}
                         {card.onboardingStage === "ready_assignment" && <span className="ob-tag is-ready">جاهز للإسناد</span>}
                       </div>

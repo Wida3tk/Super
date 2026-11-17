@@ -54,8 +54,10 @@ it("refuses a third initial interview unless the administration allowed one more
   expect((await createBooking(payload)).success).toBe(true);
 });
 
-it("gives back a cancelled interview and never limits consultations", async () => {
+it("gives back a cancelled or missed interview and never limits consultations", async () => {
   mock.bookings = [held(), held({ status: "cancelled" })];
+  expect((await createBooking(payload)).success).toBe(true);
+  mock.bookings = [held(), held({ status: "confirmed", meetingStatus: "missed" })];
   expect((await createBooking(payload)).success).toBe(true);
   mock.bookings = [held(), held()];
   expect((await createBooking({ ...payload, bookingType: "consultation", consultationType: "x" })).success).toBe(true);
