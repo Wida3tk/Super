@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import TraineeLifecyclePanel from "./TraineeLifecyclePanel";
 import LegacyImportClient from "./LegacyImportClient";
 import { directoryState } from "@/lib/lifecycle/directory";
+import UiIcon from "@/components/ui/UiIcon";
+import type { TraineeStanding } from "@/lib/admin/supervisorRoster";
+import "@/styles/admin-trainees.css";
 
 type View = "manage" | "add" | "import";
 
@@ -15,6 +18,7 @@ export default function TraineeManagementWorkspace({
   supervisors,
   transitions,
   initialSupervisor,
+  standings = [],
 }: {
   locale: string;
   initialView: View;
@@ -22,6 +26,7 @@ export default function TraineeManagementWorkspace({
   supervisors: any[];
   transitions: any[];
   initialSupervisor: string | null;
+  standings?: TraineeStanding[];
 }) {
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
@@ -45,6 +50,23 @@ export default function TraineeManagementWorkspace({
       "",
       `/${locale}/admin/trainees${next === "manage" ? "" : `?view=${next}`}`,
     );
+  }
+
+  const count = (key: string) => standings.filter((t) => t.standing === key && !t.paused).length;
+  function exportList() {
+    const byId = new Map(standings.map((t) => [t.traineeId, t]));
+    const names = new Map(supervisors.map((s) => [s.id, s.name]));
+    const rows = [["الاسم", "البريد", "الجوال", "الرخصة", "المشرف", "المرحلة", "الساعات المعتمدة", "المطلوب", "المتبقي", "آخر تسجيل ساعات", "الحالة"], ...trainees.map((t) => {
+      const s = byId.get(t.id);
+      return [t.name, t.email, t.phone, t.license, names.get(t.currentSupervisorId) || "", directoryState(t).main.label, s?.hours ?? "", s?.required ?? "", s?.remaining ?? "", s?.lastLogged || "", s?.standing ? ({ near_finish: "قريب من الإنهاء", inactive: "منقطع", watch: "تحت المراقبة", new: "بداية الإشراف", on_track: "على المسار" } as Record<string, string>)[s.standing] : ""];
+    })];
+    const csv = "\ufeff" + rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `المتدربون-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async function addTrainee(event: React.FormEvent) {
@@ -93,62 +115,36 @@ export default function TraineeManagementWorkspace({
   return (
     <div dir="rtl">
       <style>{css}</style>
-      <section className="tm-hero">
-        <div>
-          <span>مركز إدارة الإشراف</span>
-          <h2>إدارة المتدربين</h2>
-          <p>
-            متابعة الملفات، إسناد المشرفين، وإدارة الساعات والحالات من مكان واحد.
-          </p>
+      <section className="tw-head">
+        <div className="tw-head-top">
+          <div>
+            <h2>المتدربون</h2>
+            <p>كل المتدربين في قائمة واحدة: من يحتاج متابعة أولًا، ثم الباقون. اضغط على الاسم لفتح ملفه.</p>
+          </div>
+          <div className="tw-head-actions">
+            <button type="button" className="tw-btn" onClick={exportList}><UiIcon name="download" size={16} /> تصدير القائمة</button>
+            <button type="button" className="tw-btn" aria-pressed={view === "import"} onClick={() => open(view === "import" ? "manage" : "import")}><UiIcon name="upload" size={16} /> استيراد ملف متدرب</button>
+            <button type="button" className="tw-btn is-primary" aria-pressed={view === "add"} onClick={() => open(view === "add" ? "manage" : "add")}><UiIcon name="plus" size={16} /> إضافة متدرب</button>
+          </div>
         </div>
-        <div className="tm-stats">
-          <div>
-            <b>{trainees.length}</b>
-            <small>إجمالي المتدربين</small>
-          </div>
-          <div>
-            <b>
-              {
-                trainees.filter(
-                  (t) =>
-                    directoryState(t).stage === "active_service",
-                ).length
-              }
-            </b>
-            <small>بالإشراف حاليًا</small>
-          </div>
-          <div>
-            <b>{trainees.filter((t) => directoryState(t).completed).length}</b>
-            <small>مكتملون</small>
-          </div>
+        <div className="tw-stats">
+          <div><span>بالإشراف حاليًا</span><b>{trainees.filter((t) => directoryState(t).stage === "active_service").length}</b><small>من {trainees.length} متدرب</small></div>
+          <div><span>قريبون من الإنهاء</span><b>{count("near_finish")}</b><small>بقي أقل من 20% أو 3 أشهر</small></div>
+          <div className={count("inactive") ? "is-alert" : ""}><span>منقطعون</span><b>{count("inactive")}</b><small>لا ساعات منذ 14 يومًا</small></div>
+          <div><span>قيد الانضمام</span><b>{trainees.filter((t) => t.status === "onboarding").length}</b><small>تسجيل، مقابلة، تعاقد</small></div>
+          <div><span>مكتملون</span><b>{trainees.filter((t) => directoryState(t).completed).length}</b><small>أنهوا الإشراف</small></div>
         </div>
       </section>
-      <nav className="tm-tabs" aria-label="إدارة المتدربين">
-        <button
-          className={view === "manage" ? "active" : ""}
-          onClick={() => open("manage")}
-        >
-          إدارة المتدربين
-        </button>
-        <button
-          className={view === "add" ? "active" : ""}
-          onClick={() => open("add")}
-        >
-          ＋ إضافة متدرب
-        </button>
-        <button
-          className={view === "import" ? "active" : ""}
-          onClick={() => open("import")}
-        >
-          ⇧ استيراد ملف متدرب
-        </button>
-      </nav>
+      {view !== "manage" && (
+        <button type="button" className="tw-back" onClick={() => open("manage")}><UiIcon name="arrowLeft" size={15} style={{ transform: "scaleX(-1)" }} /> قائمة المتدربين</button>
+      )}
       {view === "manage" && (
         <TraineeLifecyclePanel
           supervisors={supervisors}
           trainees={trainees}
           transitions={transitions}
           initialSupervisor={selected}
+          standings={standings}
         />
       )}
       {view === "add" && (

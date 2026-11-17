@@ -1,0 +1,35 @@
+/* Admin › المتدربون: teal is the section colour. */
+.tw-head {
+  display: grid; gap: 18px; padding: 22px 24px; margin-bottom: 16px; border-radius: 20px; color: #fff;
+  background:
+    radial-gradient(60% 120% at 0% 0%, rgba(85, 215, 255, 0.25), transparent 55%),
+    linear-gradient(135deg, #0fa58b 0%, #0b8f7a 45%, #065547 100%);
+  box-shadow: 0 16px 36px -18px rgba(6, 85, 71, 0.65);
+}
+.tw-head-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tw-head h2 { margin: 0; font-size: 22px; }
+.tw-head p { margin: 4px 0 0; font-size: 13px; color: #d3f5ee; max-width: 62ch; }
+.tw-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tw-btn {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 11px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.24); background: rgba(255, 255, 255, 0.12); color: #fff;
+  font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.tw-btn:hover, .tw-btn[aria-pressed="true"] { background: rgba(255, 255, 255, 0.24); }
+.tw-btn.is-primary { background: #fff; border-color: #fff; color: #076b5b; }
+.tw-btn.is-primary:hover, .tw-btn.is-primary[aria-pressed="true"] { background: #e3f6f2; }
+.tw-btn:focus-visible, .tw-back:focus-visible { outline: 2px solid #55d7ff; outline-offset: 2px; }
+.tw-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.tw-stats > div { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.11); border: 1px solid rgba(255, 255, 255, 0.16); }
+.tw-stats > div.is-alert { background: rgba(255, 90, 95, 0.22); border-color: rgba(255, 170, 172, 0.45); }
+.tw-stats span { font-size: 12px; color: #d3f5ee; }
+.tw-stats b { font-size: 28px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tw-stats small { font-size: 11.5px; color: #b5ebdf; }
+.tw-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--sk-muted, #6b7a92); }
+.tw-back:hover { color: #0b8f7a; }
+@media (max-width: 1100px) { .tw-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .tw-head { padding: 18px 16px; }
+  .tw-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tw-head-actions, .tw-head-actions .tw-btn { width: 100%; justify-content: center; }
+}
