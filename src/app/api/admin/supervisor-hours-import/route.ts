@@ -68,7 +68,7 @@ function readCorrections(value: FormDataEntryValue | null, today: string): Corre
 const text = (value: ExcelJS.CellValue) => {
   value = scalarCellValue(value) as ExcelJS.CellValue;
   if (value == null) return "";
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : "";
   if (typeof value === "object") {
     if ("result" in value) return text(value.result as ExcelJS.CellValue);
     if ("text" in value) return String(value.text || "").trim();
