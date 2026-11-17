@@ -47,7 +47,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, remindersSent: sent });
+    // Trainees who stopped logging their hours, and months ending short.
+    let loggingRemindersSent = 0;
+    try {
+      const { runLoggingReminders } = await import('@/lib/reminders/runLoggingReminders');
+      loggingRemindersSent = (await runLoggingReminders()).sent;
+    } catch (e) {
+      console.error('Logging reminders failed:', e);
+    }
+
+    return NextResponse.json({ success: true, remindersSent: sent, loggingRemindersSent });
   } catch (error) {
     console.error('Reminder cron failed:', error);
     return NextResponse.json({ error: 'REMINDER_JOB_FAILED' }, { status: 500 });
