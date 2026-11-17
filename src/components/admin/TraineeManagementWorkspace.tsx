@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TraineeLifecyclePanel from "./TraineeLifecyclePanel";
 import LegacyImportClient from "./LegacyImportClient";
 import { directoryState } from "@/lib/lifecycle/directory";
-import { SupervisorBoard, SupervisorDetail } from "./SupervisorRoster";
-import type { SupervisorCard, TraineeStanding } from "@/lib/admin/supervisorRoster";
 
 type View = "manage" | "add" | "import";
 
@@ -16,8 +14,6 @@ export default function TraineeManagementWorkspace({
   trainees,
   supervisors,
   transitions,
-  roster,
-  months,
   initialSupervisor,
 }: {
   locale: string;
@@ -25,15 +21,12 @@ export default function TraineeManagementWorkspace({
   trainees: any[];
   supervisors: any[];
   transitions: any[];
-  roster: { cards: SupervisorCard[]; standings: TraineeStanding[] };
-  months: { current: string; previous: string };
   initialSupervisor: string | null;
 }) {
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
-  // null: the supervisors board; "all": the full trainee list; otherwise one supervisor.
-  const [selected, setSelected] = useState<string | null>(initialSupervisor);
-  const selectedCard = roster.cards.find((card) => card.supervisorId === selected);
+  // The supervisors board moved to «المشرفون»; ?supervisor= still filters this list.
+  const selected = initialSupervisor && supervisors.some((s) => s.id === initialSupervisor) ? initialSupervisor : undefined;
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({
@@ -52,22 +45,6 @@ export default function TraineeManagementWorkspace({
       "",
       `/${locale}/admin/trainees${next === "manage" ? "" : `?view=${next}`}`,
     );
-  }
-
-  useEffect(() => {
-    const sync = () => setSelected(new URLSearchParams(window.location.search).get("supervisor"));
-    window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
-  }, []);
-
-  function choose(supervisorId: string | null) {
-    setSelected(supervisorId);
-    window.history.pushState(
-      null,
-      "",
-      `/${locale}/admin/trainees${supervisorId ? `?supervisor=${encodeURIComponent(supervisorId)}` : ""}`,
-    );
-    window.scrollTo({ top: 0 });
   }
 
   async function addTrainee(event: React.FormEvent) {
@@ -166,36 +143,13 @@ export default function TraineeManagementWorkspace({
           ⇧ استيراد ملف متدرب
         </button>
       </nav>
-      {view === "manage" && !selected && (
-        <>
-          <SupervisorBoard cards={roster.cards} standings={roster.standings} months={months} onOpen={choose} />
-          <div className="rs-section-title">
-            <h3>كل المتدربين</h3>
-            <button type="button" onClick={() => choose("all")}>القائمة الكاملة وإدارة الحالات ←</button>
-          </div>
-        </>
-      )}
-      {view === "manage" && selected && selectedCard && (
-        <SupervisorDetail card={selectedCard} standings={roster.standings} months={months} locale={locale} onBack={() => choose(null)} />
-      )}
-      {view === "manage" && selected === "all" && (
-        <button type="button" className="rs-back" style={{ marginBottom: 12 }} onClick={() => choose(null)}>→ كل المشرفين</button>
-      )}
-      {view === "manage" && selected && (
-        <>
-          {selectedCard && (
-            <div className="rs-section-title" style={{ marginBottom: 12 }}>
-              <h3>ملفات متدربي {selectedCard.name} وإدارة حالاتهم</h3>
-            </div>
-          )}
-          <TraineeLifecyclePanel
-            key={selected}
-            supervisors={supervisors}
-            trainees={trainees}
-            transitions={transitions}
-            initialSupervisor={selectedCard ? selected : undefined}
-          />
-        </>
+      {view === "manage" && (
+        <TraineeLifecyclePanel
+          supervisors={supervisors}
+          trainees={trainees}
+          transitions={transitions}
+          initialSupervisor={selected}
+        />
       )}
       {view === "add" && (
         <section className="tm-card">

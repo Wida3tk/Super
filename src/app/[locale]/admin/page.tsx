@@ -228,7 +228,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
   const hour = Number(new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Riyadh" }).format(new Date()));
   const greeting = hour < 12 ? "صباح الخير" : "مساء الخير";
   const hasCycleFilter = Boolean(stageFilter || alertFilter || cycleMonth !== currentMonth);
-  const supervisorsHref = `${base}/trainees`;
+  const supervisorsHref = `${base}/supervisors`;
 
   return (
     <AdminPageLayout locale={locale} title="الرئيسية">
@@ -293,7 +293,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
               <ul>
                 {attention.map(({ card, reasons, pending }) => (
                   <li key={card.supervisorId}>
-                    <Link href={`${base}/trainees?supervisor=${encodeURIComponent(card.supervisorId)}`}>
+                    <Link href={`${base}/supervisors?supervisor=${encodeURIComponent(card.supervisorId)}`}>
                       <span className="hm-av" aria-hidden="true">{card.name.trim().slice(0, 1)}</span>
                       <span className="hm-txt">
                         <b>{card.name}</b>
