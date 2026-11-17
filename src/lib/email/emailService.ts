@@ -268,3 +268,22 @@ export async function sendNewMessageEmail(data: { to: string; fromName: string; 
   `);
   await sendEmail(data.to, `رسالة جديدة من ${data.fromName}`, html);
 }
+
+/** A trainee has not logged hours for a while, or the month is ending short. */
+export async function sendLoggingReminderEmail(data: {
+  to: string; name: string; kind: "week" | "fortnight" | "monthEnd" | "supervisor"; days?: number; monthHours?: number; traineeName?: string;
+}): Promise<void> {
+  const name = escapeHtml(data.name);
+  const content = data.kind === "supervisor"
+    ? { subject: `متدرب لم يسجّل ساعاته منذ ${data.days} يومًا`, body: `<h2>مرحبًا ${name}</h2><p>المتدرب <strong>${escapeHtml(data.traineeName || "")}</strong> لم يسجّل أي ساعات منذ ${data.days} يومًا. نقترح التواصل معه للاطمئنان ومساعدته على الاستمرار.</p>`, path: "/ar/supervisor-dashboard?section=trainees" }
+    : data.kind === "monthEnd"
+      ? { subject: "الشهر يقترب من نهايته", body: `<h2>مرحبًا ${name}</h2><p>سجّلت هذا الشهر <strong>${data.monthHours ?? 0} ساعة</strong>، والحد الأدنى الشهري 20 ساعة. سجّل ساعاتك قبل نهاية الشهر حتى تُحتسب.</p>`, path: "/ar/trainee-dashboard" }
+      : { subject: data.kind === "week" ? "لم تسجّل ساعاتك منذ أسبوع" : "لم تسجّل ساعاتك منذ أسبوعين", body: `<h2>مرحبًا ${name}</h2><p>لم تسجّل أي ساعات منذ ${data.days} يومًا. سجّل ساعاتك أولًا بأول حتى يراجعها مشرفك وتُحتسب في رحلتك.</p>${data.kind === "fortnight" ? "<p>أبلغنا مشرفك أيضًا ليتواصل معك إن احتجت مساعدة.</p>" : ""}`, path: "/ar/trainee-dashboard" };
+  const html = baseTemplate(`
+    ${content.body}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${APP_URL}${content.path}" class="btn">${data.kind === "supervisor" ? "فتح قائمة المتدربين" : "تسجيل ساعاتي"}</a>
+    </div>
+  `);
+  await sendEmail(data.to, content.subject, html);
+}
