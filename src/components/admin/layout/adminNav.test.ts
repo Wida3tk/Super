@@ -24,7 +24,7 @@ describe("admin navigation", () => {
       "/ar/admin/productivity": "supervisors",
       "/ar/admin/import-supervisor": "supervisors",
       "/ar/admin/months": "months",
-      "/ar/admin/notifications": "notifications",
+      "/ar/admin/notifications": "system",
       "/ar/admin/messages": "messages",
       "/ar/admin/cms": "system",
       "/ar/admin/export": "system",
@@ -39,7 +39,7 @@ describe("admin navigation", () => {
     expect(location.isDetail).toBe(true);
   });
 
-  it("keeps the sidebar at seven sections (messages added 2026-11-17)", () => {
-    expect(ADMIN_SECTIONS).toHaveLength(7);
+  it("keeps the sidebar at six sections (notifications moved under settings, 2026-11-17)", () => {
+    expect(ADMIN_SECTIONS).toHaveLength(6);
   });
 });

@@ -4,11 +4,12 @@ import Link from "next/link";
 import AdminPageLayout from "@/components/admin/layout/AdminPageLayout";
 import UiIcon from "@/components/ui/UiIcon";
 import { withContractDates } from "@/lib/qaba/contractDates";
-import { exceedsGroupSupervisionLimit, traineeRules } from "@/lib/qaba/compliance";
-import { LIFECYCLE_STAGES, resolveLifecycleStage } from "@/lib/lifecycle/stages";
+import { exceedsGroupSupervisionLimit } from "@/lib/qaba/compliance";
 import { ALERTS, CYCLE_STAGES, buildMonthCycle, supervisorBacklog, type AlertKey, type CycleStage } from "@/lib/admin/controlRoom";
+import { buildRoster, monthStart } from "@/lib/admin/supervisorRoster";
 import type { FieldworkActivity } from "@/types";
 import "@/styles/admin-today.css";
+import "@/styles/admin-home.css";
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -52,9 +53,6 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
   const cycleMonth = query.month === previousMonth ? previousMonth : currentMonth;
   const stageFilter = CYCLE_STAGES.some((s) => s.key === query.stage) ? (query.stage as CycleStage) : null;
   const alertFilter = ALERTS.some((a) => a.key === query.alert) ? (query.alert as AlertKey) : null;
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
 
   const [
     traineesSnap,
@@ -70,6 +68,9 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     cycleApprovalsSnap,
     pendingReviewSnap,
     disputedSessionsSnap,
+    rosterRowsSnap,
+    rosterSessionsSnap,
+    unreadMessagesSnap,
   ] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").get(),
@@ -84,6 +85,11 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     adminDb.collection("monthlyApprovals").where("month", "==", cycleMonth).get(),
     adminDb.collection("fieldworkActivities").where("status", "==", "submitted").get(),
     adminDb.collection("fieldworkActivities").where("traineeAcknowledgment.status", "==", "disputed").get(),
+    // About three months of rows: last-logged dates, pace, and the two payroll months.
+    adminDb.collection("fieldworkActivities").where("date", ">=", monthStart(currentMonth, 2))
+      .select("traineeId", "supervisorId", "date", "month", "duration", "format", "status", "sessionId", "priorCreditId", "activityType", "traineeAcknowledgment").get(),
+    adminDb.collection("sessions").where("month", "in", [currentMonth, previousMonth]).select("supervisorId", "type", "duration", "month", "traineeIds").get(),
+    adminDb.collection("conversations").where("unread.admin", ">", 0).count().get(),
   ]);
 
   const allTrainees = traineesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
@@ -95,9 +101,6 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     id: d.id,
     ...d.data(),
   })) as any[];
-  const sessions = sessionsSnap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((session: any) => !session.deleted) as any[];
   const snapshots = snapshotsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
   const activities = activitySnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
   const adminAlerts = (notifsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[])
@@ -106,8 +109,6 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     .slice(0, 6);
 
   // Same rules as before the redesign; only the layout changed.
-  const activeTrainees = trainees.filter((t) => t.status === "active");
-  const onboardingTrainees = trainees.filter((t) => t.status === "onboarding");
   const readyToAssign = trainees.filter(
     (t) => t.status === "onboarding" && t.onboardingStage === "contracting",
   );
@@ -115,7 +116,6 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
   const newRegistrations = allTrainees.filter(
     (t) => t.lifecycleStage === "registered" || (!t.lifecycleStage && t.registrationSource === "self_registration" && t.onboardingStage === "initial_interview"),
   );
-  const weekSessions = sessions.filter((s) => s.date >= weekAgo);
   const over25 = snapshots.filter((s) => exceedsGroupSupervisionLimit(s));
   const atRisk = trainees.filter((t) => {
     if (t.status !== "active") return false;
@@ -123,32 +123,27 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     return snap && (snap.absenceCount || 0) >= 3;
   });
 
-  const traineeProgress = activeTrainees
-    .map((t) => {
-      const snap = snapshots.find((s) => s.traineeId === t.id);
-      const targetHours = traineeRules(t).supervisionTarget;
-      const approvedHours = Number(t.totalIndividualHours || 0) + Number(t.totalGroupHours || 0);
-      const pct = Math.round((approvedHours / targetHours) * 100);
-      return { ...t, pct, targetHours, totalHours: approvedHours, snap };
-    })
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 6);
-
-  const supervisorLoad = supervisors
-    .map((sup) => ({
-      ...sup,
-      traineeCount: activeTrainees.filter((t) => t.currentSupervisorId === sup.id).length,
-      hours: snapshots
-        .filter((s) => s.supervisorId === sup.id)
-        .reduce((a, s) => a + (s.totalHours || 0), 0),
-    }))
-    .sort((a, b) => b.traineeCount - a.traineeCount);
-  const maxLoad = Math.max(1, ...supervisorLoad.map((s) => s.traineeCount));
-
-  const stageCounts = LIFECYCLE_STAGES.map((stage) => ({
-    ...stage,
-    count: trainees.filter((t) => resolveLifecycleStage(t) === stage.key).length,
-  })).filter((stage) => stage.count > 0);
+  // ── Operational picture: supervisors, paid hours, seats, trainees who need attention ──
+  const today = new Date().toISOString().slice(0, 10);
+  const roster = buildRoster({
+    supervisors,
+    trainees,
+    rows: rosterRowsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as any),
+    sessions: rosterSessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as any),
+    today,
+    windowStart: monthStart(currentMonth, 2),
+    currentMonth,
+    previousMonth,
+  });
+  const sumHours = (key: "payable" | "pending" | "disputed" | "total") => roster.cards.reduce((n, c) => n + c.hours.current[key], 0);
+  const seatHolders = roster.cards.filter((c) => !c.consultant);
+  const openSeats = seatHolders.reduce((n, c) => n + c.seats, 0);
+  const standing = (key: string) => roster.standings.filter((t) => t.standing === key && !t.paused).length;
+  const nearFinish = standing("near_finish");
+  const finishedHours = roster.standings.filter((t) => t.standing === "near_finish" && t.remaining === 0).length;
+  const inactive = standing("inactive");
+  const watch = standing("watch");
+  const unreadMessages = unreadMessagesSnap.data().count;
 
   // ── Monthly cycle (control room) ─────────────────────────────────────────
   const cycleActivities = cycleActivitiesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as FieldworkActivity[];
@@ -206,79 +201,135 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
     { label: "تجاوز نسبة الإشراف الجماعي", hint: "سجلات هذا الشهر فوق الحد المسموح", count: over25.length, href: `${base}/months`, tone: "warning", icon: "users" },
     { label: "أعطال تشغيلية مفتوحة", hint: "البريد أو التقويم أو المزامنة", count: openIncidentsSnap.data().count, href: `${base}/operations`, tone: "danger", icon: "activity" },
   ];
-  const openItems = queue.filter((item) => item.count > 0);
   const todayLabel = new Date().toLocaleDateString("ar-SA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+  const backlogBySupervisor = new Map(backlog.map((b) => [b.supervisorId, b]));
+  const attention = roster.cards
+    .map((card) => {
+      const b = backlogBySupervisor.get(card.supervisorId);
+      const disputes = card.openSessions.filter((x) => x.state === "disputed").length;
+      const reasons = [
+        card.counts.inactive ? { tone: "danger", text: `${card.counts.inactive} منقطع` } : null,
+        disputes ? { tone: "danger", text: `${disputes} اعتراض على جلسة` } : null,
+        b && b.oldestDays >= 7 ? { tone: "warning", text: `مراجعة متأخرة ${b.oldestDays} يوم` } : null,
+        card.counts.watch ? { tone: "warning", text: `${card.counts.watch} تحت المراقبة` } : null,
+        card.counts.near_finish ? { tone: "success", text: `${card.counts.near_finish} قريب من الإنهاء` } : null,
+      ].filter(Boolean) as { tone: string; text: string }[];
+      const score = card.counts.inactive * 3 + disputes * 3 + (b && b.oldestDays >= 7 ? 2 : 0) + card.counts.watch;
+      return { card, reasons, score, pending: b?.count || 0 };
+    })
+    .filter((x) => x.score > 0)
+    .sort((x, y) => y.score - x.score)
+    .slice(0, 5);
+  const decisions = [
+    ...queue,
+    { label: "رسائل غير مقروءة", hint: "من المتدربين والمشرفين", count: unreadMessages, href: `${base}/messages`, tone: "info", icon: "message" },
+  ].filter((item) => item.count > 0);
+  const hour = Number(new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Riyadh" }).format(new Date()));
+  const greeting = hour < 12 ? "صباح الخير" : "مساء الخير";
+  const hasCycleFilter = Boolean(stageFilter || alertFilter || cycleMonth !== currentMonth);
+  const supervisorsHref = `${base}/trainees`;
+
   return (
-    <AdminPageLayout locale={locale} title="اليوم">
-      <div className="sk-today">
-        <p className="sk-today-date">
-          {todayLabel} · {openItems.length ? `${openItems.reduce((n, item) => n + item.count, 0)} عنصر يحتاج إجراء` : "لا توجد عناصر عاجلة"}
-        </p>
-
-        <section className="sk-card sk-queue" aria-labelledby="queue-title">
-          <header className="sk-card-head">
-            <div>
-              <h2 id="queue-title">يحتاج إجراء</h2>
-              <p>كل صف يفتح القائمة المطلوبة مباشرة.</p>
-            </div>
-          </header>
-          <ul>
-            {queue.map((item) => (
-              <li key={item.label} className={item.count ? "" : "is-clear"}>
-                <Link href={item.href}>
-                  <span className={`sk-queue-icon ${item.count ? item.tone : ""}`}><UiIcon name={item.icon} size={18} /></span>
-                  <span className="sk-queue-text">
-                    <b>{item.label}</b>
-                    <small>{item.hint}</small>
-                  </span>
-                  <span className={`sk-queue-count ${item.count ? item.tone : ""}`}>{item.count || "لا شيء"}</span>
-                  <UiIcon name="arrowLeft" size={16} className="sk-queue-go" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="sk-kpis" aria-label="مؤشرات عامة">
-          <div className="sk-kpi">
-            <span>ساعات {monthLabel(cycleMonth)}</span>
-            <b>{fmt(cycle.totals.logged)}</b>
-            <small>مسجلة · منها {fmt(cycle.totals.approved)} معتمدة</small>
+    <AdminPageLayout locale={locale} title="الرئيسية">
+      <div className="hm">
+        <section className="hm-hero" aria-labelledby="hm-hello">
+          <div className="hm-hello">
+            <h2 id="hm-hello">{greeting}</h2>
+            <p>{todayLabel} · {decisions.length ? `${decisions.reduce((n, d) => n + d.count, 0)} أمر بانتظار قرارك` : "لا شيء عاجل اليوم"}</p>
           </div>
-          <div className="sk-kpi">
-            <span>متدربون نشطون</span>
-            <b>{activeTrainees.length}</b>
-            <small>من أصل {trainees.length} متدرب</small>
-          </div>
-          <div className="sk-kpi">
-            <span>الإشراف في {monthLabel(cycleMonth)}</span>
-            <b>{fmt(cycle.totals.supervision)}<em className="sk-kpi-of"> من {fmt(cycle.totals.required)}</em></b>
-            <small>ساعة إشراف من المطلوب (5%) · {weekSessions.length} جلسة آخر 7 أيام</small>
-          </div>
-          <div className="sk-kpi">
-            <span>قيد الانضمام</span>
-            <b>{onboardingTrainees.length}</b>
-            <small>منهم {readyToAssign.length} جاهز للإسناد</small>
+          <div className="hm-tiles">
+            <Link href={supervisorsHref} className="hm-tile t-blue">
+              <span>ساعات إشراف مستحقة · {monthLabel(currentMonth)}</span>
+              <b>{fmt(sumHours("payable"))}</b>
+              <small>{sumHours("pending") ? `و${fmt(sumHours("pending"))} بانتظار إقرار المتدربين` : `من ${fmt(sumHours("total"))} ساعة سجّلها المشرفون`}</small>
+            </Link>
+            <Link href={supervisorsHref} className="hm-tile t-violet">
+              <span>مقاعد متاحة</span>
+              <b>{openSeats}</b>
+              <small>عند {seatHolders.filter((c) => c.seats > 0).length} من {seatHolders.length} مشرف</small>
+            </Link>
+            <Link href={supervisorsHref} className="hm-tile t-teal">
+              <span>قريبون من الإنهاء</span>
+              <b>{nearFinish}</b>
+              <small>{finishedHours ? `${finishedHours} أكملوا الساعات` : "بقي أقل من 20% أو 3 أشهر"}</small>
+            </Link>
+            <Link href={supervisorsHref} className="hm-tile t-amber">
+              <span>منقطعون</span>
+              <b>{inactive}</b>
+              <small>{watch ? `و${watch} تحت المراقبة (7 أيام)` : "لا ساعات منذ 14 يومًا"}</small>
+            </Link>
           </div>
         </section>
 
-        <section className="sk-card sk-cycle" id="cycle" aria-labelledby="cycle-title">
-          <header className="sk-card-head">
-            <div>
-              <h2 id="cycle-title">دورة {monthLabel(cycleMonth)}</h2>
-              <p>
-                {cycleMonth === currentMonth
-                  ? "الشهر مفتوح: التنبيهات مبنية على كل ما سُجّل حتى الآن، قبل اعتماده."
-                  : "الشهر السابق: يحتاج اعتماد المشرف وإقرار المتدرب حتى يُقفل."}
-              </p>
-            </div>
+        <div className="hm-grid">
+          <section className="sk-card hm-decide" aria-labelledby="hm-decide">
+            <header className="sk-card-head"><div><h2 id="hm-decide">يحتاج قرارك</h2><p>كل بند يفتح المكان المطلوب مباشرة.</p></div></header>
+            {decisions.length === 0 ? (
+              <div className="hm-clear"><span aria-hidden="true">✓</span><b>كل شيء تحت السيطرة</b><small>لا توجد طلبات أو تنبيهات بانتظارك.</small></div>
+            ) : (
+              <ul>
+                {decisions.map((item) => (
+                  <li key={item.label}>
+                    <Link href={item.href} className={`tone-${item.tone}`}>
+                      <span className="hm-ico"><UiIcon name={item.icon} size={18} /></span>
+                      <span className="hm-txt"><b>{item.label}</b><small>{item.hint}</small></span>
+                      <em>{item.count}</em>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="sk-card hm-sups" aria-labelledby="hm-sups">
+            <header className="sk-card-head">
+              <div><h2 id="hm-sups">مشرفون يحتاجون متابعة</h2><p>{attention.length ? "مرتبون بحسب الأولوية" : "كل المشرفين ومتدربيهم على المسار"}</p></div>
+              <Link className="sk-link" href={supervisorsHref}>كل المشرفين</Link>
+            </header>
+            {attention.length === 0 ? (
+              <div className="hm-clear"><span aria-hidden="true">✓</span><b>لا أحد يحتاج متابعة</b><small>لا منقطعين ولا اعتراضات ولا مراجعات متأخرة.</small></div>
+            ) : (
+              <ul>
+                {attention.map(({ card, reasons, pending }) => (
+                  <li key={card.supervisorId}>
+                    <Link href={`${base}/trainees?supervisor=${encodeURIComponent(card.supervisorId)}`}>
+                      <span className="hm-av" aria-hidden="true">{card.name.trim().slice(0, 1)}</span>
+                      <span className="hm-txt">
+                        <b>{card.name}</b>
+                        <small>{card.active} متدرب نشط{pending ? ` · ${pending} سجل بانتظار مراجعته` : ""}</small>
+                      </span>
+                      <span className="hm-reasons">{reasons.slice(0, 3).map((r) => <em key={r.text} className={`sk-chip ${r.tone}`}>{r.text}</em>)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <details className="sk-card sk-cycle hm-cycle" id="cycle" open={hasCycleFilter}>
+          <summary>
+            <span className="hm-sum-title">
+              <b>دورة {monthLabel(cycleMonth)}</b>
+              <small>{cycleMonth === currentMonth ? "الشهر مفتوح" : "الشهر السابق"} · {cycle.rows.length} متدرب · {ALERTS.reduce((n, a) => n + cycle.alertCounts[a.key], 0)} تنبيه</small>
+            </span>
+            <span className="hm-mini" aria-hidden="true">
+              {CYCLE_STAGES.map((stage) => cycle.stageCounts[stage.key] ? <i key={stage.key} className={`tone-${stage.tone}`} style={{ flex: cycle.stageCounts[stage.key] }} /> : null)}
+            </span>
+            <span className="hm-sum-open">عرض الجدول</span>
+          </summary>
+          <div className="hm-cycle-head">
+            <p>
+              {cycleMonth === currentMonth
+                ? "التنبيهات مبنية على كل ما سُجّل حتى الآن، قبل اعتماده."
+                : "الشهر السابق: يحتاج اعتماد المشرف وإقرار المتدرب حتى يُقفل."}
+            </p>
             <nav className="sk-seg" aria-label="الشهر">
               <Link href={cycleHref({ month: currentMonth })} aria-current={cycleMonth === currentMonth ? "page" : undefined}>{monthLabel(currentMonth)}</Link>
               <Link href={cycleHref({ month: previousMonth })} aria-current={cycleMonth === previousMonth ? "page" : undefined}>{monthLabel(previousMonth)}</Link>
             </nav>
-          </header>
-
+          </div>
           <ol className="sk-pipeline" aria-label="مراحل الدورة الشهرية">
             {CYCLE_STAGES.map((stage) => (
               <li key={stage.key}>
@@ -354,163 +405,45 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
               </table>
             </div>
           )}
-        </section>
+        </details>
 
-        <div className="sk-today-grid">
-          <div className="sk-today-col">
-            <section className="sk-card">
-              <header className="sk-card-head">
-                <div>
-                  <h2>تقدم نحو هدف الإشراف</h2>
-                  <p>أعلى 6 متدربين نشطين</p>
-                </div>
-                <Link className="sk-link" href={`${base}/trainees`}>كل المتدربين</Link>
-              </header>
-              {traineeProgress.length === 0 ? (
-                <p className="sk-empty">لا يوجد متدربون نشطون</p>
-              ) : (
-                <ul className="sk-progress">
-                  {traineeProgress.map((t) => (
-                    <li key={t.id}>
-                      <Link href={`${base}/trainees/${t.id}`} className="sk-progress-name">{t.name}</Link>
-                      <span className="sk-bar" aria-hidden="true">
-                        <i className={t.pct >= 100 ? "done" : t.pct >= 75 ? "near" : ""} style={{ width: `${Math.min(t.pct, 100)}%` }} />
-                      </span>
-                      <span className="sk-progress-val">{t.totalHours}/{t.targetHours} · {t.pct}%</span>
-                      <span className="sk-progress-tags">
-                        {t.pct >= 100 && <em className="sk-chip success">مكتمل</em>}
-                        {t.pct >= 85 && t.pct < 100 && <em className="sk-chip warning">قريب</em>}
-                        {(t.snap?.absenceCount || 0) >= 3 && <em className="sk-chip danger">خطر</em>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="sk-card">
-              <header className="sk-card-head">
-                <div>
-                  <h2>توزيع المتدربين على مراحل الرحلة</h2>
-                  <p>{trainees.length} متدرب</p>
-                </div>
-              </header>
-              {stageCounts.length === 0 ? (
-                <p className="sk-empty">لا يوجد متدربون بعد</p>
-              ) : (
-                <>
-                  <div className="sk-stagebar" aria-hidden="true">
-                    {stageCounts.map((stage) => (
-                      <i key={stage.key} style={{ flex: stage.count, background: stage.color }} title={`${stage.short}: ${stage.count}`} />
-                    ))}
-                  </div>
-                  <ul className="sk-stages">
-                    {stageCounts.map((stage) => (
-                      <li key={stage.key}>
-                        <i style={{ background: stage.color }} aria-hidden="true" />
-                        <span>{stage.short}</span>
-                        <b>{stage.count}</b>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </section>
-          </div>
-
-          <div className="sk-today-col">
-            <section className="sk-card" id="backlog">
-              <header className="sk-card-head">
-                <div>
-                  <h2>مراجعات معلّقة لدى المشرفين</h2>
-                  <p>{pendingReviews ? `${pendingReviews} سجل مرسل بانتظار الاعتماد` : "لا توجد سجلات معلّقة"}</p>
-                </div>
-              </header>
-              {backlog.length === 0 ? (
-                <p className="sk-empty">كل الساعات المرسلة تمت مراجعتها</p>
-              ) : (
-                <ul className="sk-load">
-                  {backlog.map((b) => (
-                    <li key={b.supervisorId || "none"}>
-                      {b.supervisorId ? <Link href={`${base}/supervisors/${b.supervisorId}`}>{supervisorName.get(b.supervisorId) || b.supervisorId}</Link> : <span className="sk-faint">بدون مشرف</span>}
-                      <span className="sk-load-val"><b>{b.count}</b> سجل</span>
-                      <span className="sk-load-val"><b>{b.trainees}</b> متدرب</span>
-                      <em className={`sk-chip ${b.oldestDays >= 7 ? "danger" : b.oldestDays >= 3 ? "warning" : ""}`}>
-                        {b.oldestDays === 0 ? "اليوم" : `أقدمها ${b.oldestDays} يوم`}
-                      </em>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="sk-card">
-              <header className="sk-card-head">
-                <div>
-                  <h2>حمل المشرفين</h2>
-                  <p>المتدربون النشطون وساعات الإشراف هذا الشهر</p>
-                </div>
-                <Link className="sk-link" href={`${base}/productivity`}>الإنتاجية</Link>
-              </header>
-              {supervisorLoad.length === 0 ? (
-                <p className="sk-empty">لا يوجد مشرفون</p>
-              ) : (
-                <ul className="sk-load">
-                  {supervisorLoad.map((sup) => (
-                    <li key={sup.id}>
-                      <Link href={`${base}/supervisors/${sup.id}`}>{sup.name}</Link>
-                      <span className="sk-bar" aria-hidden="true"><i style={{ width: `${(sup.traineeCount / maxLoad) * 100}%` }} /></span>
-                      <span className="sk-load-val"><b>{sup.traineeCount}</b> متدرب</span>
-                      <span className="sk-load-val"><b>{sup.hours}</b> ساعة</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="sk-card">
-              <header className="sk-card-head">
-                <div>
-                  <h2>تنبيهات للإدارة</h2>
-                  <p>تنبيهات النظام غير المقروءة الموجّهة للإدارة</p>
-                </div>
-              </header>
-              {adminAlerts.length === 0 ? (
-                <p className="sk-empty">لا توجد تنبيهات جديدة</p>
-              ) : (
-                <ul className="sk-feed">
-                  {adminAlerts.map((n) => (
-                    <li key={n.id}>
-                      <span>{n.message || n.title || "تنبيه"}</span>
-                      <time>{timeAgo(n.createdAt)}</time>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="sk-card">
-              <header className="sk-card-head">
-                <div>
-                  <h2>آخر النشاطات</h2>
-                  <p>{activities.length} حدث</p>
-                </div>
-                <Link className="sk-link" href={`${base}/operations`}>سجل التدقيق</Link>
-              </header>
-              {activities.length === 0 ? (
-                <p className="sk-empty">لا توجد نشاطات بعد</p>
-              ) : (
-                <ul className="sk-feed">
-                  {activities.map((a) => (
-                    <li key={a.id}>
-                      <span>{a.message || a.type}</span>
-                      <time>{timeAgo(a.createdAt)}</time>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
+        <div className="hm-grid hm-feeds">
+          <section className="sk-card">
+            <header className="sk-card-head">
+              <div><h2>تنبيهات للإدارة</h2><p>تنبيهات النظام غير المقروءة</p></div>
+              <Link className="sk-link" href={`${base}/notifications`}>كل الإشعارات</Link>
+            </header>
+            {adminAlerts.length === 0 ? (
+              <p className="sk-empty">لا توجد تنبيهات جديدة</p>
+            ) : (
+              <ul className="sk-feed">
+                {adminAlerts.map((n) => (
+                  <li key={n.id}>
+                    <span>{n.message || n.title || "تنبيه"}</span>
+                    <time>{timeAgo(n.createdAt)}</time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="sk-card">
+            <header className="sk-card-head">
+              <div><h2>آخر النشاطات</h2><p>{activities.length} حدث</p></div>
+              <Link className="sk-link" href={`${base}/operations`}>سجل التدقيق</Link>
+            </header>
+            {activities.length === 0 ? (
+              <p className="sk-empty">لا توجد نشاطات بعد</p>
+            ) : (
+              <ul className="sk-feed">
+                {activities.map((a) => (
+                  <li key={a.id}>
+                    <span>{a.message || a.type}</span>
+                    <time>{timeAgo(a.createdAt)}</time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     </AdminPageLayout>
