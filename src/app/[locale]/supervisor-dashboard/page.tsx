@@ -8,7 +8,7 @@ import type { FieldworkActivity } from "@/types";
 
 interface Props {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ section?: string; trainee?: string }>;
+  searchParams: Promise<{ section?: string; trainee?: string; chat?: string }>;
 }
 
 export default async function SupervisorDashboardPage({ params, searchParams }: Props) {
@@ -147,6 +147,7 @@ export default async function SupervisorDashboardPage({ params, searchParams }: 
       previousMonth={previousMonth}
       initialSection={typeof query.section === "string" ? query.section : undefined}
       initialTraineeId={typeof query.trainee === "string" ? query.trainee : undefined}
+      initialChatId={typeof query.chat === "string" ? query.chat : undefined}
     />
   );
 }

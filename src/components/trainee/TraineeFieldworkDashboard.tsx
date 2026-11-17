@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChatInbox, useUnreadMessages } from "@/components/messages/Chat";
 import { useRouter } from "next/navigation";
 import type { FieldworkActivity, FieldworkActivityType } from "@/types";
 import TraineeAccountSettings from "@/components/trainee/TraineeAccountSettings";
@@ -48,13 +49,14 @@ const categoryLabels: Record<string, string> = {
 
 type TabKey =
   | "overview" | "hours" | "hoursGuide" | "plan" | "competency" | "meetings" | "documents" | "agreement"
-  | "improvement" | "reports" | "policies" | "attendance" | "requests" | "finance" | "account";
+  | "improvement" | "reports" | "policies" | "attendance" | "requests" | "finance" | "account" | "messages";
 
 /** Fifteen sections, five groups: the group row stays short, the sub-row shows only what belongs together. */
 const TAB_GROUPS: { key: string; label: string; icon: string; tabs: [TabKey, string][] }[] = [
   { key: "home", label: "نظرة عامة", icon: "overview", tabs: [["overview", "نظرة عامة"]] },
   { key: "hours", label: "الساعات", icon: "hours", tabs: [["hours", "سجل الساعات"], ["hoursGuide", "دليل التسجيل"], ["attendance", "الغياب والإنذارات"]] },
   { key: "supervision", label: "الإشراف والتقييم", icon: "competency", tabs: [["plan", "خطة الإشراف"], ["meetings", "الاجتماعات والمهام"], ["competency", "تقييم الكفاءة"], ["reports", "تقارير التقدم"], ["improvement", "تحسين الأداء"]] },
+  { key: "messages", label: "المحادثات", icon: "messages", tabs: [["messages", "المحادثات"]] },
   { key: "files", label: "الملفات والاتفاقية", icon: "documents", tabs: [["documents", "المستندات"], ["agreement", "الاتفاقية"], ["finance", "الخطة المالية"], ["policies", "السياسات"]] },
   { key: "account", label: "حسابي وطلباتي", icon: "account", tabs: [["requests", "طلباتي"], ["account", "إعدادات الحساب"]] },
 ];
@@ -74,6 +76,13 @@ export default function TraineeFieldworkDashboard({
   const [activities, setActivities] = useState(initialActivities);
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [chatId, setChatId] = useState<string | null>(null);
+  // Email links open the conversation: ?tab=messages&chat=<id>.
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("tab") === "messages") { setActiveTab("messages"); setChatId(query.get("chat")); }
+  }, []);
+  const [unreadMessages, setUnreadMessages] = useUnreadMessages("trainee", activeTab !== "messages");
   const activeGroup = TAB_GROUPS.find((group) => group.tabs.some(([key]) => key === activeTab)) || TAB_GROUPS[0];
   const [statusFilter, setStatusFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
@@ -497,7 +506,7 @@ export default function TraineeFieldworkDashboard({
             ))}
           </section>
         )}
-        <style>{`.fw-page button,.fw-page input,.fw-page select,.fw-page textarea{font-family:inherit}.trainee-tabs{gap:6px;margin-bottom:0}.trainee-tabs button{font-size:14px;line-height:1.5;flex:1 0 auto}.trainee-nav{margin-bottom:18px}.trainee-subtabs{display:flex;gap:4px;padding:8px 4px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid #e2e8f0}.trainee-subtabs::-webkit-scrollbar{display:none}.trainee-subtabs button{font:inherit;font-size:13px;font-weight:600;color:#64748b;background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;cursor:pointer;white-space:nowrap}.trainee-subtabs button:hover{color:#0f172a}.trainee-subtabs button.active{color:#0d40fc;border-bottom-color:#0d40fc}.trainee-subtabs button:focus-visible{outline:2px solid #57ddff;outline-offset:-2px}.trainee-tabs button:focus-visible{outline:2px solid #57ddff;outline-offset:2px}.ack-chip{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px}.ack-confirmed{background:#ecfdf5;color:#047857}.ack-pending{background:#eef4ff;color:#0d40fc}.ack-disputed{background:#fef2f2;color:#b91c1c}.account-form input[readonly]{background:#f1f5f9;color:#475569;cursor:default}@media(max-width:600px){.trainee-tabs{flex-wrap:wrap;overflow:visible}.trainee-tabs button{flex:1 1 calc(33.333% - 6px);font-size:12px;padding:8px 6px;flex-direction:column;gap:4px;min-height:58px;white-space:normal;text-align:center}}`}</style>
+        <style>{`.fw-page button,.fw-page input,.fw-page select,.fw-page textarea{font-family:inherit}.trainee-tabs{gap:6px;margin-bottom:0}.trainee-tabs button{font-size:14px;line-height:1.5;flex:1 0 auto}.trainee-nav{margin-bottom:18px}.trainee-subtabs{display:flex;gap:4px;padding:8px 4px 0;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid #e2e8f0}.trainee-subtabs::-webkit-scrollbar{display:none}.trainee-subtabs button{font:inherit;font-size:13px;font-weight:600;color:#64748b;background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;cursor:pointer;white-space:nowrap}.trainee-subtabs button:hover{color:#0f172a}.trainee-subtabs button.active{color:#0d40fc;border-bottom-color:#0d40fc}.trainee-subtabs button:focus-visible{outline:2px solid #57ddff;outline-offset:-2px}.trainee-tabs button:focus-visible{outline:2px solid #57ddff;outline-offset:2px}.ack-chip{display:inline-block;margin-top:4px;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px}.ack-confirmed{background:#ecfdf5;color:#047857}.ack-pending{background:#eef4ff;color:#0d40fc}.ack-disputed{background:#fef2f2;color:#b91c1c}.tab-count{font-style:normal;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#0d40fc;color:#fff;font-size:11px;font-weight:700;display:inline-grid;place-items:center;line-height:1;margin-inline-start:4px}.trainee-tabs button.active .tab-count{background:#fff;color:#0d40fc}.account-form input[readonly]{background:#f1f5f9;color:#475569;cursor:default}@media(max-width:600px){.trainee-tabs{flex-wrap:wrap;overflow:visible}.trainee-tabs button{flex:1 1 calc(33.333% - 6px);font-size:12px;padding:8px 6px;flex-direction:column;gap:4px;min-height:58px;white-space:normal;text-align:center}}`}</style>
         <nav className="trainee-nav" aria-label="أقسام لوحة المتدرب">
           <div className="trainee-tabs" role="tablist">
             {TAB_GROUPS.map((group) => (
@@ -510,6 +519,7 @@ export default function TraineeFieldworkDashboard({
               >
                 <TabIcon name={group.icon} />
                 {group.label}
+                {group.key === "messages" && unreadMessages > 0 && <em className="tab-count" aria-label={`${unreadMessages} رسائل غير مقروءة`}>{unreadMessages}</em>}
               </button>
             ))}
           </div>
@@ -929,6 +939,7 @@ export default function TraineeFieldworkDashboard({
           />
         )}
         {activeTab === "policies" && <SupervisionPolicies audience="trainee" />}
+        {activeTab === "messages" && <ChatInbox as="trainee" initialId={chatId} onUnread={setUnreadMessages} />}
         {activeTab === "attendance" && (
           <AttendanceRecord sessions={supervisionFile?.attendance || []} />
         )}
@@ -1227,6 +1238,12 @@ function TabIcon({ name }: { name: string }) {
     policies: (
       <>
         <path d="M4 4h6a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-4a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4z" />
+      </>
+    ),
+    messages: (
+      <>
+        <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+        <path d="M8.5 11h7M8.5 14.5h4" />
       </>
     ),
     account: (

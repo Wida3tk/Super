@@ -251,3 +251,20 @@ export async function sendCancellationEmail(
 
   await sendEmail(studentEmail, `❌ تم إلغاء حجزك — ${date}`, html);
 }
+
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+
+/** A new in-platform message. Sent once per unread streak, not per message. */
+export async function sendNewMessageEmail(data: { to: string; fromName: string; preview: string; path: string }): Promise<void> {
+  const preview = data.preview.length > 280 ? `${data.preview.slice(0, 280)}…` : data.preview;
+  const html = baseTemplate(`
+    <h2>رسالة جديدة من ${escapeHtml(data.fromName)}</h2>
+    <p style="white-space:pre-line;background:#F1F5F9;border-radius:12px;padding:14px 16px;color:#0F172A;">${escapeHtml(preview)}</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${APP_URL}${data.path}" class="btn">فتح المحادثة</a>
+    </div>
+    <p style="font-size:12px;color:#94A3B8;">لن نرسل لك بريدًا آخر عن هذه المحادثة حتى تقرأها.</p>
+  `);
+  await sendEmail(data.to, `رسالة جديدة من ${data.fromName}`, html);
+}

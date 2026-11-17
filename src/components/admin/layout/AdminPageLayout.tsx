@@ -5,8 +5,11 @@ import AdminFrame, { type AdminBadges } from "./AdminSidebar";
 async function loadBadges(): Promise<AdminBadges> {
   try {
     const { adminDb } = await import("@/lib/firebase/admin");
-    const pending = await adminDb.collection("traineeRequests").where("status", "==", "pending").count().get();
-    return { trainees: pending.data().count };
+    const [pending, unread] = await Promise.all([
+      adminDb.collection("traineeRequests").where("status", "==", "pending").count().get(),
+      adminDb.collection("conversations").where("unread.admin", ">", 0).count().get(),
+    ]);
+    return { trainees: pending.data().count, messages: unread.data().count };
   } catch {
     return {};
   }

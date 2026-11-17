@@ -11,6 +11,8 @@ import SeatsManager from "@/components/supervisor/SeatsManager";
 import SupervisionHours, { SessionModal } from "@/components/supervisor/SupervisionHours";
 import SupervisorNotifications from "@/components/supervisor/SupervisorNotifications";
 import TraineeSupervisionWorkspace, { type WorkspaceTab } from "@/components/supervisor/TraineeSupervisionWorkspace";
+import { ChatInbox, ChatThread, useUnreadMessages } from "@/components/messages/Chat";
+import { conversationId } from "@/lib/messages/model";
 import { ALERTS, CYCLE_STAGES, type AlertKey, type CycleStage, type buildMonthCycle } from "@/lib/admin/controlRoom";
 import { traineeRules } from "@/lib/qaba/compliance";
 import "@/styles/admin.css";
@@ -18,8 +20,8 @@ import "@/styles/admin-today.css";
 import "@/styles/supervisor.css";
 
 type Cycle = ReturnType<typeof buildMonthCycle>;
-type Section = "today" | "trainees" | "bookings" | "policies";
-type FileTab = "summary" | "sessions" | "review" | "plan" | "records" | "files";
+type Section = "today" | "trainees" | "messages" | "bookings" | "policies";
+type FileTab = "summary" | "sessions" | "review" | "chat" | "plan" | "records" | "files";
 
 const MONTH_NAMES = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
 const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
@@ -41,6 +43,7 @@ interface Props {
   previousMonth: string;
   initialSection?: string;
   initialTraineeId?: string;
+  initialChatId?: string;
 }
 
 export default function SupervisorPortal(props: Props) {
@@ -49,6 +52,7 @@ export default function SupervisorPortal(props: Props) {
   const sections: { key: Section; label: string; icon: string }[] = [
     { key: "today", label: "اليوم", icon: "home" },
     { key: "trainees", label: isConsultant ? "ساعات الإشراف" : "المتدربون", icon: "users" },
+    { key: "messages", label: "المحادثات", icon: "message" },
     { key: "bookings", label: "المقابلات والمواعيد", icon: "calendar" },
     ...(!isConsultant ? [{ key: "policies" as Section, label: "السياسات", icon: "book" }] : []),
   ];
@@ -64,12 +68,15 @@ export default function SupervisorPortal(props: Props) {
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState(props.pendingActivities);
   const [logFor, setLogFor] = useState<string | null>(null);
+  const [unreadMessages, setUnreadMessages] = useUnreadMessages("supervisor", section !== "messages");
 
   // Keep the address in sync so a refresh or a shared link opens the same place.
   useEffect(() => {
     const params = new URLSearchParams();
     if (section !== "today") params.set("section", section);
     if (traineeId) params.set("trainee", traineeId);
+    const chat = section === "messages" ? new URLSearchParams(window.location.search).get("chat") : null;
+    if (chat) params.set("chat", chat);
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
   }, [section, traineeId]);
@@ -119,6 +126,7 @@ export default function SupervisorPortal(props: Props) {
                 <UiIcon name={item.icon} size={17} />
                 <span>{item.label}</span>
                 {item.key === "today" && pending.length > 0 && <em className="sp-badge">{pending.length}</em>}
+                {item.key === "messages" && unreadMessages > 0 && <em className="sp-badge">{unreadMessages}</em>}
               </button>
             ))}
           </nav>
@@ -185,6 +193,13 @@ export default function SupervisorPortal(props: Props) {
             onBack={() => setTraineeId(null)}
             onLogSession={() => setLogFor(traineeId)}
           />
+        )}
+
+        {section === "messages" && (
+          <div className="sp-stack">
+            <PageHead title="المحادثات" hint="محادثاتك مع متدربيك ومع الإدارة." />
+            <ChatInbox as="supervisor" initialId={props.initialChatId || null} onUnread={setUnreadMessages} />
+          </div>
         )}
 
         {section === "bookings" && (
@@ -544,6 +559,7 @@ function TraineeFile({
     { key: "summary", label: "الملخص والاعتماد الشهري" },
     { key: "sessions", label: "جلسات الإشراف" },
     { key: "review", label: "مراجعة الساعات", count: traineePending.length },
+    { key: "chat", label: "المحادثة" },
     { key: "plan", label: "الخطة والتقييم" },
     { key: "records", label: "المحاضر وكل الساعات" },
     { key: "files", label: "الاتفاقية والمستندات" },
@@ -594,6 +610,9 @@ function TraineeFile({
 
       <div className="sp-panel">
         {workspaceTabs[tab] && <TraineeSupervisionWorkspace key={`${traineeId}-${tab}`} trainees={trainees} supervisor={supervisor} focusTraineeId={traineeId} onlyTabs={workspaceTabs[tab]} />}
+        {tab === "chat" && (
+          <ChatThread compact key={traineeId} as="supervisor" id={conversationId("st", { supervisorId: supervisor.id, traineeId })} title={trainee.name} subtitle="متدرب" />
+        )}
         {tab === "sessions" && (
           <SupervisionHours
             key={traineeId}

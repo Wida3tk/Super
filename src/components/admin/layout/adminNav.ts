@@ -38,6 +38,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     match: ["/import-supervisor"],
   },
   { key: "months", label: "الاعتماد الشهري", icon: "calendarCheck", tabs: [{ path: "/months", label: "الاعتماد الشهري" }] },
+  { key: "messages", label: "المحادثات", icon: "message", tabs: [{ path: "/messages", label: "المحادثات" }] },
   { key: "notifications", label: "الإشعارات", icon: "bell", tabs: [{ path: "/notifications", label: "الإشعارات" }] },
   {
     key: "system",
