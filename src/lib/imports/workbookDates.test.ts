@@ -14,6 +14,8 @@ describe("workbookDate", () => {
     expect(workbookDate("10.6.2026")).toBe("2026-06-10");
     expect(workbookDate("3 / 5 / 2026")).toBe("2026-05-03");
     expect(workbookDate("٣/٥/٢٠٢٦")).toBe("2026-05-03");
+    expect(workbookDate("\u200f20/07/2026")).toBe("2026-07-20");
+    expect(workbookDate("20/07/2026\u00a0")).toBe("2026-07-20");
   });
 
   it("reads typed month names in English and Arabic", () => {

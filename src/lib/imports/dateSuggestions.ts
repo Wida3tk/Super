@@ -16,7 +16,7 @@ const realDate = (year: number, month: number, day: number) => {
   const date = new Date(`${iso}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === iso ? iso : "";
 };
-const digits = (value: string) => value.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 15));
+const digits = (value: string) => value.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff\u00a0]/g, " ").replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 15));
 
 export function suggestSessionDate(raw: string, expectedMonth: string, today: string): string {
   if (!/^\d{4}-\d{2}$/.test(expectedMonth) || expectedMonth > today.slice(0, 7)) return "";

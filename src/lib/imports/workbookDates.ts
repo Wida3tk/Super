@@ -1,7 +1,9 @@
 import { scalarCellValue } from "./cellValue";
 
 function digits(value: string) {
-  return value.trim().replace(/[٠-٩۰-۹]/g, digit => String(digit.charCodeAt(0) & 15));
+  // Arabic keyboards add invisible direction marks around typed dates.
+  return value.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff\u00a0]/g, " ").trim()
+    .replace(/[٠-٩۰-۹]/g, digit => String(digit.charCodeAt(0) & 15));
 }
 
 export function workbookDate(value: unknown, date1904 = false): string {
