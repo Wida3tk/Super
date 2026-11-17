@@ -325,6 +325,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
                 ? "التنبيهات مبنية على كل ما سُجّل حتى الآن، قبل اعتماده."
                 : "الشهر السابق: يحتاج اعتماد المشرف وإقرار المتدرب حتى يُقفل."}
             </p>
+            <Link className="sk-link" href={`${base}/months${cycleMonth === currentMonth ? "" : `?month=${cycleMonth}`}`}>فتح صفحة الاعتماد الشهري ←</Link>
             <nav className="sk-seg" aria-label="الشهر">
               <Link href={cycleHref({ month: currentMonth })} aria-current={cycleMonth === currentMonth ? "page" : undefined}>{monthLabel(currentMonth)}</Link>
               <Link href={cycleHref({ month: previousMonth })} aria-current={cycleMonth === previousMonth ? "page" : undefined}>{monthLabel(previousMonth)}</Link>
