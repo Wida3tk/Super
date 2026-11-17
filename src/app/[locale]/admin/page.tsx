@@ -242,7 +242,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
             <Link href={supervisorsHref} className="hm-tile t-blue">
               <span>ساعات إشراف مستحقة · {monthLabel(currentMonth)}</span>
               <b>{fmt(sumHours("payable"))}</b>
-              <small>{sumHours("pending") ? `و${fmt(sumHours("pending"))} بانتظار إقرار المتدربين` : `من ${fmt(sumHours("total"))} ساعة سجّلها المشرفون`}</small>
+              <small>{sumHours("pending") ? `بانتظار إقرار المتدربين: ${fmt(sumHours("pending"))}` : `من ${fmt(sumHours("total"))} ساعة سجّلها المشرفون`}</small>
             </Link>
             <Link href={supervisorsHref} className="hm-tile t-violet">
               <span>مقاعد متاحة</span>
@@ -257,7 +257,7 @@ export default async function AdminTodayPage({ params, searchParams }: Props) {
             <Link href={supervisorsHref} className="hm-tile t-amber">
               <span>منقطعون</span>
               <b>{inactive}</b>
-              <small>{watch ? `و${watch} تحت المراقبة (7 أيام)` : "لا ساعات منذ 14 يومًا"}</small>
+              <small>{watch ? `تحت المراقبة (7 أيام): ${watch}` : "لا ساعات منذ 14 يومًا"}</small>
             </Link>
           </div>
         </section>

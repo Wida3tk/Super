@@ -41,11 +41,11 @@
 
 /* Decisions and supervisors: coloured rows, one tap each. */
 .hm-decide ul, .hm-sups ul { list-style: none; margin: 0; padding: 8px; display: grid; gap: 4px; }
-.hm-decide a, .hm-sups a {
+.hm-decide ul a, .hm-sups ul a {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
   color: var(--sk-ink); text-decoration: none; transition: background 0.12s;
 }
-.hm-decide a:hover, .hm-sups a:hover { background: var(--sk-canvas); }
+.hm-decide ul a:hover, .hm-sups ul a:hover { background: var(--sk-canvas); }
 .hm-ico { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 auto; }
 .hm-txt { display: grid; gap: 1px; flex: 1; min-width: 0; }
 .hm-txt b { font-size: 14px; font-weight: 600; }
@@ -56,7 +56,7 @@
 .tone-info .hm-ico, .tone-info em { background: var(--sk-primary-50); color: var(--sk-primary); }
 .hm-av { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 auto; background: #f0ecff; color: #6a46f5; font-weight: 700; }
 .hm-reasons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 55%; }
-.hm-reasons .sk-chip { font-size: 11.5px; }
+.hm-reasons .sk-chip { font-size: 11.5px; font-style: normal; }
 .hm-clear { display: grid; justify-items: center; gap: 4px; padding: 28px 20px 30px; text-align: center; }
 .hm-clear span { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--sk-success-50); color: var(--sk-success); font-size: 20px; font-weight: 700; }
 .hm-clear b { font-size: 14px; }
