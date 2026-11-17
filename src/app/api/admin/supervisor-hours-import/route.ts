@@ -10,6 +10,7 @@ import { normalizeIdentityEmail, normalizeIdentityPhone } from "@/lib/identity/n
 import { isHistoricalImportDate } from "@/lib/imports/dateValidation";
 import { scalarCellValue } from "@/lib/imports/cellValue";
 import { workbookDate, workbookMonth } from "@/lib/imports/workbookDates";
+import { suggestGroupMonth, suggestSessionDate } from "@/lib/imports/dateSuggestions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +34,11 @@ type ParsedTrainee = {
   ignoredFutureRecords: number;
   dateIssues: DateIssue[];
 };
-type DateIssue = { sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string };
+type DateIssue = {
+  sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string;
+  /** What the supervisor typed, and a date the admin can accept in review. */
+  raw?: string; suggestion?: string; monthSuggestion?: string;
+};
 const correctionKey = (sheet: string, cell: string) => JSON.stringify([sheet, cell]);
 type Corrections = { months: Map<string, string>; dates: Map<string, string> };
 
@@ -63,7 +68,7 @@ function readCorrections(value: FormDataEntryValue | null, today: string): Corre
 const text = (value: ExcelJS.CellValue) => {
   value = scalarCellValue(value) as ExcelJS.CellValue;
   if (value == null) return "";
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : "";
   if (typeof value === "object") {
     if ("result" in value) return text(value.result as ExcelJS.CellValue);
     if ("text" in value) return String(value.text || "").trim();
@@ -143,7 +148,12 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean, 
         if (corrections.months.has(monthKey)) used.add(`m${monthKey}`);
         if (corrections.dates.has(dateKey)) used.add(`d${dateKey}`);
         if (!date || !expectedMonth || date.slice(0, 7) !== expectedMonth) {
-          dateIssues.push({ sheet: sheet.name, cell: dateCell.master.address, monthCell: monthCell.address, date, expectedMonth });
+          const raw = dateCell.value instanceof Date ? date : text(dateCell.value);
+          dateIssues.push({
+            sheet: sheet.name, cell: dateCell.master.address, monthCell: monthCell.address, date, expectedMonth,
+            raw, suggestion: suggestSessionDate(raw, expectedMonth, today) || undefined,
+            monthSuggestion: suggestGroupMonth(date, expectedMonth, today) || undefined,
+          });
           continue;
         }
         if (!isHistoricalImportDate(date, today)) {
