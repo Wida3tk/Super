@@ -10,6 +10,7 @@ import FieldworkReview from "@/components/supervisor/FieldworkReview";
 import SeatsManager from "@/components/supervisor/SeatsManager";
 import SupervisionHours, { SessionModal } from "@/components/supervisor/SupervisionHours";
 import SupervisorNotifications from "@/components/supervisor/SupervisorNotifications";
+import ImportGaps, { type ImportGap } from "@/components/supervisor/ImportGaps";
 import TraineeSupervisionWorkspace, { type WorkspaceTab } from "@/components/supervisor/TraineeSupervisionWorkspace";
 import { ChatInbox, ChatThread, useUnreadMessages } from "@/components/messages/Chat";
 import { conversationId } from "@/lib/messages/model";
@@ -38,6 +39,7 @@ interface Props {
   notifications: any[];
   pendingActivities: any[];
   approvedActivities: any[];
+  importGaps?: ImportGap[];
   cycles: Record<string, Cycle>;
   currentMonth: string;
   previousMonth: string;
@@ -257,7 +259,7 @@ function PageHead({ title, hint, children }: { title: string; hint?: string; chi
 /* ───────────────────────── Today ───────────────────────── */
 
 function TodaySection({
-  supervisor, trainees, cycles, currentMonth, previousMonth, notifications, pending, setPending, approvedActivities,
+  supervisor, trainees, cycles, currentMonth, previousMonth, notifications, pending, setPending, approvedActivities, importGaps = [],
   upcoming, thisWeek, isConsultant, go, openTrainee, showTrainees,
 }: Props & {
   pending: any[];
@@ -279,7 +281,9 @@ function TodaySection({
   const awaitingTrainee = previous.stageCounts.awaiting_trainee;
   const now = new Date();
 
+  const gapCount = importGaps.length;
   const queue = isConsultant ? [] : [
+    ...(gapCount ? [{ label: "جلسات من ملفك تحتاج تاريخًا", hint: "استوردت الإدارة ملفك، وهذه الجلسات بلا تاريخ واضح", count: gapCount, tone: "warning", icon: "calendar", onClick: () => document.getElementById("import-gaps")?.scrollIntoView({ behavior: "smooth" }) }] : []),
     { label: "ساعات بانتظار مراجعتك", hint: pending.length ? `أقدمها منذ ${oldest === 0 ? "اليوم" : `${oldest} يوم`}` : "راجعت كل ما أُرسل", count: pending.length, tone: oldest >= 7 ? "danger" : "warning", icon: "clock", onClick: () => document.getElementById("review")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "اعتراضات على جلسات سجّلتها", hint: "اعترض المتدرب على تاريخ أو مدة أو نوع الجلسة", count: disputed, tone: "danger", icon: "alert", onClick: () => showTrainees({ alert: "session_disputed", month: current.alertCounts.session_disputed ? currentMonth : previousMonth }) },
     { label: `اعتماد ${monthLabel(previousMonth)}`, hint: awaitingTrainee ? `${awaitingTrainee} بانتظار إقرار المتدرب` : "كل السجلات معتمدة ولم يُعتمد الشهر", count: readyPrev, tone: "info", icon: "calendarCheck", onClick: () => showTrainees({ month: previousMonth, stage: "ready_to_approve" }) },
@@ -320,6 +324,8 @@ function TodaySection({
         <div className="sk-kpi"><span>ساعات المتدربين هذا الشهر</span><b>{fmt(current.totals.logged)}</b><small>منها {fmt(current.totals.approved)} معتمدة</small></div>
         <div className="sk-kpi"><span>مقابلات هذا الأسبوع</span><b>{thisWeek.length}</b><small>{upcoming.length} مقابلة قادمة إجمالًا</small></div>
       </section>
+
+      {!isConsultant && !!gapCount && <ImportGaps initialGaps={importGaps} />}
 
       {!isConsultant && (
         <section className="sk-card" id="review" aria-labelledby="sp-review">
