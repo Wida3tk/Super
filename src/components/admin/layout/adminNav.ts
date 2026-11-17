@@ -21,11 +21,11 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     icon: "user",
     color: "#6a46f5",
     tabs: [
-      { path: "/supervisors", label: "الحسابات" },
+      { path: "/supervisors", label: "المشرفون" },
       { path: "/bookings", label: "المقابلات والحجوزات" },
-      { path: "/productivity", label: "الإنتاجية" },
     ],
-    match: ["/import-supervisor"],
+    // Productivity and the old per-supervisor page now live in the supervisor's file.
+    match: ["/import-supervisor", "/productivity"],
   },
   {
     key: "trainees",

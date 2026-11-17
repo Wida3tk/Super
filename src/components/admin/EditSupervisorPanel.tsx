@@ -21,21 +21,28 @@ interface Supervisor {
 
 interface Props {
   supervisors: Supervisor[];
+  /** Open the editor for this one supervisor only, without the list. */
+  focus?: Supervisor;
+  onClose?: () => void;
 }
 
-export default function EditSupervisorPanel({ supervisors }: Props) {
-  const [selected, setSelected] = useState<Supervisor | null>(null);
+export default function EditSupervisorPanel({ supervisors, focus, onClose }: Props) {
+  const [selected, setSelectedState] = useState<Supervisor | null>(focus || null);
+  const setSelected = (value: Supervisor | null) => {
+    setSelectedState(value);
+    if (!value && focus) onClose?.();
+  };
   const [form, setForm] = useState({
-    name: "",
-    bio: "",
-    specialization: "",
-    photo: "",
-    credentialType: "QBA",
-    credentialNumber: "",
-    credentialExpiresAt: "",
-    supervisionTrainingCompleted: false,
-    isActive: true,
-    accountType: "supervisor",
+    name: focus?.name || "",
+    bio: focus?.bio || "",
+    specialization: focus?.specialization || "",
+    photo: focus?.photo || "",
+    credentialType: focus?.credentialType || "QBA",
+    credentialNumber: focus?.credentialNumber || "",
+    credentialExpiresAt: focus?.credentialExpiresAt || "",
+    supervisionTrainingCompleted: Boolean(focus?.supervisionTrainingCompleted),
+    isActive: focus?.isActive ?? true,
+    accountType: focus?.accountType === "consultant" ? "consultant" : "supervisor",
   });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -320,6 +327,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
         .ep-profile-link:hover { background: rgba(13,64,252,0.12); }
       `}</style>
 
+      {!focus && <>
       <div style={{ display: "flex", gap: 8, padding: "18px 24px 0" }}>
         <button
           type="button"
@@ -400,6 +408,7 @@ export default function EditSupervisorPanel({ supervisors }: Props) {
         </div>
       )}
 
+      </>}
       {/* EDIT MODAL */}
       {selected && (
         <div

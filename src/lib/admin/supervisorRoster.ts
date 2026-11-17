@@ -1,6 +1,7 @@
 import { traineeRules } from "@/lib/qaba/compliance";
 import { resolveLifecycleStage } from "@/lib/lifecycle/stages";
 import { ackState } from "@/lib/supervision/sessionAcknowledgment";
+import { supervisorLedger, type LedgerMonth } from "./supervisorLedger";
 
 /**
  * The admin's operational view of supervisors: who works how many paid hours,
@@ -140,35 +141,18 @@ export function traineeStanding(trainee: Trainee, rows: Row[], today: string, wi
   };
 }
 
-export type SessionPay = "payable" | "pending" | "disputed";
+export type { SessionPay } from "./supervisorLedger";
+export { sessionPay } from "./supervisorLedger";
 
-/** One session, counted once: payable once every attendee acknowledged it. */
-export function sessionPay(session: Session, linked: Row[]): SessionPay {
-  if (linked.some((row) => row.traineeAcknowledgment?.status === "disputed")) return "disputed";
-  // Sessions logged before acknowledgments existed have no linked rows.
-  if (!linked.length) return "payable";
-  return linked.every((row) => row.traineeAcknowledgment?.status === "confirmed") ? "payable" : "pending";
-}
+export type SupervisorHours = LedgerMonth;
 
-export interface SupervisorHours { payable: number; pending: number; disputed: number; total: number; sessions: number; individual: number; group: number }
-
+/** Hours each supervisor worked in a month: a session counts once, payable once acknowledged. */
 export function supervisorHours(sessions: Session[], rows: Row[], month: string) {
-  const bySession = new Map<string, Row[]>();
-  for (const row of rows) if (row.sessionId) bySession.set(row.sessionId, [...(bySession.get(row.sessionId) || []), row]);
   const result = new Map<string, SupervisorHours>();
-  for (const session of sessions) {
-    if (session.month !== month || (session.type !== "individual" && session.type !== "group")) continue;
-    const duration = Number(session.duration);
-    if (!(duration > 0)) continue;
-    const id = session.supervisorId || "";
-    const entry = result.get(id) || { payable: 0, pending: 0, disputed: 0, total: 0, sessions: 0, individual: 0, group: 0 };
-    entry[sessionPay(session, bySession.get(session.id) || [])] += duration;
-    entry.total += duration;
-    entry.sessions += 1;
-    entry[session.type] += duration;
-    result.set(id, entry);
+  for (const [supervisorId, months] of supervisorLedger(sessions, rows as never)) {
+    const hours = months.get(month);
+    if (hours) result.set(supervisorId, hours);
   }
-  for (const entry of result.values()) for (const key of Object.keys(entry) as (keyof SupervisorHours)[]) entry[key] = round(entry[key]);
   return result;
 }
 
