@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
+import { interviewAllowance, interviewsUsed } from "@/lib/onboarding/interviews";
 import { FieldValue } from "firebase-admin/firestore";
 import { headers } from "next/headers";
 import { recordOperationalFailure } from "@/lib/operations/monitoring";
@@ -32,6 +33,7 @@ type BookingResult = {
 
 const BOOKING_ERRORS = new Set([
   "ALREADY_HAS_BOOKING",
+  "INTERVIEW_LIMIT_REACHED",
   "SUPERVISOR_NOT_FOUND",
   "NO_SEATS_AVAILABLE",
   "INVALID_SLOT",
@@ -83,6 +85,9 @@ export async function createBooking(
     .collection("bookings")
     .where("studentEmail", "==", normalizedEmail)
     .where("status", "==", "confirmed");
+  // Every booking by this email, to apply the two-interview allowance.
+  const allBookingsQuery = adminDb.collection("bookings").where("studentEmail", "==", normalizedEmail);
+  const traineeQuery = adminDb.collection("trainees").where("email", "==", normalizedEmail).limit(1);
 
   const bookingData: Omit<Booking, "id"> = {
     studentName: payload.studentName.trim(),
@@ -130,10 +135,12 @@ export async function createBooking(
       });
     }
     const supervisor = await adminDb.runTransaction(async (transaction) => {
-      const [existingBookings, supervisorSnap, slotSnap] = await Promise.all([
+      const [existingBookings, supervisorSnap, slotSnap, allBookings, traineeSnap] = await Promise.all([
         transaction.get(existingBookingQuery),
         transaction.get(supervisorRef),
         transaction.get(slotRef),
+        transaction.get(allBookingsQuery),
+        transaction.get(traineeQuery),
       ]);
 
       if (
@@ -144,6 +151,12 @@ export async function createBooking(
         )
       )
         throw new Error("ALREADY_HAS_BOOKING");
+      if (
+        bookingType === "initial_interview" &&
+        interviewsUsed(allBookings.docs.map((doc) => doc.data())) >=
+          interviewAllowance(traineeSnap.docs[0]?.data()?.extraInterviewsAllowed)
+      )
+        throw new Error("INTERVIEW_LIMIT_REACHED");
       if (!supervisorSnap.exists) throw new Error("SUPERVISOR_NOT_FOUND");
       if (!slotSnap.exists) throw new Error("INVALID_SLOT");
 

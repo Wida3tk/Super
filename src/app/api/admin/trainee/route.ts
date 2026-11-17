@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logActivity } from "@/lib/activityLog";
 import { adminDb, adminAuth } from "@/lib/firebase/admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requireAdmin } from "@/lib/auth/serverAuth";
 
 // إضافة متدرب جديد
@@ -295,6 +296,16 @@ export async function PATCH(req: NextRequest) {
         changedBy: "admin",
       });
     }
+  } else if (action === "grantInterview") {
+    // The fee covers two initial interviews; the administration may allow more.
+    const before = await ref.get();
+    if (!before.exists) return NextResponse.json({ error: "Trainee not found" }, { status: 404 });
+    await ref.update({ extraInterviewsAllowed: FieldValue.increment(1), updatedAt: new Date().toISOString() });
+    await logActivity({
+      type: "admin_interview_allowance",
+      message: `سمحت الإدارة بمقابلة أولية إضافية للمتدرب ${before.data()?.name || ""}`,
+      traineeId,
+    });
   } else if (action === "assign") {
     const traineeBefore = await ref.get();
     if (!traineeBefore.exists)

@@ -11,6 +11,9 @@ import "@/styles/admin-onboarding.css";
 export interface BoardTrainee {
   id: string; name: string; email: string; phone: string; license: string; column: Column; onboardingStage: string | null;
   since: string; createdAt: string; interviewSupervisorId: string; traineeIntent: string; supervisorIntent: string;
+  /** Initial interviews booked (not cancelled), oldest first, and how many the trainee may have. */
+  interviews: { supervisorId: string; date: string; state: string }[];
+  allowance: number;
 }
 type Supervisor = { id: string; name: string; active: boolean; consultant: boolean; seats: number };
 
@@ -135,6 +138,7 @@ export default function OnboardingBoard({ locale, trainees, supervisors, months,
                             <Link role="menuitem" href={`/${locale}/admin/trainees/${card.id}`}>فتح الملف</Link>
                             {back && <button role="menuitem" type="button" onClick={() => moveTo(card, back, `إرجاع إلى ${STAGE_LABEL[back]}`)}>إرجاع إلى {STAGE_LABEL[back]}</button>}
                             {card.column === "post_interview" && card.onboardingStage !== "admin_review" && <button role="menuitem" type="button" onClick={() => act(card, "تحويل لمراجعة الإدارة", { action: "updateOnboarding", stage: "admin_review" }, (c) => ({ ...c, onboardingStage: "admin_review" }))}>تحويل لمراجعة الإدارة</button>}
+                            {card.interviews.length >= card.allowance && <button role="menuitem" type="button" onClick={() => act(card, "سُمح بمقابلة إضافية", { action: "grantInterview" }, (c) => ({ ...c, allowance: c.allowance + 1 }))}>السماح بمقابلة إضافية</button>}
                             {(card.column === "post_interview" || card.column === "initial_interview") && <button role="menuitem" type="button" className="is-danger" onClick={() => act(card, "لم يتم الاتفاق", { action: "updateOnboarding", stage: "interview_declined" }, (c) => ({ ...c, column: "declined", onboardingStage: "interview_declined", since: new Date().toISOString() }))}>لم يتم الاتفاق</button>}
                           </span>
                         )}
@@ -142,12 +146,16 @@ export default function OnboardingBoard({ locale, trainees, supervisors, months,
                       <div className="ob-tags">
                         {card.license && <span className="ob-tag">{card.license}</span>}
                         {days !== null && <span className={`ob-tag${stale ? " is-stale" : ""}`}>{days === 0 ? "اليوم" : `منذ ${days} يوم`}</span>}
+                        {card.interviews.length > 0 && <span className={`ob-tag${card.interviews.length >= card.allowance ? " is-full" : " is-count"}`} title={card.interviews.map((i, n) => `المقابلة ${n + 1}: ${supName.get(i.supervisorId) || "مشرف"} ${i.date}`).join(" · ")}>مقابلة {card.interviews.length} من {card.allowance}</span>}
                         {card.onboardingStage === "admin_review" && <span className="ob-tag is-review">مراجعة الإدارة</span>}
                         {card.onboardingStage === "ready_assignment" && <span className="ob-tag is-ready">جاهز للإسناد</span>}
                       </div>
-                      {(card.interviewSupervisorId || card.traineeIntent || card.supervisorIntent) && card.column !== "registered" && (
+                      {(card.interviewSupervisorId || card.traineeIntent || card.supervisorIntent || card.interviews.length > 0) && card.column !== "registered" && (
                         <div className="ob-meta">
-                          {card.interviewSupervisorId && <span>المقابلة مع <b>{supName.get(card.interviewSupervisorId) || "مشرف"}</b></span>}
+                          {card.interviews.length > 1
+                            ? <span>المقابلات: {card.interviews.map((i, n) => <b key={n}>{n ? " ← " : ""}{supName.get(i.supervisorId) || "مشرف"}</b>)}</span>
+                            : card.interviewSupervisorId && <span>المقابلة مع <b>{supName.get(card.interviewSupervisorId) || "مشرف"}</b></span>}
+                          {card.column === "declined" && card.interviews.length < card.allowance && <span className="ob-second">يحق له مقابلة ثانية مع مشرف آخر دون رسوم إضافية</span>}
                           {card.column === "post_interview" && (card.traineeIntent || card.supervisorIntent) && (
                             <span className="ob-intents">
                               {card.traineeIntent && <em className={`is-${INTENT[card.traineeIntent]?.tone || "wait"}`}>المتدرب: {INTENT[card.traineeIntent]?.label || card.traineeIntent}</em>}

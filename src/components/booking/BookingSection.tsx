@@ -100,6 +100,8 @@ export default function BookingSection({
       const messages: Record<string, string> = {
         ALREADY_HAS_BOOKING:
           "لديك حجز مؤكد من هذا النوع بالفعل. ادخل إلى حسابك لمراجعته.",
+        INTERVIEW_LIMIT_REACHED:
+          "استخدمت المقابلتين الأوليتين المشمولتين بالرسوم. تواصل مع الإدارة لترتيب مقابلة إضافية.",
         SLOT_NOT_AVAILABLE: "تم حجز هذا الموعد للتو. ارجع واختر موعدًا آخر.",
         INVALID_SLOT: "الموعد المختار غير صالح. ارجع واختر موعدًا جديدًا.",
         INVALID_EMAIL: "تحقق من كتابة البريد الإلكتروني بشكل صحيح.",

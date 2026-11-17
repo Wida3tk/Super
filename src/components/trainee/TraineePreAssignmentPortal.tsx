@@ -59,7 +59,7 @@ export default function TraineePreAssignmentPortal({ trainee, booking, locale, t
           </div>
         </> : <>
           <h2 style={{color:"#001442",fontSize:22}}>{decision === "continue" ? "تم تسجيل رغبتك في الاستمرار" : "تم تسجيل عدم رغبتك في الاستمرار"}</h2>
-          <p style={{color:"#64748B",lineHeight:1.8}}>{decision === "continue" ? "ستظهر لوحة الإشراف الكاملة بعد أن تعتمد الإدارة إسنادك للمشرف." : "يمكنك العودة لاختيار مشرف آخر وحجز مقابلة جديدة."}</p>
+          <p style={{color:"#64748B",lineHeight:1.8}}>{decision === "continue" ? "ستظهر لوحة الإشراف الكاملة بعد أن تعتمد الإدارة إسنادك للمشرف." : "تشمل الرسوم مقابلتين أوليتين، فيمكنك اختيار مشرف آخر وحجز مقابلة ثانية دون رسوم إضافية."}</p>
           {decision === "decline" && <Link href={`/${locale}#supervisors`} style={{color:"#0D40FC",fontWeight:800}}>اختيار مشرف آخر</Link>}
         </>}
       </section>
