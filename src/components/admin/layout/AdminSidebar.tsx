@@ -58,11 +58,11 @@ export default function AdminFrame({
   const notifications = Number(badges.notifications || 0);
 
   return (
-    <div className="sk-admin" dir="rtl" data-nav-open={open}>
+    <div className="sk-admin" dir="rtl" data-nav-open={open} data-section={section.key} style={{ "--sk-accent": section.color } as React.CSSProperties}>
       <button type="button" className="sk-overlay" aria-label="إغلاق القائمة" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
       <aside className="sk-side" id="sk-admin-nav" aria-label="قائمة الإدارة">
         <div className="sk-side-brand">
-          <Link href={base} aria-label="سلوكيرا — اليوم">
+          <Link href={base} aria-label="سلوكيرا — الرئيسية">
             <img src="/logo.svg" alt="سلوكيرا" />
           </Link>
           <small>الإدارة</small>
@@ -80,6 +80,7 @@ export default function AdminFrame({
                 href={hrefFor(item.tabs[0].path)}
                 className="sk-nav-item"
                 aria-current={item.key === section.key ? "page" : undefined}
+                style={{ "--sk-item": item.color } as React.CSSProperties}
               >
                 <UiIcon name={item.icon} size={19} />
                 <span>{item.label}</span>

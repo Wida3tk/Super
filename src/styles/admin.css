@@ -239,3 +239,44 @@ body:has(.sk-admin) { background: var(--sk-canvas); margin: 0; }
   .sk-side { transition: none; }
 }
 .sk-admin :focus-visible { outline: 2px solid var(--sk-primary); outline-offset: 2px; }
+
+/* ---------- Identity: navy sidebar and a colour per section (2026-11-17) ---------- */
+.sk-admin { --sk-accent: var(--sk-primary); --sk-side-bg: #001442; --sk-side-ink: #c9d5f5; --sk-side-muted: #8c9cc4; }
+.sk-side {
+  background:
+    radial-gradient(120% 60% at 100% 0%, rgba(85, 215, 255, 0.16), transparent 60%),
+    linear-gradient(180deg, #001a57 0%, var(--sk-side-bg) 55%, #000d2e 100%);
+  border-left: 0;
+  color: var(--sk-side-ink);
+}
+.sk-side-brand img { filter: brightness(0) invert(1); }
+.sk-side-brand small { color: var(--sk-neon); border-color: rgba(85, 215, 255, 0.35); background: rgba(85, 215, 255, 0.08); }
+.sk-side .sk-icon-btn { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); color: #fff; }
+.sk-nav { gap: 4px; }
+.sk-nav-item { color: var(--sk-side-ink); font-weight: 600; }
+.sk-nav-item svg { color: var(--sk-item, var(--sk-neon)); opacity: 0.95; }
+.sk-nav-item:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.sk-nav-item[aria-current="page"] {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), color-mix(in srgb, var(--sk-item) 38%, transparent));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.sk-nav-item[aria-current="page"] svg { color: #fff; }
+.sk-nav-item[aria-current="page"]::before { background: var(--sk-item); width: 4px; inset-inline-start: -12px; }
+.sk-side .sk-nav-count { background: #ff5a5f; box-shadow: 0 0 0 2px var(--sk-side-bg); }
+.sk-side-foot { border-top-color: rgba(255, 255, 255, 0.1); }
+.sk-side-foot .sk-nav-item { color: var(--sk-side-muted); }
+.sk-side-foot .sk-nav-item svg { color: var(--sk-side-muted); }
+.sk-side-user b { color: #fff; }
+.sk-side-user small { color: var(--sk-side-muted); }
+.sk-side .sk-avatar { background: linear-gradient(135deg, var(--sk-primary), var(--sk-neon)); }
+.sk-logout { color: var(--sk-side-muted); }
+.sk-logout:hover { background: rgba(255, 90, 95, 0.14); color: #ffb3b5; }
+.sk-side :focus-visible { outline-color: var(--sk-neon); }
+
+/* The page wears its section's colour. */
+.sk-top h1 { display: flex; align-items: center; gap: 10px; }
+.sk-top h1::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--sk-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--sk-accent) 18%, transparent); flex: 0 0 auto; }
+.sk-tab[aria-current="page"] { color: var(--sk-accent); border-bottom-color: var(--sk-accent); }
+.sk-tab:hover { color: var(--sk-accent); }
+.sk-crumbs a:hover, .sk-back:hover { color: var(--sk-accent); }

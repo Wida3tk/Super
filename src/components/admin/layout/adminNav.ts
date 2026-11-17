@@ -1,4 +1,4 @@
-// Admin information architecture: six sections, each with its own tabs.
+// Admin information architecture: six sections, each with its own tabs and colour.
 // Every tab points at an existing route, so old links keep working.
 
 export type AdminTab = { path: string; label: string };
@@ -6,17 +6,32 @@ export type AdminSection = {
   key: string;
   label: string;
   icon: string;
+  /** The section's colour, used on the sidebar, tabs and its pages. */
+  color: string;
   tabs: AdminTab[];
   /** Extra path prefixes (detail pages) that belong to this section. */
   match?: string[];
 };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
-  { key: "today", label: "اليوم", icon: "home", tabs: [{ path: "", label: "اليوم" }] },
+  { key: "today", label: "الرئيسية", icon: "home", color: "#0d40fc", tabs: [{ path: "", label: "الرئيسية" }] },
+  {
+    key: "supervisors",
+    label: "المشرفون",
+    icon: "user",
+    color: "#6a46f5",
+    tabs: [
+      { path: "/supervisors", label: "الحسابات" },
+      { path: "/bookings", label: "المقابلات والحجوزات" },
+      { path: "/productivity", label: "الإنتاجية" },
+    ],
+    match: ["/import-supervisor"],
+  },
   {
     key: "trainees",
     label: "المتدربون",
     icon: "users",
+    color: "#0b8f7a",
     tabs: [
       { path: "/trainees", label: "قائمة المتدربين" },
       { path: "/onboarding", label: "طلبات التسجيل" },
@@ -26,26 +41,16 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     ],
     match: ["/import"],
   },
-  {
-    key: "supervisors",
-    label: "المشرفون",
-    icon: "user",
-    tabs: [
-      { path: "/supervisors", label: "الحسابات" },
-      { path: "/bookings", label: "المقابلات والحجوزات" },
-      { path: "/productivity", label: "الإنتاجية" },
-    ],
-    match: ["/import-supervisor"],
-  },
-  { key: "months", label: "الاعتماد الشهري", icon: "calendarCheck", tabs: [{ path: "/months", label: "الاعتماد الشهري" }] },
-  { key: "messages", label: "المحادثات", icon: "message", tabs: [{ path: "/messages", label: "المحادثات" }] },
-  { key: "notifications", label: "الإشعارات", icon: "bell", tabs: [{ path: "/notifications", label: "الإشعارات" }] },
+  { key: "months", label: "الاعتماد الشهري", icon: "calendarCheck", color: "#d97706", tabs: [{ path: "/months", label: "الاعتماد الشهري" }] },
+  { key: "messages", label: "المحادثات", icon: "message", color: "#0891b2", tabs: [{ path: "/messages", label: "المحادثات" }] },
   {
     key: "system",
-    label: "النظام",
+    label: "الإعدادات",
     icon: "settings",
+    color: "#55627a",
     tabs: [
-      { path: "/cms", label: "الإعدادات" },
+      { path: "/cms", label: "محتوى الموقع" },
+      { path: "/notifications", label: "الإشعارات" },
       { path: "/export", label: "التصدير" },
       { path: "/operations", label: "المراقبة وسجل التدقيق" },
     ],
