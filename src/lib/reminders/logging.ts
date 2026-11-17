@@ -16,6 +16,13 @@ export interface ReminderAction { kind: ReminderKind; toSupervisor: boolean; key
 
 export const MONTH_MIN = 20;
 
+/**
+ * Reminders start on 1 December 2026: until then the administration is still
+ * adding trainees and clearing graduates (program owner, 2026-11-17).
+ */
+export const REMINDERS_START = "2026-12-01";
+export const remindersActive = (today: string) => today >= REMINDERS_START;
+
 export function lastDayOfMonth(today: string) {
   const [y, m] = today.split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);

@@ -3,7 +3,7 @@ import "server-only";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { buildRoster } from "@/lib/admin/supervisorRoster";
 import { sendLoggingReminderEmail } from "@/lib/email/emailService";
-import { loggingReminders, type ReminderState } from "./logging";
+import { loggingReminders, remindersActive, REMINDERS_START, type ReminderState } from "./logging";
 
 const DAY = 86400000;
 const day = (v: unknown) => { const t = String(v || "").slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ""; };
@@ -12,6 +12,7 @@ const between = (a: string, b: string) => Math.floor((Date.parse(`${b}T00:00:00Z
 /** Runs once a day from the scheduled job. Returns how many reminders went out. */
 export async function runLoggingReminders(now = new Date()) {
   const today = now.toISOString().slice(0, 10);
+  if (!remindersActive(today)) return { sent: 0, startsOn: REMINDERS_START };
   const month = today.slice(0, 7);
   const windowStart = new Date(now.getTime() - 45 * DAY).toISOString().slice(0, 10);
   const [traineesSnap, supervisorsSnap, rowsSnap] = await Promise.all([
@@ -73,5 +74,5 @@ export async function runLoggingReminders(now = new Date()) {
     }
     if (Object.keys(update).length) await adminDb.collection("trainees").doc(trainee.id).update(update);
   }
-  return { sent };
+  return { sent, startsOn: REMINDERS_START };
 }
