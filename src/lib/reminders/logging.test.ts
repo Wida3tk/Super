@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastDayOfMonth, loggingReminders } from "./logging";
+import { lastDayOfMonth, loggingReminders, remindersActive } from "./logging";
 
 const serving = { serving: true, paused: false };
 
@@ -32,4 +32,9 @@ describe("loggingReminders", () => {
 it("finds the last day of the month, including February", () => {
   expect(lastDayOfMonth("2026-11-17")).toBe("2026-11-30");
   expect(lastDayOfMonth("2028-02-03")).toBe("2028-02-29");
+});
+
+it("stays off until 1 December 2026", () => {
+  expect(remindersActive("2026-11-30")).toBe(false);
+  expect(remindersActive("2026-12-01")).toBe(true);
 });
