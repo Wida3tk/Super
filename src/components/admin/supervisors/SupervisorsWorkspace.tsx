@@ -14,6 +14,7 @@ import { HoursLine, OpenSessions, StandingTable } from "@/components/admin/Super
 import UiIcon from "@/components/ui/UiIcon";
 import { STANDINGS, type Standing, type SupervisorCard, type SupervisorHours, type TraineeStanding } from "@/lib/admin/supervisorRoster";
 import { normalizeProviderPhotoUrl } from "@/lib/providerPhoto";
+import { markGraduated } from "@/lib/admin/graduate";
 import "@/styles/admin-today.css";
 import "@/styles/admin-roster.css";
 import "@/styles/admin-supervisors.css";
@@ -30,7 +31,7 @@ export interface FileData {
   slots: any[];
   work: { trainees: any[]; activities: any[]; sessions: any[]; minutes: any[]; documents: any[] };
 }
-type Tab = "overview" | "trainees" | "hours" | "work" | "schedule";
+type Tab = "overview" | "trainees" | "graduates" | "hours" | "work" | "schedule";
 type Filter = "all" | "attention" | "active" | "stopped" | "consultant";
 
 const num = (n: number) => new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(n);
@@ -213,7 +214,9 @@ export default function SupervisorsWorkspace({ locale, people, roster, months, f
                 </span>
                 <span className="sv-card-stats">
                   <span><b>{card?.active || 0}</b>متدرب نشط</span>
-                  <span><b>{card?.graduates || 0}</b>متخرج</span>
+                  {card?.graduates
+                    ? <Link className="sv-card-grads" href={`${href(person.id)}&tab=graduates`} onClick={(e) => e.stopPropagation()}><b>{card.graduates}</b>متخرج</Link>
+                    : <span><b>0</b>متخرج</span>}
                   <span className="sv-card-seats">
                     {consultant ? <b className="sv-dim">—</b> : <SeatStepper supervisorId={person.id} initial={seatsById[person.id] || 0} onChange={(n) => setSeatsById((s) => ({ ...s, [person.id]: n }))} />}
                     مقعد متاح
@@ -246,7 +249,8 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
   const consultant = person.accountType === "consultant";
   const tabs: [Tab, string][] = [
     ["overview", "نظرة عامة"],
-    ["trainees", "المتدربون"],
+    ["trainees", "المتدربون الحاليون"],
+    ["graduates", "المتخرجون"],
     ["hours", "الساعات"],
     ["work", "سجل العمل الشهري"],
     ["schedule", consultant ? "المواعيد" : "المواعيد والمقاعد"],
@@ -256,6 +260,7 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
   const [more, setMore] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [graduating, setGraduating] = useState<string | null>(null);
   const setTab = (next: Tab) => {
     setTabState(next);
     try {
@@ -268,7 +273,16 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
   const mine = standings.filter((s) => s.supervisorId === person.id);
   const serving = mine.filter((s) => s.serving).sort((a, b) => b.percent - a.percent);
   const attention = serving.filter((s) => s.standing && ATTENTION.includes(s.standing) && !s.paused);
-  const graduates = mine.filter((s) => s.completed);
+  const graduates = mine.filter((s) => s.completed).sort((a, b) => String(b.completedAt || "").localeCompare(String(a.completedAt || "")) || a.name.localeCompare(b.name, "ar"));
+
+  async function graduate(item: TraineeStanding) {
+    if (!window.confirm(`تسجيل ${item.name} متخرجًا؟\nينتقل من المتدربين الحاليين إلى المتخرجين، وتبقى ساعاته وملفه كما هي.`)) return;
+    setGraduating(item.traineeId);
+    const { failed } = await markGraduated([item.traineeId], `تسجيل تخرّج من ملف المشرف ${person.name}`);
+    setGraduating(null);
+    if (failed.length) setMessage(`تعذّر تسجيل تخرّج ${item.name}. حاولي مجددًا.`);
+    else router.refresh();
+  }
   const thisMonth = file.history.months.find((m) => m.month === months.current);
   const last12 = [...file.history.months].slice(0, 12).reverse();
   const peak = Math.max(1, ...last12.map((m) => m.total));
@@ -339,7 +353,7 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
           <small>{consultant ? "المستشار لا يستقبل متدربين" : "يظهر نفس الرقم في حساب المشرف"}</small>
         </div>
         <div className="sv-kpi k-trainees"><span>متدربون نشطون</span><b>{card?.active || 0}</b><small>{card?.paused ? `و${card.paused} في تأجيل معتمد` : `${attention.length} يحتاجون متابعة`}</small></div>
-        <div className="sv-kpi k-grads"><span>متخرجون</span><b>{card?.graduates || 0}</b><small>أنهوا الإشراف معه</small></div>
+        <button type="button" className="sv-kpi k-grads" onClick={() => setTab("graduates")}><span>متخرجون</span><b>{card?.graduates || 0}</b><small>أنهوا الإشراف معه · عرضهم</small></button>
         <div className="sv-kpi k-month"><span>ساعات {monthName(months.current)}</span><b>{num(thisMonth?.total || 0)}</b><small>{thisMonth ? <HoursLine hours={thisMonth} /> : "لا جلسات بعد"}</small></div>
         <div className="sv-kpi k-total"><span>الساعات التراكمية</span><b>{num(file.history.cumulative)}</b><small>الجلسة الجماعية تُحسب مرة واحدة</small></div>
       </section>
@@ -349,6 +363,7 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
           <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? "is-active" : ""} onClick={() => setTab(key)}>
             {label}
             {key === "trainees" && attention.length > 0 && <em>{attention.length}</em>}
+            {key === "graduates" && graduates.length > 0 && <em className="is-calm">{graduates.length}</em>}
           </button>
         ))}
       </nav>
@@ -381,20 +396,39 @@ function SupervisorFile({ locale, file, card, standings, months, initialTab, bas
       )}
 
       {tab === "trainees" && (
-        <div className="sv-stack">
-          <section className="sk-card">
-            <header className="sk-card-head"><div><h2>المتدربون الحاليون <span className="sk-chip">{serving.length}</span></h2><p>التقدم نحو الساعات المطلوبة، والمتبقي، والإنهاء المتوقع.</p></div></header>
-            {serving.length ? <StandingTable rows={serving} locale={locale} /> : <div className="sk-empty">لا متدربين حاليًا.</div>}
-          </section>
-          {graduates.length > 0 && (
-            <section className="sk-card">
-              <header className="sk-card-head"><div><h2>المتخرجون <span className="sk-chip success">{graduates.length}</span></h2></div></header>
-              <ul className="rs-grads">
-                {graduates.map((g) => <li key={g.traineeId}><Link href={`/${locale}/admin/trainees/${g.traineeId}`}>{g.name}</Link><small>{g.license} · {num(g.hours)} ساعة</small></li>)}
-              </ul>
-            </section>
+        <section className="sk-card">
+          <header className="sk-card-head"><div><h2>المتدربون الحاليون <span className="sk-chip">{serving.length}</span></h2><p>التقدم نحو الساعات المطلوبة، والمتبقي، والإنهاء المتوقع. من أنهى الإشراف سجّليه متخرجًا لينتقل إلى قائمة المتخرجين.</p></div></header>
+          {serving.length ? (
+            <StandingTable rows={serving} locale={locale} action={(item) => (
+              <button type="button" className="rs-act" disabled={graduating !== null} onClick={() => void graduate(item)}>
+                {graduating === item.traineeId ? "جارٍ التسجيل…" : "تسجيل تخرّج"}
+              </button>
+            )} />
+          ) : <div className="sk-empty">لا متدربين حاليًا.</div>}
+        </section>
+      )}
+
+      {tab === "graduates" && (
+        <section className="sk-card">
+          <header className="sk-card-head"><div><h2>المتخرجون <span className="sk-chip success">{graduates.length}</span></h2><p>من أنهى الإشراف مع {person.name}. لا يظهرون في قائمة المتدربين الحاليين ولا في المقاعد.</p></div></header>
+          {graduates.length === 0 ? <div className="sk-empty">لا متخرجين بعد.</div> : (
+            <div className="sk-table-wrap">
+              <table className="sk-table rs-table">
+                <thead><tr><th scope="col">المتدرب</th><th scope="col">الرخصة</th><th scope="col">الساعات المعتمدة</th><th scope="col">تاريخ التخرّج</th></tr></thead>
+                <tbody>
+                  {graduates.map((g) => (
+                    <tr key={g.traineeId}>
+                      <th scope="row"><Link prefetch={false} className="rs-name" href={`/${locale}/admin/trainees/${g.traineeId}`}>{g.name}</Link></th>
+                      <td>{g.license}</td>
+                      <td>{num(g.hours)} من {num(g.required)}</td>
+                      <td>{g.completedAt ? <span dir="ltr">{g.completedAt}</span> : <span className="sv-dim">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
+        </section>
       )}
 
       {tab === "hours" && (

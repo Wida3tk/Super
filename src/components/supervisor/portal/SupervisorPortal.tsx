@@ -29,6 +29,8 @@ const monthLabel = (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) -
 const fmt = (n: number) => String(Math.round(n * 10) / 10);
 const daysSince = (iso?: string) => (iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)) : 0);
 
+export interface Graduate { id: string; name: string; license: string; hours: number; required: number; supervision: number; completedAt: string | null }
+
 interface Props {
   locale: string;
   supervisor: any;
@@ -40,6 +42,7 @@ interface Props {
   pendingActivities: any[];
   approvedActivities: any[];
   importGaps?: ImportGap[];
+  graduates?: Graduate[];
   cycles: Record<string, Cycle>;
   currentMonth: string;
   previousMonth: string;
@@ -60,7 +63,7 @@ export default function SupervisorPortal(props: Props) {
   ];
   const validTrainee = trainees.some((t) => t.id === props.initialTraineeId) ? props.initialTraineeId! : null;
   const [section, setSection] = useState<Section>(
-    validTrainee ? "trainees" : sections.some((s) => s.key === props.initialSection) ? (props.initialSection as Section) : "today",
+    validTrainee || props.initialSection === "graduates" ? "trainees" : sections.some((s) => s.key === props.initialSection) ? (props.initialSection as Section) : "today",
   );
   const [traineeId, setTraineeId] = useState<string | null>(validTrainee);
   const [fileTab, setFileTab] = useState<FileTab>("summary");
@@ -68,6 +71,8 @@ export default function SupervisorPortal(props: Props) {
   const [stageFilter, setStageFilter] = useState<CycleStage | null>(null);
   const [alertFilter, setAlertFilter] = useState<AlertKey | null>(null);
   const [search, setSearch] = useState("");
+  const [listView, setListView] = useState<"current" | "graduates">(props.initialSection === "graduates" ? "graduates" : "current");
+  const graduates = props.graduates || [];
   const [pending, setPending] = useState(props.pendingActivities);
   const [logFor, setLogFor] = useState<string | null>(null);
   const [unreadMessages, setUnreadMessages] = useUnreadMessages("supervisor", section !== "messages");
@@ -75,16 +80,17 @@ export default function SupervisorPortal(props: Props) {
   // Keep the address in sync so a refresh or a shared link opens the same place.
   useEffect(() => {
     const params = new URLSearchParams();
-    if (section !== "today") params.set("section", section);
+    if (section !== "today") params.set("section", section === "trainees" && listView === "graduates" && !traineeId ? "graduates" : section);
     if (traineeId) params.set("trainee", traineeId);
     const chat = section === "messages" ? new URLSearchParams(window.location.search).get("chat") : null;
     if (chat) params.set("chat", chat);
     const qs = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
-  }, [section, traineeId]);
+  }, [section, traineeId, listView]);
 
   const go = (next: Section) => {
     setSection(next);
+    setListView("current");
     setTraineeId(null);
     window.scrollTo({ top: 0 });
   };
@@ -152,6 +158,7 @@ export default function SupervisorPortal(props: Props) {
             go={go}
             openTrainee={openTrainee}
             showTrainees={showTrainees}
+            showGraduates={() => { go("trainees"); setListView("graduates"); }}
           />
         )}
 
@@ -165,8 +172,14 @@ export default function SupervisorPortal(props: Props) {
           />
         )}
 
-        {section === "trainees" && !isConsultant && !traineeId && (
+        {section === "trainees" && !isConsultant && !traineeId && listView === "graduates" && (
+          <GraduateList graduates={graduates} current={trainees.length} onBack={() => setListView("current")} />
+        )}
+
+        {section === "trainees" && !isConsultant && !traineeId && listView === "current" && (
           <TraineeList
+            graduates={graduates.length}
+            showGraduates={() => setListView("graduates")}
             trainees={trainees}
             cycle={cycles[month]}
             month={month}
@@ -260,7 +273,7 @@ function PageHead({ title, hint, children }: { title: string; hint?: string; chi
 
 function TodaySection({
   supervisor, trainees, cycles, currentMonth, previousMonth, notifications, pending, setPending, approvedActivities, importGaps = [],
-  upcoming, thisWeek, isConsultant, go, openTrainee, showTrainees,
+  upcoming, thisWeek, isConsultant, go, openTrainee, showTrainees, showGraduates, graduates = [],
 }: Props & {
   pending: any[];
   setPending: (fn: (rows: any[]) => any[]) => void;
@@ -271,6 +284,7 @@ function TodaySection({
   go: (s: Section) => void;
   openTrainee: (id: string, tab?: FileTab) => void;
   showTrainees: (f: { month?: string; stage?: CycleStage | null; alert?: AlertKey | null }) => void;
+  showGraduates: () => void;
 }) {
   const current = cycles[currentMonth];
   const previous = cycles[previousMonth];
@@ -319,7 +333,7 @@ function TodaySection({
       )}
 
       <section className="sk-kpis" aria-label="مؤشرات">
-        <div className="sk-kpi"><span>متدربون نشطون</span><b>{trainees.length}</b><small>{supervisor.availableSeats ?? 0} مقعد متاح للحجز</small></div>
+        <div className="sk-kpi"><span>متدربون نشطون</span><b>{trainees.length}</b><small>{supervisor.availableSeats ?? 0} مقعد متاح للحجز{!isConsultant && graduates.length > 0 && <> · <button type="button" className="sp-gradlink" onClick={showGraduates}>{graduates.length} متخرج</button></>}</small></div>
         <div className="sk-kpi"><span>إشراف {monthLabel(currentMonth)}</span><b>{fmt(current.totals.supervision)}<em className="sk-kpi-of"> من {fmt(current.totals.required)}</em></b><small>ساعة إشراف مقابل 5% المطلوبة</small></div>
         <div className="sk-kpi"><span>ساعات المتدربين هذا الشهر</span><b>{fmt(current.totals.logged)}</b><small>منها {fmt(current.totals.approved)} معتمدة</small></div>
         <div className="sk-kpi"><span>مقابلات هذا الأسبوع</span><b>{thisWeek.length}</b><small>{upcoming.length} مقابلة قادمة إجمالًا</small></div>
@@ -418,9 +432,12 @@ function SupervisionTargets({ trainees, approved, openTrainee }: { trainees: any
 /* ───────────────────────── Trainees ───────────────────────── */
 
 function TraineeList({
+  graduates, showGraduates,
   trainees, cycle, month, currentMonth, previousMonth, setMonth, stageFilter, setStageFilter,
   alertFilter, setAlertFilter, search, setSearch, openTrainee, onLogSession,
 }: {
+  graduates: number;
+  showGraduates: () => void;
   trainees: any[];
   cycle: Cycle;
   month: string;
@@ -446,6 +463,7 @@ function TraineeList({
   return (
     <div className="sp-stack">
       <PageHead title="المتدربون" hint={`${trainees.length} متدرب مسند إليك · اضغط على المتدرب لفتح ملفه: الجلسات، الساعات، الاعتماد الشهري، الخطة والتقييم.`}>
+        <ListSwitch view="current" current={trainees.length} graduates={graduates} onCurrent={() => {}} onGraduates={showGraduates} />
         <button type="button" className="sp-btn sp-btn-primary" onClick={onLogSession}>
           <UiIcon name="plus" size={16} /> تسجيل جلسة إشراف
         </button>
@@ -533,6 +551,52 @@ function TraineeList({
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ListSwitch({ view, current, graduates, onCurrent, onGraduates }: { view: "current" | "graduates"; current: number; graduates: number; onCurrent: () => void; onGraduates: () => void }) {
+  return (
+    <div className="sp-seg sp-listswitch" role="group" aria-label="القائمة">
+      <button type="button" aria-pressed={view === "current"} onClick={onCurrent}>الحاليون <em>{current}</em></button>
+      <button type="button" aria-pressed={view === "graduates"} onClick={onGraduates}>المتخرجون <em>{graduates}</em></button>
+    </div>
+  );
+}
+
+/* ───────────────────────── Graduates ───────────────────────── */
+
+function GraduateList({ graduates, current, onBack }: { graduates: Graduate[]; current: number; onBack: () => void }) {
+  const [q, setQ] = useState("");
+  const rows = graduates.filter((g) => !q.trim() || `${g.name} ${g.license}`.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <div className="sp-stack">
+      <PageHead title="المتخرجون" hint="من أنهى الإشراف معك. لا يظهرون في قائمة المتدربين الحاليين ولا في الدورة الشهرية.">
+        <ListSwitch view="graduates" current={current} graduates={graduates.length} onCurrent={onBack} onGraduates={() => {}} />
+      </PageHead>
+      <section className="sk-card">
+        <header className="sk-card-head">
+          <div><h2>المتخرجون <span className="sk-chip success">{graduates.length}</span></h2><p>الساعات كما اعتُمدت عند التخرّج.</p></div>
+          {graduates.length > 6 && <input className="sp-search" type="search" value={q} placeholder="بحث بالاسم" aria-label="بحث في المتخرجين" onChange={(e) => setQ(e.target.value)} />}
+        </header>
+        {rows.length === 0 ? <p className="sk-empty">{graduates.length ? "لا نتائج بهذا البحث" : "لا متخرجين بعد"}</p> : (
+          <div className="sk-table-wrap">
+            <table className="sk-table sp-rows sp-grads">
+              <thead><tr><th scope="col">المتخرج</th><th scope="col">الساعات الميدانية</th><th scope="col">ساعات الإشراف</th><th scope="col">تاريخ التخرّج</th></tr></thead>
+              <tbody>
+                {rows.map((g) => (
+                  <tr key={g.id}>
+                    <th scope="row"><b>{g.name}</b><small className="sp-sub">{g.license}</small></th>
+                    <td data-label="الساعات الميدانية" className="num">{fmt(g.hours)} <small>من {g.required}</small></td>
+                    <td data-label="ساعات الإشراف" className="num">{fmt(g.supervision)}</td>
+                    <td data-label="تاريخ التخرّج">{g.completedAt ? <span dir="ltr">{g.completedAt}</span> : <span className="sk-faint">—</span>}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

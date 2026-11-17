@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import TraineeLifecyclePanel from "./TraineeLifecyclePanel";
+import Link from "next/link";
+import TraineeDirectory, { scopeOf, type Jump, type Scope } from "./trainees/TraineeDirectory";
 import LegacyImportClient from "./LegacyImportClient";
 import { directoryState } from "@/lib/lifecycle/directory";
 import UiIcon from "@/components/ui/UiIcon";
@@ -18,6 +19,7 @@ export default function TraineeManagementWorkspace({
   supervisors,
   transitions,
   initialSupervisor,
+  initialScope = "serving",
   standings = [],
 }: {
   locale: string;
@@ -26,6 +28,7 @@ export default function TraineeManagementWorkspace({
   supervisors: any[];
   transitions: any[];
   initialSupervisor: string | null;
+  initialScope?: Scope;
   standings?: TraineeStanding[];
 }) {
   const router = useRouter();
@@ -33,6 +36,13 @@ export default function TraineeManagementWorkspace({
   // The supervisors board moved to «المشرفون»; ?supervisor= still filters this list.
   const selected = initialSupervisor && supervisors.some((s) => s.id === initialSupervisor) ? initialSupervisor : undefined;
   const [loading, setLoading] = useState(false);
+  const [jump, setJump] = useState<Jump | null>(null);
+  const go = (scope: Scope, follow?: Jump["follow"]) => {
+    if (view !== "manage") open("manage");
+    setJump((j) => ({ scope, follow, n: (j?.n || 0) + 1 }));
+  };
+  const scopes = { serving: 0, graduates: 0, onboarding: 0 };
+  for (const t of trainees) scopes[scopeOf(directoryState(t).stage)] += 1;
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -52,7 +62,7 @@ export default function TraineeManagementWorkspace({
     );
   }
 
-  const count = (key: string) => standings.filter((t) => t.standing === key && !t.paused).length;
+  const count = (key: string) => standings.filter((t) => t.standing === key && !t.paused && t.serving).length;
   function exportList() {
     const byId = new Map(standings.map((t) => [t.traineeId, t]));
     const names = new Map(supervisors.map((s) => [s.id, s.name]));
@@ -114,12 +124,11 @@ export default function TraineeManagementWorkspace({
 
   return (
     <div dir="rtl">
-      <style>{css}</style>
       <section className="tw-head">
         <div className="tw-head-top">
           <div>
             <h2>المتدربون</h2>
-            <p>كل المتدربين في قائمة واحدة: من يحتاج متابعة أولًا، ثم الباقون. اضغط على الاسم لفتح ملفه.</p>
+            <p>من هم بالإشراف أولًا، والمتخرجون في قسم مستقل. اضغطي على أي رقم لعرض أصحابه.</p>
           </div>
           <div className="tw-head-actions">
             <button type="button" className="tw-btn" onClick={exportList}><UiIcon name="download" size={16} /> تصدير القائمة</button>
@@ -128,23 +137,25 @@ export default function TraineeManagementWorkspace({
           </div>
         </div>
         <div className="tw-stats">
-          <div><span>بالإشراف حاليًا</span><b>{trainees.filter((t) => directoryState(t).stage === "active_service").length}</b><small>من {trainees.length} متدرب</small></div>
-          <div><span>قريبون من الإنهاء</span><b>{count("near_finish")}</b><small>بقي أقل من 20% أو 3 أشهر</small></div>
-          <div className={count("inactive") ? "is-alert" : ""}><span>منقطعون</span><b>{count("inactive")}</b><small>لا ساعات منذ 14 يومًا</small></div>
-          <div><span>قيد الانضمام</span><b>{trainees.filter((t) => t.status === "onboarding").length}</b><small>تسجيل، مقابلة، تعاقد</small></div>
-          <div><span>مكتملون</span><b>{trainees.filter((t) => directoryState(t).completed).length}</b><small>أنهوا الإشراف</small></div>
+          <button type="button" onClick={() => go("serving")}><span>بالإشراف حاليًا</span><b>{scopes.serving}</b><small>من {trainees.length} متدرب</small></button>
+          <button type="button" onClick={() => go("serving", "near_finish")}><span>قريبون من الإنهاء</span><b>{count("near_finish")}</b><small>بقي أقل من 20% أو 3 أشهر</small></button>
+          <button type="button" className={count("inactive") ? "is-alert" : ""} onClick={() => go("serving", "inactive")}><span>منقطعون</span><b>{count("inactive")}</b><small>لا ساعات منذ 14 يومًا</small></button>
+          <button type="button" onClick={() => go("graduates")}><span>المتخرجون</span><b>{scopes.graduates}</b><small>أنهوا الإشراف</small></button>
+          <Link href={`/${locale}/admin/onboarding`}><span>قيد الانضمام</span><b>{scopes.onboarding}</b><small>تُدار من لوحة الانضمام ←</small></Link>
         </div>
       </section>
       {view !== "manage" && (
         <button type="button" className="tw-back" onClick={() => open("manage")}><UiIcon name="arrowLeft" size={15} style={{ transform: "scaleX(-1)" }} /> قائمة المتدربين</button>
       )}
       {view === "manage" && (
-        <TraineeLifecyclePanel
+        <TraineeDirectory
           supervisors={supervisors}
           trainees={trainees}
           transitions={transitions}
           initialSupervisor={selected}
+          initialScope={initialScope}
           standings={standings}
+          jump={jump}
         />
       )}
       {view === "add" && (
@@ -250,5 +261,3 @@ export default function TraineeManagementWorkspace({
     </div>
   );
 }
-
-const css = `.tm-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px 20px;border-radius:14px;background:#fff;border:1px solid #E6EBF2;color:#0F1B33;margin-bottom:14px}.tm-hero span{font-size:12px;color:#0D40FC;font-weight:600}.tm-hero h2{font-size:17px;margin:3px 0}.tm-hero p{font-size:13px;color:#6B7A92;margin:0}.tm-stats{display:flex;gap:8px}.tm-stats div{min-width:95px;padding:2px 16px;border-inline-start:1px solid #EFF3F8;text-align:center}.tm-stats b{display:block;font-size:22px;color:#001442}.tm-stats small{font-size:12px;color:#6B7A92}.tm-tabs{display:flex;gap:4px;padding:6px;background:#fff;border:1px solid #E2E8F0;border-radius:13px;margin-bottom:14px;overflow:auto}.tm-tabs button{border:0;background:transparent;color:#64748B;font:inherit;font-size:12px;font-weight:800;padding:10px 16px;border-radius:9px;cursor:pointer;white-space:nowrap}.tm-tabs button.active{background:#0D40FC;color:#fff;box-shadow:0 5px 12px #0D40FC30}.tm-card{background:#fff;border:1px solid #E2E8F0;border-radius:18px;overflow:hidden;max-width:850px;margin:auto}.tm-card-head{display:flex;justify-content:space-between;padding:22px 24px;background:#F8FAFF;border-bottom:1px solid #E6ECF5}.tm-card-head h3{margin:0 0 5px;color:#001442}.tm-card-head p{margin:0;color:#64748B;font-size:12px}.tm-card-head span{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#E8EEFF;color:#0D40FC;font-weight:900}.tm-form{display:grid;grid-template-columns:1fr 1fr;gap:17px;padding:24px}.tm-form label{display:grid;gap:7px;font-size:12px;font-weight:800;color:#334155}.tm-form label b{color:#DC2626}.tm-form input,.tm-form select{width:100%;padding:11px 12px;border:1px solid #CBD5E1;border-radius:9px;background:#fff;font:inherit}.tm-form input:focus,.tm-form select:focus{outline:0;border-color:#0D40FC;box-shadow:0 0 0 3px #0D40FC12}.tm-note,.tm-message,.tm-actions{grid-column:1/-1}.tm-note{padding:11px 13px;background:#EFF6FF;color:#1D4ED8;border-radius:9px;font-size:11px}.tm-message{padding:11px 13px;background:#ECFDF5;color:#047857;border-radius:9px;font-size:12px;font-weight:800}.tm-actions{display:flex;justify-content:flex-end;gap:8px}.tm-actions button{padding:10px 18px;border:0;border-radius:9px;background:#F1F5F9;color:#475569;font:inherit;font-weight:800;cursor:pointer}.tm-actions .primary{background:#0D40FC;color:#fff}.tm-actions button:disabled{opacity:.55}@media(max-width:760px){.tm-hero{align-items:flex-start;flex-direction:column}.tm-stats{width:100%}.tm-stats div{min-width:0;flex:1}.tm-form{grid-template-columns:1fr}.tm-note,.tm-message,.tm-actions{grid-column:auto}}`;

@@ -114,3 +114,11 @@ body:has(.sp-portal) { background: var(--sk-canvas); margin: 0; }
 .sp-embed { min-width: 0; overflow-x: auto; }
 @media (max-width: 1180px) { .sp-side-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .sp-side-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Graduates: a separate list next to the current trainees. */
+.sp-listswitch button { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+.sp-listswitch em { font-style: normal; min-width: 20px; padding: 0 6px; border-radius: 99px; background: var(--sk-surface); color: var(--sk-muted); font-size: 11.5px; line-height: 18px; text-align: center; }
+.sp-listswitch button[aria-pressed="true"] em { background: #e0f2f1; color: #0f766e; }
+.sp-listswitch button:focus-visible, .sp-gradlink:focus-visible { outline: 2px solid #55d7ff; outline-offset: 2px; }
+.sp-gradlink { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: #0f766e; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.sp-grads th b { display: block; color: var(--sk-ink); font-weight: 600; }
