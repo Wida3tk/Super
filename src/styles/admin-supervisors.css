@@ -149,3 +149,9 @@
   .sv-toolbar .sv-seg { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .sv-card { transition: none; } .sv-card:hover { transform: none; } }
+
+/* The schedule tab reuses the older operations panel: keep it inside narrow screens. */
+.sv .ops-grid { grid-template-columns: minmax(0, 290px) minmax(0, 1fr); }
+.sv .ops-grid > * { min-width: 0; }
+.sv .seat-row input, .sv .ops-field input { min-width: 0; width: 100%; }
+@media (max-width: 800px) { .sv .ops-grid { grid-template-columns: minmax(0, 1fr); } }
