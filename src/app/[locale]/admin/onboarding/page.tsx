@@ -4,6 +4,7 @@ import OnboardingBoard, { type BoardTrainee } from "@/components/admin/onboardin
 import { requireAdmin } from "@/lib/auth/serverAuth";
 import { adminDb } from "@/lib/firebase/admin";
 import { boardColumn, monthlyMovement } from "@/lib/admin/onboarding";
+import { countsAsInterview, interviewAllowance, needsReschedule } from "@/lib/onboarding/interviews";
 
 const monthsBack = (count: number) => {
   const now = new Date();
@@ -15,11 +16,23 @@ export default async function OnboardingPage({ params }: { params: Promise<{ loc
   const { locale } = await params;
   if (!(await requireAdmin())) redirect(`/${locale}/login?portal=admin`);
   const months = monthsBack(6);
-  const [traineesSnap, supervisorsSnap, transitionsSnap] = await Promise.all([
+  const [traineesSnap, supervisorsSnap, transitionsSnap, bookingsSnap] = await Promise.all([
     adminDb.collection("trainees").get(),
     adminDb.collection("supervisors").select("name", "isActive", "isDemo", "accountType", "availableSeats").get(),
     adminDb.collection("traineeLifecycleTransitions").where("changedMonth", "in", months).get(),
+    adminDb.collection("bookings").select("studentEmail", "supervisorId", "status", "meetingStatus", "bookingType", "date").get(),
   ]);
+  // Initial interviews by applicant email, oldest first: two are included in the fee.
+  const interviewsByEmail = new Map<string, { supervisorId: string; date: string; state: string }[]>();
+  const bookingsByEmail = new Map<string, Record<string, any>[]>();
+  for (const doc of bookingsSnap.docs) {
+    const b = doc.data();
+    const email = String(b.studentEmail || "").trim().toLowerCase();
+    if (!email) continue;
+    bookingsByEmail.set(email, [...(bookingsByEmail.get(email) || []), b]);
+    if (!countsAsInterview(b)) continue;
+    interviewsByEmail.set(email, [...(interviewsByEmail.get(email) || []), { supervisorId: String(b.supervisorId || ""), date: String(b.date || ""), state: String(b.meetingStatus || "pending") }]);
+  }
   const all = traineesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
   const trainees: BoardTrainee[] = all.flatMap((t) => {
     const column = boardColumn(t);
@@ -29,6 +42,9 @@ export default async function OnboardingPage({ params }: { params: Promise<{ loc
       column, onboardingStage: t.onboardingStage || null,
       since: t.lifecycleStageChangedAt || t.updatedAt || t.createdAt || "", createdAt: t.createdAt || "",
       interviewSupervisorId: t.interviewSupervisorId || "", traineeIntent: t.traineeContinuationIntent || "", supervisorIntent: t.supervisorContinuationIntent || "",
+      interviews: (interviewsByEmail.get(String(t.email || "").trim().toLowerCase()) || []).sort((a, b) => a.date.localeCompare(b.date)),
+      allowance: interviewAllowance(t.extraInterviewsAllowed),
+      reschedule: needsReschedule(bookingsByEmail.get(String(t.email || "").trim().toLowerCase()) || []),
     }];
   });
   const supervisors = supervisorsSnap.docs.filter((d) => !d.data().isDemo).map((d) => ({
