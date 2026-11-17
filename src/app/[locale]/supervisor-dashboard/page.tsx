@@ -130,6 +130,12 @@ export default async function SupervisorDashboardPage({ params, searchParams }: 
     [previousMonth]: cycleInputs(previousMonth, prevActivitiesSnap, prevSessionsSnap, prevApprovalsSnap),
   };
   const query = await searchParams;
+  // Sessions from the supervisor's workbook that the admin imported without a usable date.
+  const gapsSnap = await adminDb.collection("importGaps").where("supervisorId", "==", supervisor.id).where("status", "==", "open").limit(300).get();
+  const importGaps = gapsSnap.docs.map((doc) => {
+    const g = doc.data();
+    return { id: doc.id, traineeId: g.traineeId, traineeName: g.traineeName, sourceFile: g.sourceFile, sheet: g.sheet, cell: g.cell, raw: g.raw || "", expectedMonth: g.expectedMonth || null, suggestion: g.suggestion || null, individual: Number(g.individual || 0), group: Number(g.group || 0) };
+  }).sort((a, b) => a.traineeName.localeCompare(b.traineeName, "ar") || String(a.expectedMonth).localeCompare(String(b.expectedMonth)));
 
   return (
     <SupervisorPortal
@@ -142,6 +148,7 @@ export default async function SupervisorDashboardPage({ params, searchParams }: 
       notifications={notifications}
       pendingActivities={fieldworkActivities}
       approvedActivities={approvedActivities}
+      importGaps={importGaps}
       cycles={JSON.parse(JSON.stringify(cycles))}
       currentMonth={currentMonth}
       previousMonth={previousMonth}

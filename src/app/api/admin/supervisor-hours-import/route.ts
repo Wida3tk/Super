@@ -38,6 +38,8 @@ type DateIssue = {
   sheet: string; cell: string; monthCell: string; date: string; expectedMonth: string;
   /** What the supervisor typed, and a date the admin can accept in review. */
   raw?: string; suggestion?: string; monthSuggestion?: string;
+  /** Hours on the row, so an unresolved row can be handed to the supervisor. */
+  individual?: number; group?: number;
 };
 const correctionKey = (sheet: string, cell: string) => JSON.stringify([sheet, cell]);
 type Corrections = { months: Map<string, string>; dates: Map<string, string> };
@@ -153,6 +155,7 @@ function parseHours(sheet: ExcelJS.Worksheet, today: string, date1904: boolean, 
             sheet: sheet.name, cell: dateCell.master.address, monthCell: monthCell.address, date, expectedMonth,
             raw, suggestion: suggestSessionDate(raw, expectedMonth, today) || undefined,
             monthSuggestion: suggestGroupMonth(date, expectedMonth, today) || undefined,
+            individual, group,
           });
           continue;
         }
@@ -303,10 +306,15 @@ export async function POST(request: NextRequest) {
       supervisorId, adminId: admin.uid, corrections: [[...corrections.months].sort(), [...corrections.dates].sort()], preview,
     })).digest("hex");
     if (!commit) return NextResponse.json({ ok: true, preview, previewToken });
-    if (preview.dateIssues.length) return NextResponse.json({ error: "SUPERVISOR_IMPORT_DATE_CONFLICT", preview }, { status: 409 });
-    if (hasCorrections && form.get("previewToken") !== previewToken)
+    // The admin may import everything that is ready and hand the rest on:
+    // unresolved dates go to the supervisor to complete, and trainees in
+    // conflict are left out and listed. Both need a fresh preview.
+    const deferUnresolved = form.get("deferUnresolved") === "true";
+    const skipConflicts = form.get("skipConflicts") === "true";
+    if ((deferUnresolved || skipConflicts || hasCorrections) && form.get("previewToken") !== previewToken)
       return NextResponse.json({ error: "IMPORT_PREVIEW_CHANGED", preview }, { status: 409 });
-    if (conflicts.length) return NextResponse.json({ error: "TRAINEE_IDENTITY_CONFLICTS", preview }, { status: 409 });
+    if (preview.dateIssues.length && !deferUnresolved) return NextResponse.json({ error: "SUPERVISOR_IMPORT_DATE_CONFLICT", preview }, { status: 409 });
+    if (conflicts.length && !skipConflicts) return NextResponse.json({ error: "TRAINEE_IDENTITY_CONFLICTS", preview }, { status: 409 });
     if (!matched.length && !pendingCreation.length)
       return NextResponse.json({ error: "NO_TRAINEES_FOUND", preview }, { status: 409 });
 
@@ -492,6 +500,33 @@ export async function POST(request: NextRequest) {
       results.push({ traineeId: traineeDoc.id, name: item.name, created, updated, unchanged, replaced: priorImportedDocs.length, totals });
     }
 
+    // Rows the workbook could not date: the supervisor completes them in their portal.
+    let gapsCreated = 0;
+    if (deferUnresolved) {
+      const conflictEmails = new Set(conflicts.map((row) => String(row.email || "")));
+      for (const item of parsed) {
+        const traineeDoc = assignedByEmail.get(item.email);
+        if (!traineeDoc || conflictEmails.has(item.email)) continue;
+        for (const issue of item.dateIssues) {
+          const id = `gap_${createHash("sha256").update(["supervisor-gap-v1", supervisorId, item.email, issue.sheet, issue.cell].join("|")).digest("hex").slice(0, 32)}`;
+          const ref = adminDb.collection("importGaps").doc(id);
+          // Keep a gap the supervisor already completed or dismissed.
+          const created = await ref.create({
+            supervisorId, traineeId: traineeDoc.id, traineeName: item.name, traineeEmail: item.email,
+            sourceFile: file.name, sheet: issue.sheet, cell: issue.cell, monthCell: issue.monthCell,
+            raw: issue.raw || "", expectedMonth: issue.expectedMonth || null, suggestion: issue.suggestion || null,
+            individual: Number(issue.individual || 0), group: Number(issue.group || 0),
+            status: "open", createdAt: now, createdBy: admin.email || "admin",
+          }).then(() => true, (error: { code?: number }) => { if (error?.code === 6) return false; throw error; });
+          if (created) gapsCreated += 1;
+        }
+      }
+      if (gapsCreated) await adminDb.collection("notifications").add({
+        targetType: "supervisor", supervisorId, read: false, type: "import_gaps",
+        title: "سجلات ناقصة من ملفك", message: `${gapsCreated} جلسة إشراف من ملفك تحتاج تاريخًا. أكملها من قسم «اليوم».`, createdAt: now,
+      });
+    }
+
     await adminDb.collection("activityLog").add({
       type: "supervisor_hours_import",
       message: `تم تحديث ساعات المشرف ${supervisor.name}`,
@@ -502,10 +537,12 @@ export async function POST(request: NextRequest) {
         matched: matched.length,
         createdAccounts: createdAccounts.length,
         conflicts: conflicts.length,
+        skippedConflicts: skipConflicts ? conflicts.map((row) => row.email) : [],
+        gapsCreated,
         results,
       },
     });
-    return NextResponse.json({ ok: true, committed: true, preview, createdAccounts, results });
+    return NextResponse.json({ ok: true, committed: true, preview, createdAccounts, results, gapsCreated, skipped: skipConflicts ? conflicts : [] });
   } catch (error) {
     console.error("Supervisor hours import failed", error);
     const code = error instanceof Error ? error.message : "";
