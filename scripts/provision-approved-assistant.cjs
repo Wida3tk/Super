@@ -54,7 +54,9 @@ async function main() {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   const app = initializeApp({ projectId, credential: privateKey && clientEmail ? cert({ projectId, clientEmail, privateKey }) : applicationDefault() }, 'approved-assistant-provisioning');
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDC5IJuM7Y0Sz1ADYyLuDIx4OAGahqJ5vY';
-  const result = await provision({ auth: getAuth(app), db: getFirestore(app), sendReset: async (address) => {
+  // Match src/lib/firebase/admin.ts: the live database is named "default",
+  // which is distinct from Firestore's implicit "(default)" database.
+  const result = await provision({ auth: getAuth(app), db: getFirestore(app, 'default'), sendReset: async (address) => {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestType: 'PASSWORD_RESET', email: address }), signal: AbortSignal.timeout(20000),
     });
