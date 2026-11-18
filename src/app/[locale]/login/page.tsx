@@ -11,7 +11,7 @@ import UiIcon from "@/components/ui/UiIcon";
 import { withDeadline } from "@/lib/asyncDeadline";
 
 export default function LoginPage() {
-  const [portal, setPortal] = useState<"trainee" | "provider" | "admin">(
+  const [portal, setPortal] = useState<"trainee" | "provider" | "admin" | "assistant">(
     "trainee",
   );
   const [email, setEmail] = useState("");
@@ -26,6 +26,7 @@ export default function LoginPage() {
     if (new URLSearchParams(window.location.search).get("portal") === "admin") {
       setPortal("admin");
     }
+    if (new URLSearchParams(window.location.search).get("portal") === "assistant") setPortal("assistant");
   }, []);
 
   const handlePasswordReset = async () => {
@@ -33,7 +34,7 @@ export default function LoginPage() {
     setResetMessage("");
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setError("اكتبي بريد الإدارة أولًا ثم اضغطي نسيت كلمة المرور");
+      setError("اكتبي بريد الحساب أولًا ثم اضغطي نسيت كلمة المرور");
       return;
     }
     try {
@@ -48,7 +49,7 @@ export default function LoginPage() {
           ? "صيغة البريد الإلكتروني غير صحيحة"
           : code.includes("too-many-requests")
             ? "تم إرسال محاولات كثيرة؛ انتظري قليلًا ثم حاولي مجددًا"
-            : "تعذر إرسال رابط إعادة التعيين. تأكدي من بريد الإدارة وحاولي مجددًا.",
+            : "تعذر إرسال رابط إعادة التعيين. تأكدي من بريد الحساب وحاولي مجددًا.",
       );
     }
   };
@@ -124,9 +125,9 @@ export default function LoginPage() {
           setError("خدمة الجلسات أو قاعدة البيانات غير متاحة مؤقتًا. انتظري قليلًا ثم حاولي مجددًا؛ لا تحتاجين لتغيير كلمة المرور.");
           setLoading(false); setStep(""); return;
         }
-        if (sessionData.error === "ADMIN_ONLY") {
+        if (["ADMIN_ONLY", "ASSISTANT_ONLY", "ACCOUNT_DISABLED"].includes(sessionData.error)) {
           await signOut(auth);
-          setError("هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة");
+          setError("هذا الحساب لا يملك صلاحية الدخول إلى هذه البوابة، أو أن وصوله معطّل.");
           setLoading(false);
           setStep("");
           return;
@@ -152,6 +153,7 @@ export default function LoginPage() {
         safeAdminNext ||
         (role === "admin"
           ? "/ar/admin"
+          : role === "administrative_assistant" ? "/ar/assistant"
           : role === "trainee"
             ? "/ar/trainee-dashboard"
             : role === "client"
@@ -232,15 +234,16 @@ export default function LoginPage() {
           <div className="login-box">
             <img className="mobile-logo" src="/logo.svg" alt="سلوكيرا" />
             <div className="login-welcome">
-              <h1>{portal === "admin" ? "دخول الإدارة" : "تسجيل الدخول"}</h1>
+              <h1>{portal === "admin" ? "دخول الإدارة" : portal === "assistant" ? "دخول المساعد الإداري" : "تسجيل الدخول"}</h1>
               <p>
                 {portal === "admin"
                   ? "أدخل بيانات حساب الإدارة للوصول إلى لوحة التحكم"
+                  : portal === "assistant" ? "أدخل بيانات حساب المساعد للوصول إلى المتابعة الإدارية"
                   : "اختر نوع حسابك ثم أدخل بيانات الدخول"}
               </p>
             </div>
 
-            {portal !== "admin" && (
+            {portal !== "admin" && portal !== "assistant" && (
               <div className="portal-picker" aria-label="نوع الحساب">
                 <button
                   type="button"
@@ -261,6 +264,7 @@ export default function LoginPage() {
             <p className="portal-hint">
               {portal === "admin"
                 ? "هذه الصفحة مخصصة لإدارة منصة سلوكيرا."
+                : portal === "assistant" ? "متابعة الملفات ضمن النطاق المحدد، دون صلاحية اعتماد الساعات أو تعديلها."
                 : portal === "trainee"
                   ? "لمتابعة الساعات والخطة الإشرافية والمواعيد."
                   : "لإدارة المتدربين والجلسات والمواعيد المتاحة."}

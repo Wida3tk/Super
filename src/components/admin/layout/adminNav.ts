@@ -53,6 +53,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       { path: "/notifications", label: "الإشعارات" },
       { path: "/export", label: "التصدير" },
       { path: "/operations", label: "المراقبة وسجل التدقيق" },
+      { path: "/assistants", label: "المساعدون الإداريون" },
     ],
   },
 ];

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { withDeadline } from "@/lib/asyncDeadline";
+import { ASSISTANT_ROLE, validAssistantScope } from "@/lib/auth/assistantPolicy";
 import {
   enforceRateLimit,
   getRequestIdentifier,
@@ -48,9 +49,15 @@ export async function POST(request: NextRequest) {
 
     const email = decoded.email?.trim().toLowerCase() || "";
     const isAdmin = email === process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    let role: "admin" | "supervisor" | "trainee" | "client" | "unknown" =
+    let role: "admin" | "administrative_assistant" | "supervisor" | "trainee" | "client" | "unknown" =
       isAdmin ? "admin" : "unknown";
-    if (!isAdmin && email) {
+    if (!isAdmin && decoded.role === ASSISTANT_ROLE) {
+      const record = await withDeadline(adminDb.collection("administrativeAssistants").doc(decoded.uid).get(), 8000);
+      const assistant = record.data();
+      if (!assistant || assistant.active !== true || assistant.role !== ASSISTANT_ROLE || assistant.email !== email || !validAssistantScope(assistant))
+        return NextResponse.json({ error: "ACCOUNT_DISABLED" }, { status: 403 });
+      role = ASSISTANT_ROLE;
+    } else if (!isAdmin && email) {
       const supervisor = await withDeadline(adminDb
           .collection("supervisors")
           .where("email", "==", email)
@@ -71,6 +78,8 @@ export async function POST(request: NextRequest) {
     if (portal === "admin" && role !== "admin") {
       return NextResponse.json({ error: "ADMIN_ONLY" }, { status: 403 });
     }
+    if (portal === "assistant" && role !== ASSISTANT_ROLE)
+      return NextResponse.json({ error: "ASSISTANT_ONLY" }, { status: 403 });
 
     const response = NextResponse.json({ success: true, isAdmin, role });
     response.cookies.set("__session", sessionCookie, {

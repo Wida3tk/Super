@@ -1,13 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ limit: vi.fn(), verify: vi.fn(), cookie: vi.fn(), reads: [] as string[], exists: {} as Record<string, boolean> }));
+const mocks = vi.hoisted(() => ({ limit: vi.fn(), verify: vi.fn(), cookie: vi.fn(), reads: [] as string[], exists: {} as Record<string, boolean>, assistant: null as any }));
 vi.mock("@/lib/security/rateLimit", () => ({ enforceRateLimit: mocks.limit, getRequestIdentifier: () => "test-ip" }));
 vi.mock("@/lib/firebase/admin", () => ({ adminAuth: { verifyIdToken: mocks.verify, createSessionCookie: mocks.cookie }, adminDb: { collection: (name: string) => {
-  const q: any = { where: () => q, limit: () => q, doc: () => q, get: async () => { mocks.reads.push(name); return { empty: !mocks.exists[name], exists: !!mocks.exists[name] }; } }; return q;
+  const q: any = { where: () => q, limit: () => q, doc: () => q, get: async () => { mocks.reads.push(name); return { empty: !mocks.exists[name], exists: !!mocks.exists[name], data: () => mocks.assistant }; } }; return q;
 } } }));
 import { POST } from "./route";
 const request = (data: any = { token: "token" }) => new NextRequest("https://example.test/api/auth/session", { method: "POST", body: JSON.stringify(data) });
-beforeEach(() => { vi.clearAllMocks(); mocks.reads = []; mocks.exists = {}; process.env.ADMIN_EMAIL = "admin@example.com"; mocks.limit.mockResolvedValue({ allowed: true }); mocks.verify.mockResolvedValue({ uid: "u", email: "user@example.com" }); mocks.cookie.mockResolvedValue("secure-session"); });
+beforeEach(() => { vi.clearAllMocks(); mocks.reads = []; mocks.exists = {}; mocks.assistant = null; process.env.ADMIN_EMAIL = "admin@example.com"; mocks.limit.mockResolvedValue({ allowed: true }); mocks.verify.mockResolvedValue({ uid: "u", email: "user@example.com" }); mocks.cookie.mockResolvedValue("secure-session"); });
 it("rejects missing credentials without spending a Firestore rate-limit read", async () => { expect((await POST(request({}))).status).toBe(400); expect(mocks.limit).not.toHaveBeenCalled(); });
 it("preserves rate limiting and never creates a session when blocked", async () => { mocks.limit.mockResolvedValue({ allowed: false, retryAfterSeconds: 60 }); const res = await POST(request()); expect(res.status).toBe(429); expect(mocks.verify).not.toHaveBeenCalled(); expect(res.headers.get("set-cookie")).toBeNull(); });
 it("fails closed on exhausted database quota", async () => { mocks.limit.mockRejectedValue(Object.assign(new Error("quota"), { code: 8 })); const res = await POST(request()); expect(res.status).toBe(503); expect((await res.json()).error).toBe("SERVICE_BUSY"); expect(mocks.cookie).not.toHaveBeenCalled(); expect(res.headers.get("set-cookie")).toBeNull(); });
@@ -15,3 +15,22 @@ it("does no role queries for configured administrators and keeps secure cookie f
 it("stops after identifying a supervisor, preserving priority over trainee records", async () => { mocks.exists = { supervisors: true, trainees: true }; const res = await POST(request()); expect((await res.json()).role).toBe("supervisor"); expect(mocks.reads).toEqual(["supervisors"]); });
 it("skips client reads when the account is a trainee", async () => { mocks.exists = { trainees: true }; const res = await POST(request()); expect((await res.json()).role).toBe("trainee"); expect(mocks.reads).toEqual(["supervisors", "trainees"]); });
 it("does not allow non-admin accounts into the administrator portal", async () => { mocks.exists = { supervisors: true }; const res = await POST(request({ token: "token", portal: "admin" })); expect(res.status).toBe(403); expect(res.headers.get("set-cookie")).toBeNull(); });
+it("routes an active assistant using the signed claim and live record without granting admin", async () => {
+  mocks.verify.mockResolvedValue({ uid: "a", email: "a@example.com", role: "administrative_assistant" });
+  mocks.assistant = { email: "a@example.com", active: true, role: "administrative_assistant", scope: "all", supervisorIds: [] };
+  const result = await POST(request({ token: "token", portal: "assistant" }));
+  expect(await result.json()).toMatchObject({ role: "administrative_assistant", isAdmin: false });
+  expect(mocks.reads).toEqual(["administrativeAssistants"]);
+  const forbidden = await POST(request({ token: "token", portal: "admin" }));
+  expect(forbidden.status).toBe(403); expect(forbidden.headers.get("set-cookie")).toBeNull();
+});
+it("does not fall back to a different role when an assistant is disabled", async () => {
+  mocks.verify.mockResolvedValue({ uid: "a", email: "a@example.com", role: "administrative_assistant" });
+  mocks.exists = { supervisors: true, trainees: true };
+  mocks.assistant = { email: "a@example.com", active: false, role: "administrative_assistant", scope: "all", supervisorIds: [] };
+  const result = await POST(request()); expect(result.status).toBe(403); expect(result.headers.get("set-cookie")).toBeNull(); expect(mocks.reads).toEqual(["administrativeAssistants"]);
+});
+it("does not accept a role from a user-controlled request body", async () => {
+  const result = await POST(request({ token: "token", portal: "assistant", role: "administrative_assistant" }));
+  expect(result.status).toBe(403); expect(result.headers.get("set-cookie")).toBeNull();
+});

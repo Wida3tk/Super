@@ -11,7 +11,7 @@ const entries = (values: Record<string, string>) => Object.entries(values).filte
   return { sheet, cell, value };
 });
 
-export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervisor: Supervisor; onClose: () => void }) {
+export default function SupervisorHoursUpdate({ supervisor, onClose, previewOnly = false }: { supervisor: Supervisor; onClose: () => void; previewOnly?: boolean }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
@@ -26,7 +26,7 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
   const monthFields = [...new Map(issues.map(issue => [cellKey(issue.sheet, issue.monthCell), issue])).entries()];
 
   async function run(commit: boolean) {
-    if (!file || loading || (commit && reviewed !== corrections)) return;
+    if (!file || loading || (commit && (previewOnly || reviewed !== corrections))) return;
     setLoading(true);
     const form = new FormData();
     form.append("file", file);
@@ -81,7 +81,8 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
       <small className="hours-kicker">إنشاء الحسابات وتحديث الساعات</small>
       <h2>تحديث ساعات {supervisor.name}</h2>
       <p className="hours-email">{supervisor.email}</p>
-      <div className="hours-safety"><b>المتدرب الجديد سيُنشأ ويُربط تلقائيًا.</b><span>يعتمد هذا الملف على البريد الفريد. يُستكمل رقم الجوال لاحقًا من ملف المتدرب، والحسابات الموجودة ستُحدّث دون تكرار.</span></div>
+      {previewOnly && <p role="note">صلاحية المساعد: معاينة فقط. لا تُحفظ ساعات أو حسابات من هذه النافذة.</p>}
+      <div className="hours-safety"><b>{previewOnly ? "صلاحية المساعد: تجهيز المعاينة فقط." : "المتدرب الجديد سيُنشأ ويُربط تلقائيًا."}</b><span>{previewOnly ? "لا تُنشأ حسابات ولا تُحفظ أو تُعتمد ساعات من بوابة المساعد." : "يعتمد هذا الملف على البريد الفريد. يُستكمل رقم الجوال لاحقًا من ملف المتدرب، والحسابات الموجودة ستُحدّث دون تكرار."}</span></div>
       <label className="hours-drop">
         <b>{file ? file.name : "اختيار ملف المشرف المحدّث (.xlsx)"}</b>
         <span>سيظهر تقرير المطابقة قبل الاعتماد</span>
@@ -89,7 +90,7 @@ export default function SupervisorHoursUpdate({ supervisor, onClose }: { supervi
       </label>
       <div className="hours-actions">
         <button className="preview" disabled={!file || loading} onClick={() => void run(false)}>{loading ? "جارٍ الفحص..." : "فحص ومعاينة"}</button>
-        <button className="commit" disabled={!file || loading || !result?.preview || reviewed !== corrections || result?.committed || Boolean(result?.preview?.conflicts?.length && !skip) || Boolean(result?.preview?.dateIssues?.length && !defer)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>
+        {!previewOnly && <button className="commit" disabled={!file || loading || !result?.preview || reviewed !== corrections || result?.committed || Boolean(result?.preview?.conflicts?.length && !skip) || Boolean(result?.preview?.dateIssues?.length && !defer)} onClick={() => void run(true)}>إنشاء الحسابات واعتماد الساعات</button>}
       </div>
       {!!issues.length && !result?.committed && <section className="hours-error" aria-label="تصحيح تواريخ الاستيراد">
         <b>تصحيح الأشهر والتواريخ داخل النظام</b>

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { FieldValue } from "firebase-admin/firestore";
 import { requireAdmin } from "@/lib/auth/serverAuth";
+import { getAuthenticatedAssistant } from "@/lib/auth/assistantAuth";
+import { assistantCanAccessSupervisor } from "@/lib/auth/assistantPolicy";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { syncTraineeFieldworkTotals } from "@/lib/fieldwork/syncTotals";
 import { priorSafeImportBatch } from "@/lib/imports/priorSafeBatch";
@@ -188,13 +190,15 @@ function identityKey(kind: "email" | "phone", value: string) {
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const assistant = admin ? null : await getAuthenticatedAssistant();
+  if (!admin && !assistant) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const form = await request.formData();
     const file = form.get("file");
     const supervisorId = String(form.get("supervisorId") || "").trim();
     const commit = form.get("commit") === "true";
+    if (assistant && (commit || !assistantCanAccessSupervisor(assistant, supervisorId))) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".xlsx") || !supervisorId) {
       return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
     }
@@ -303,9 +307,10 @@ export async function POST(request: NextRequest) {
       conflicts,
     };
     const previewToken = createHash("sha256").update(bytes).update(JSON.stringify({
-      supervisorId, adminId: admin.uid, corrections: [[...corrections.months].sort(), [...corrections.dates].sort()], preview,
+      supervisorId, adminId: admin?.uid || assistant!.id, corrections: [[...corrections.months].sort(), [...corrections.dates].sort()], preview,
     })).digest("hex");
     if (!commit) return NextResponse.json({ ok: true, preview, previewToken });
+    if (!admin) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     // The admin may import everything that is ready and hand the rest on:
     // unresolved dates go to the supervisor to complete, and trainees in
     // conflict are left out and listed. Both need a fresh preview.

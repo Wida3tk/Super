@@ -54,6 +54,8 @@ export async function getAuthenticatedSupervisor(): Promise<AuthenticatedSupervi
   const user = await getSessionUser();
   if (!user) return null;
 
+  if (user.role === "administrative_assistant") return null;
+
   const byUid = await adminDb.collection('supervisors').doc(user.uid).get();
   if (byUid.exists) {
     const data = byUid.data() as Omit<AuthenticatedSupervisor, 'id'>;
@@ -80,6 +82,7 @@ export async function getAuthenticatedSupervisor(): Promise<AuthenticatedSupervi
 export async function getAuthenticatedTrainee(): Promise<AuthenticatedTrainee | null> {
   const user = await getSessionUser();
   if (!user) return null;
+  if (user.role === "administrative_assistant") return null;
   // A verified claim locates the document; live identity/access checks remain.
   if (typeof user.traineeId === "string" && user.traineeId && !user.traineeId.includes("/")) {
     const byClaim = await adminDb.collection('trainees').doc(user.traineeId).get();

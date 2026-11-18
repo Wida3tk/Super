@@ -5,6 +5,7 @@ import { adminDb, adminStorage } from "@/lib/firebase/admin";
 import {
   getAuthenticatedSupervisor,
   getAuthenticatedTrainee,
+  requireAdmin,
 } from "@/lib/auth/serverAuth";
 
 const allowed = new Set([
@@ -58,17 +59,22 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const supervisor = await getAuthenticatedSupervisor();
-  const trainee = supervisor ? null : await getAuthenticatedTrainee();
-  if (!supervisor && !trainee)
+  const admin = await requireAdmin();
+  const supervisor = admin ? null : await getAuthenticatedSupervisor();
+  const trainee = admin || supervisor ? null : await getAuthenticatedTrainee();
+  if (!admin && !supervisor && !trainee)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const path = req.nextUrl.searchParams.get("path") || "";
   if (!path.startsWith("supervision-documents/"))
     return NextResponse.json({ error: "INVALID_PATH" }, { status: 400 });
   const target = adminStorage.bucket().file(path);
   const [meta] = await target.getMetadata();
+  if (supervisor && meta.metadata?.uploadedByAssistant) {
+    const record = await adminDb.collection("trainees").doc(String(meta.metadata.traineeId || "invalid")).get();
+    if (!record.exists || record.data()?.currentSupervisorId !== supervisor.id) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (
-    (supervisor && meta.metadata?.supervisorId !== supervisor.id) ||
+    (supervisor && !meta.metadata?.uploadedByAssistant && meta.metadata?.supervisorId !== supervisor.id) ||
     (trainee && meta.metadata?.traineeId !== trainee.id)
   )
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });

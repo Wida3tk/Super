@@ -12,9 +12,14 @@ vi.mock("@/lib/firebase/admin", () => ({
   adminDb: {},
 }));
 
-import { requireAdmin } from "./serverAuth";
+import { requireAdmin, getAuthenticatedSupervisor, getAuthenticatedTrainee } from "./serverAuth";
 
 describe("requireAdmin", () => {
+  it("does not treat an assistant as a supervisor, trainee or administrator", async () => {
+    mocks.cookies.mockResolvedValue({ get: () => ({ value: "session" }) });
+    mocks.verifySessionCookie.mockResolvedValue({ uid: "a", email: "a@example.com", role: "administrative_assistant" });
+    expect(await requireAdmin()).toBeNull(); expect(await getAuthenticatedSupervisor()).toBeNull(); expect(await getAuthenticatedTrainee()).toBeNull();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ADMIN_EMAIL = "admin@example.com";
